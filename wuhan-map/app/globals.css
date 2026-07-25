@@ -1,0 +1,24 @@
+@import "maplibre-gl/dist/maplibre-gl.css";
+@import "tailwindcss";
+
+:root {
+  --ink: #1f2937;
+  --cream: #fafaf7;
+  --dim: #d8ddd8;
+  --accent: #e8b8c2;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+}
+
+/* 让 MapLibre 画布填满容器 */
+.maplibregl-canvas {
+  outline: none;
+}
