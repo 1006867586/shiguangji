@@ -242,6 +242,30 @@ export function ActivityForm({
                   placeholder="电话"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={externalLink.rating?.toString() ?? ""}
+                  onChange={(e) =>
+                    setExternalLink((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            rating: e.target.value
+                              ? parseFloat(e.target.value) || null
+                              : null,
+                          }
+                        : prev
+                    )
+                  }
+                  placeholder="评分（如 4.5）"
+                  inputMode="decimal"
+                />
+                <Input
+                  value={externalLink.price ?? ""}
+                  onChange={(e) => updateLinkField("price", e.target.value)}
+                  placeholder="人均（如 ¥80/人）"
+                />
+              </div>
               <Input
                 value={externalLink.coverImage ?? ""}
                 onChange={(e) =>

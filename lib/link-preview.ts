@@ -1,4 +1,3 @@
-import { getLinkPreview } from "link-preview-js";
 import { detectPlatform, extractUrlFromText } from "./utils";
 import type { ExternalLink } from "@/types";
 
@@ -59,15 +58,144 @@ export function parseShareText(text: string): ShareTextMeta {
   return result;
 }
 
+/** 从 HTML 中抓取的页面元数据 */
+interface PageMeta {
+  title: string | null;
+  coverImage: string | null;
+  description: string | null;
+  rating: number | null;
+  price: string | null;
+  address: string | null;
+}
+
+/**
+ * fetch 商家页 HTML（跟随 302 跳转），解析 og meta、title、可见文本中的评分/人均。
+ *
+ * M 站 shopshare 是 SSR 明文输出，无字体加密，可拿到：
+ * - 店名（og:title / <title>）
+ * - 封面图（og:image）
+ * - 评分（可见文本 "4.4"）
+ * - 人均（可见文本 "¥67/人"）
+ * - 品类/榜单（可见文本）
+ * 电话与详细地址在 share 页被打码（产品策略），需从分享文本补充。
+ */
+async function fetchPageMeta(url: string): Promise<PageMeta | null> {
+  try {
+    const res = await fetch(url, {
+      redirect: "follow",
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "accept-language": "zh-CN,zh;q=0.9",
+      },
+      // Vercel Edge/Node fetch 默认无 timeout，手动用 AbortController 限制
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!res.ok) return null;
+
+    const html = await res.text();
+    return parseHtmlMeta(html);
+  } catch {
+    return null;
+  }
+}
+
+/** 从 HTML 文本解析 og meta、title、评分、人均 */
+function parseHtmlMeta(html: string): PageMeta {
+  const meta: PageMeta = {
+    title: null,
+    coverImage: null,
+    description: null,
+    rating: null,
+    price: null,
+    address: null,
+  };
+
+  // og:title / <title>
+  const ogTitle = matchFirst(html, /<meta\s+property="og:title"\s+content="([^"]+)"/i)
+    ?? matchFirst(html, /<meta\s+content="([^"]+)"\s+property="og:title"/i);
+  meta.title = ogTitle ?? matchFirst(html, /<title>([^<]+)<\/title>/i)?.trim() ?? null;
+
+  // og:image
+  meta.coverImage =
+    matchFirst(html, /<meta\s+property="og:image"\s+content="([^"]+)"/i) ??
+    matchFirst(html, /<meta\s+content="([^"]+)"\s+property="og:image"/i) ??
+    null;
+
+  // og:description / meta description
+  meta.description =
+    matchFirst(html, /<meta\s+property="og:description"\s+content="([^"]+)"/i) ??
+    matchFirst(html, /<meta\s+name="description"\s+content="([^"]+)"/i) ??
+    null;
+
+  // 评分：可见文本中的数字（如 "4.4"），常见于评分组件
+  // 匹配 "4.4分" 或紧邻"评分"/"评分:"的数字
+  const ratingMatch = html.match(/(?:评分|rating)[：:\s]*([0-4]\.\d)|([0-4]\.\d)\s*分/);
+  if (ratingMatch) {
+    const r = ratingMatch[1] ?? ratingMatch[2];
+    meta.rating = r ? parseFloat(r) : null;
+  } else {
+    // 兜底：匹配独立的 X.X 数字（评分通常 ≤5）
+    const fallback = html.match(/>([0-4]\.\d)</);
+    if (fallback) meta.rating = parseFloat(fallback[1]);
+  }
+
+  // 人均：¥XX/人 或 XX元/人
+  const priceMatch = html.match(/[¥￥](\d+)\s*\/\s*人|(人均)[：:\s]*[¥￥]?(\d+)/);
+  if (priceMatch) {
+    meta.price = priceMatch[1]
+      ? `¥${priceMatch[1]}/人`
+      : priceMatch[3]
+        ? `¥${priceMatch[3]}/人`
+        : null;
+  }
+
+  // 地址：og:description 或 meta description 里的"地址：xxx"
+  if (meta.description) {
+    meta.address = extractAddress(meta.description);
+  }
+
+  return meta;
+}
+
+/** 工具：正则取第一个捕获组 */
+function matchFirst(s: string, re: RegExp): string | null {
+  const m = s.match(re);
+  return m ? decodeHtmlEntities(m[1]) : null;
+}
+
+/** 简单 HTML 实体解码 */
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+/** 从描述里粗略抽取地址（"地址：xxx"） */
+function extractAddress(desc?: string): string | null {
+  if (!desc) return null;
+  const m = desc.match(/(?:地址|位置)[：:]\s*([^\n,，；;]+)/);
+  return m ? m[1].trim() : null;
+}
+
 /**
  * 解析外部链接（美团/大众点评等）。
  *
  * 支持两种输入：
- * 1. 纯 URL（https://www.dianping.com/shop/...）
+ * 1. 纯 URL（https://www.dianping.com/shop/... 或 http://dpurl.cn/xxx）
  * 2. 美团/点评分享文本（含店名、地址、电话、短链接）
  *
- * 解析策略：先从文本提取元数据（店名/地址/电话），再用 URL 抓取 OG 元数据补充封面图，
- * 文本提取的元数据优先，抓取结果仅用于补充缺失字段。
+ * 解析策略：
+ * - 先从分享文本提取元数据（店名/地址/电话，这些在网页 share 页可能被打码）
+ * - 再 fetch 商家页 SSR HTML 补充封面图、评分、人均
+ * - 文本提取的元数据优先，网页抓取结果仅补充缺失字段
  */
 export async function parseExternalLink(
   input: string
@@ -83,44 +211,22 @@ export async function parseExternalLink(
 
   const platform = meta.platform ?? (url ? detectPlatform(url) : "other");
 
-  // 2. 尝试抓取 OG 元数据（用于补充封面图）
-  let ogTitle: string | undefined;
-  let ogImage: string | undefined;
-  let ogAddress: string | undefined;
-
+  // 2. fetch 商家页 HTML 补充封面图、评分、人均
+  let pageMeta: PageMeta | null = null;
   if (url) {
-    try {
-      const preview = (await getLinkPreview(url, {
-        timeout: 5000,
-        headers: {
-          "user-agent":
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-        },
-      })) as {
-        title?: string;
-        url?: string;
-        images?: string[];
-        description?: string;
-      };
-
-      ogTitle = preview.title;
-      ogImage = preview.images?.[0];
-      ogAddress = extractAddress(preview.description) ?? undefined;
-    } catch {
-      // 抓取失败（短链反爬等），降级用文本提取的元数据
-    }
+    pageMeta = await fetchPageMeta(url);
   }
 
-  // 3. 合并：文本提取优先，抓取结果补充
+  // 3. 合并：文本提取优先，网页抓取补充
   return {
     platform,
     url: url ?? "",
-    title: meta.title ?? ogTitle ?? url ?? "",
-    coverImage: ogImage ?? null,
-    address: meta.address ?? ogAddress ?? null,
+    title: meta.title ?? pageMeta?.title ?? url ?? "",
+    coverImage: pageMeta?.coverImage ?? null,
+    address: meta.address ?? pageMeta?.address ?? null,
     phone: meta.phone ?? null,
-    rating: null,
-    price: null,
+    rating: pageMeta?.rating ?? null,
+    price: pageMeta?.price ?? null,
   };
 }
 
@@ -132,11 +238,4 @@ function isValidUrl(s: string): boolean {
   } catch {
     return false;
   }
-}
-
-/** 从描述里粗略抽取地址（"地址：xxx"） */
-function extractAddress(desc?: string): string | null {
-  if (!desc) return null;
-  const m = desc.match(/(?:地址|位置)[：:]\s*([^\n,，；;]+)/);
-  return m ? m[1].trim() : null;
 }
