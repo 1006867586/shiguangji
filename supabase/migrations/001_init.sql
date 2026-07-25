@@ -159,14 +159,26 @@ drop policy if exists "Users can insert own profile" on public.profiles;
 create policy "Users can insert own profile"
   on public.profiles for insert with check (auth.uid() = id);
 
+-- 成员资格检查函数（security definer，绕过 RLS 避免递归）
+create or replace function public.is_group_member(p_group_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.group_members gm
+    where gm.group_id = p_group_id and gm.user_id = auth.uid()
+  );
+end;
+$$;
+
 -- groups
 drop policy if exists "Group members can view group" on public.groups;
 create policy "Group members can view group"
   on public.groups for select
-  using (exists (
-    select 1 from public.group_members gm
-    where gm.group_id = groups.id and gm.user_id = auth.uid()
-  ));
+  using (public.is_group_member(groups.id));
 
 drop policy if exists "Group creator can update" on public.groups;
 create policy "Group creator can update"
@@ -182,10 +194,7 @@ create policy "Authenticated users can create group"
 drop policy if exists "Members visible to groupmates" on public.group_members;
 create policy "Members visible to groupmates"
   on public.group_members for select
-  using (exists (
-    select 1 from public.group_members gm
-    where gm.group_id = group_members.group_id and gm.user_id = auth.uid()
-  ));
+  using (public.is_group_member(group_members.group_id));
 
 drop policy if exists "Users can join via invite" on public.group_members;
 create policy "Users can join via invite"
@@ -201,18 +210,12 @@ create policy "Members can leave group"
 drop policy if exists "Activities viewable by group members" on public.activities;
 create policy "Activities viewable by group members"
   on public.activities for select
-  using (exists (
-    select 1 from public.group_members gm
-    where gm.group_id = activities.group_id and gm.user_id = auth.uid()
-  ));
+  using (public.is_group_member(activities.group_id));
 
 drop policy if exists "Group members can create activities" on public.activities;
 create policy "Group members can create activities"
   on public.activities for insert
-  with check (exists (
-    select 1 from public.group_members gm
-    where gm.group_id = activities.group_id and gm.user_id = auth.uid()
-  ));
+  with check (public.is_group_member(activities.group_id));
 
 drop policy if exists "Authors can update own activities" on public.activities;
 create policy "Authors can update own activities"
@@ -230,8 +233,7 @@ create policy "Photos viewable by group members"
   on public.activity_photos for select
   using (exists (
     select 1 from public.activities a
-    join public.group_members gm on gm.group_id = a.group_id
-    where a.id = activity_photos.activity_id and gm.user_id = auth.uid()
+    where a.id = activity_photos.activity_id and public.is_group_member(a.group_id)
   ));
 
 drop policy if exists "Group members can add photos" on public.activity_photos;
@@ -239,8 +241,7 @@ create policy "Group members can add photos"
   on public.activity_photos for insert
   with check (exists (
     select 1 from public.activities a
-    join public.group_members gm on gm.group_id = a.group_id
-    where a.id = activity_photos.activity_id and gm.user_id = auth.uid()
+    where a.id = activity_photos.activity_id and public.is_group_member(a.group_id)
   ));
 
 drop policy if exists "Photo owner can delete" on public.activity_photos;
@@ -254,8 +255,7 @@ create policy "Comments viewable by group members"
   on public.comments for select
   using (exists (
     select 1 from public.activities a
-    join public.group_members gm on gm.group_id = a.group_id
-    where a.id = comments.activity_id and gm.user_id = auth.uid()
+    where a.id = comments.activity_id and public.is_group_member(a.group_id)
   ));
 
 drop policy if exists "Group members can comment" on public.comments;
@@ -263,8 +263,7 @@ create policy "Group members can comment"
   on public.comments for insert
   with check (exists (
     select 1 from public.activities a
-    join public.group_members gm on gm.group_id = a.group_id
-    where a.id = comments.activity_id and gm.user_id = auth.uid()
+    where a.id = comments.activity_id and public.is_group_member(a.group_id)
   ));
 
 drop policy if exists "Authors can delete own comments" on public.comments;
@@ -278,8 +277,7 @@ create policy "Likes viewable by group members"
   on public.activity_likes for select
   using (exists (
     select 1 from public.activities a
-    join public.group_members gm on gm.group_id = a.group_id
-    where a.id = activity_likes.activity_id and gm.user_id = auth.uid()
+    where a.id = activity_likes.activity_id and public.is_group_member(a.group_id)
   ));
 
 drop policy if exists "Group members can like" on public.activity_likes;
@@ -287,8 +285,7 @@ create policy "Group members can like"
   on public.activity_likes for insert
   with check (exists (
     select 1 from public.activities a
-    join public.group_members gm on gm.group_id = a.group_id
-    where a.id = activity_likes.activity_id and gm.user_id = auth.uid()
+    where a.id = activity_likes.activity_id and public.is_group_member(a.group_id)
   ));
 
 drop policy if exists "Users can unlike own likes" on public.activity_likes;
