@@ -7,6 +7,7 @@ import type {
   Comment,
   CreateActivityBody,
   CreateCommentBody,
+  UpdateActivityBody,
 } from "@/types";
 
 /** 获取单个活动详情 */
@@ -51,6 +52,17 @@ export async function createActivity(body: CreateActivityBody & {
 export async function deleteActivity(id: string) {
   return fetcher<{ success: boolean }>(`/api/activities/${id}`, {
     method: "DELETE",
+  });
+}
+
+/** 编辑活动（仅作者，仅原创类型） */
+export async function updateActivity(
+  id: string,
+  body: UpdateActivityBody
+): Promise<Activity> {
+  return fetchData<Activity>(`/api/activities/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
   });
 }
 

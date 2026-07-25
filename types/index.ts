@@ -132,6 +132,11 @@ export interface CreateActivityBody {
   repostComment?: string;
 }
 
+export interface UpdateActivityBody {
+  content?: string;
+  externalLink?: ExternalLink | null;
+}
+
 export interface CreateGroupBody {
   name: string;
   description?: string;

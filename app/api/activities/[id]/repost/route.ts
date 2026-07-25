@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** POST /api/activities/[id]/repost — 转发活动（带附言） */
+/** POST /api/activities/[id]/repost — 分享活动到另一个团体（带附言） */
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const user = await requireUser();
@@ -23,41 +23,44 @@ export async function POST(request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "原活动不存在" }, { status: 404 });
     }
 
-    // 校验当前用户是某个团体的成员（转发到自己所在团体）
     const body = (await request.json().catch(() => ({}))) as {
       groupId?: string;
       comment?: string;
       content?: string;
     };
 
-    const targetGroupId = body.groupId ?? orig.group_id;
+    // 站内分享必须指定目标团体，且不能是原活动所在团体
+    if (!body.groupId) {
+      return jsonResponse(
+        { error: "请选择要分享到的团体" },
+        { status: 400 }
+      );
+    }
+    if (body.groupId === orig.group_id) {
+      return jsonResponse(
+        { error: "不能分享到原活动所在的团体，请选择其他团体" },
+        { status: 400 }
+      );
+    }
 
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")
-      .eq("group_id", targetGroupId)
+      .eq("group_id", body.groupId)
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (!membership) {
       return jsonResponse(
-        { error: "你不是该团体成员，无法转发" },
+        { error: "你不是目标团体成员，无法分享" },
         { status: 403 }
       );
-    }
-
-    if (targetGroupId === orig.group_id) {
-      // 同团体转发：避免自我引用循环
-      // 仍允许（用户可能想强调），但 repost_of 不能是自己
-      if (id === user.id) {
-        return jsonResponse({ error: "不能转发自己" }, { status: 400 });
-      }
     }
 
     const { data: activity, error } = await supabase
       .from("activities")
       .insert({
-        group_id: targetGroupId,
+        group_id: body.groupId,
         author_id: user.id,
         type: "repost",
         content: body.content?.trim() || null,
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     if (error || !activity) {
       return jsonResponse(
-        { error: error?.message ?? "转发失败" },
+        { error: error?.message ?? "分享失败" },
         { status: 500 }
       );
     }
