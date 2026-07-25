@@ -44,6 +44,8 @@ interface FeedCardProps {
   onUpdated?: (activity: Activity) => void;
   defaultExpandComments?: boolean;
   groupId?: string;
+  /** 是否将活动正文与链接卡片点击跳转到详情页（动态页默认 true，详情页应传 false 以保留链接外部跳转） */
+  linkToDetail?: boolean;
 }
 
 export function FeedCard({
@@ -55,6 +57,7 @@ export function FeedCard({
   onUpdated,
   defaultExpandComments = false,
   groupId,
+  linkToDetail = true,
 }: FeedCardProps) {
   const [liked, setLiked] = useState(activity.is_liked);
   const [likeCount, setLikeCount] = useState(activity.like_count);
@@ -77,6 +80,9 @@ export function FeedCard({
   );
 
   const isMine = activity.author.id === currentUserId;
+
+  // 动态页：点击正文/链接卡片进入详情页；详情页：不跳转，链接卡片保持外部打开
+  const detailHref = linkToDetail ? `/activity/${activity.id}` : undefined;
 
   const handleLike = () => {
     const next = !liked;
@@ -189,15 +195,26 @@ export function FeedCard({
 
       {/* 文字内容 */}
       {activity.content ? (
-        <p className="mt-2 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">
-          {activity.content}
-        </p>
+        detailHref ? (
+          <Link
+            href={detailHref}
+            className="mt-2 block rounded-md text-foreground transition-colors hover:bg-muted/40"
+          >
+            <p className="whitespace-pre-wrap break-words px-1 py-0.5 text-[15px] leading-relaxed">
+              {activity.content}
+            </p>
+          </Link>
+        ) : (
+          <p className="mt-2 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">
+            {activity.content}
+          </p>
+        )
       ) : null}
 
       {/* 外部链接卡片 */}
       {activity.external_link ? (
         <div className="mt-2">
-          <ExternalLinkCard link={activity.external_link} />
+          <ExternalLinkCard link={activity.external_link} internalHref={detailHref} />
         </div>
       ) : null}
 

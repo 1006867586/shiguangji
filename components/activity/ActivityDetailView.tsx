@@ -75,6 +75,7 @@ export function ActivityDetailView({
         currentUserId={currentUserId}
         groupId={current.group_id}
         defaultExpandComments
+        linkToDetail={false}
         onDeleted={() => {
           if (typeof window !== "undefined") {
             window.location.href = `/g/${current.group_id}`;
