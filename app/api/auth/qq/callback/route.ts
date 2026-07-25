@@ -1,0 +1,204 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { randomBytes } from "crypto";
+import type { CookiesToSet } from "@/lib/supabase/cookies";
+
+/** QQ 互联 token 接口返回的 query string 解析 */
+function parseQqTokenResponse(text: string): Record<string, string> {
+  const params = new URLSearchParams(text);
+  const result: Record<string, string> = {};
+  for (const [k, v] of params.entries()) result[k] = v;
+  return result;
+}
+
+/** QQ 互联 me 接口返回 JSONP: callback( {...} ); 需提取 JSON */
+function parseQqJsonp(text: string): unknown {
+  const match = text.match(/callback\(\s*(.*?)\s*\)\s*;?\s*$/s);
+  if (!match) throw new Error("QQ me 接口返回格式异常");
+  return JSON.parse(match[1]);
+}
+
+interface QqUserInfo {
+  ret: number;
+  nickname: string;
+  figureurl_qq_1?: string;
+  figureurl_qq_2?: string;
+}
+
+/** GET /api/auth/qq/callback — QQ 授权回调，换取用户信息并建立 Supabase 会话 */
+export async function GET(request: NextRequest) {
+  const { origin } = new URL(request.url);
+  const { searchParams } = request.url
+    ? new URL(request.url)
+    : new URL(request.url);
+
+  const code = searchParams.get("code");
+  const stateParam = searchParams.get("state") ?? "";
+  const cookieState = request.cookies.get("qq_oauth_state")?.value;
+
+  // 解析 state: 格式为 "{randomState}.{redirectPath}"
+  const [state, redirect] = [stateParam.split(".")[0], stateParam.split(".").slice(1).join(".") || "/"];
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const appId = process.env.QQ_APP_ID;
+  const appKey = process.env.QQ_APP_KEY;
+
+  const fail = (reason: string) =>
+    NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(reason)}`);
+
+  // 基础校验
+  if (!code || !state || !cookieState || state !== cookieState) {
+    return fail("qq_state_invalid");
+  }
+  if (!supabaseUrl || !anonKey || !appId || !appKey) {
+    return fail("qq_not_configured");
+  }
+
+  const redirectUri = `${origin}/api/auth/qq/callback`;
+
+  try {
+    // 1. 用 code 换 access_token
+    const tokenRes = await fetch("https://graph.qq.com/oauth2.0/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: appId,
+        client_secret: appKey,
+        code,
+        redirect_uri: redirectUri,
+        fmt: "json",
+      }),
+    });
+    if (!tokenRes.ok) return fail("qq_token_failed");
+    // 优先按 JSON 解析，失败再按 query string 解析
+    let tokenData: Record<string, string>;
+    const tokenText = await tokenRes.text();
+    try {
+      tokenData = JSON.parse(tokenText);
+    } catch {
+      tokenData = parseQqTokenResponse(tokenText);
+    }
+    const accessToken = tokenData.access_token;
+    if (!accessToken) return fail("qq_no_access_token");
+
+    // 2. 获取 openid
+    const meRes = await fetch(
+      `https://graph.qq.com/oauth2.0/me?access_token=${encodeURIComponent(
+        accessToken
+      )}&fmt=json`
+    );
+    if (!meRes.ok) return fail("qq_me_failed");
+    let meData: { openid?: string; client_id?: string };
+    const meText = await meRes.text();
+    try {
+      meData = JSON.parse(meText);
+    } catch {
+      meData = parseQqJsonp(meText) as typeof meData;
+    }
+    const openid = meData.openid;
+    if (!openid) return fail("qq_no_openid");
+
+    // 3. 获取用户信息（昵称、头像）
+    const userRes = await fetch(
+      `https://graph.qq.com/user/get_user_info?access_token=${encodeURIComponent(
+        accessToken
+      )}&oauth_consumer_key=${encodeURIComponent(appId)}&openid=${encodeURIComponent(
+        openid
+      )}`
+    );
+    let qqUser: QqUserInfo = { ret: 0, nickname: `QQ用户${openid.slice(-4)}` };
+    if (userRes.ok) {
+      qqUser = (await userRes.json()) as QqUserInfo;
+    }
+    const nickname = qqUser.nickname || `QQ用户${openid.slice(-4)}`;
+    const avatar =
+      qqUser.figureurl_qq_2 || qqUser.figureurl_qq_1 || undefined;
+
+    // 4. 用 admin client 查找/创建 Supabase 用户
+    const admin = createSupabaseClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const virtualEmail = `qq_${openid}@qq.local`;
+
+    // 先尝试查找已存在的用户
+    const { data: existing } = await admin.auth.admin.listUsers();
+    const user = existing?.users?.find((u) => u.email === virtualEmail);
+
+    let userId: string;
+    if (user) {
+      // 已存在，更新昵称/头像
+      await admin.auth.admin.updateUserById(user.id, {
+        user_metadata: { nickname, avatar_url: avatar, qq_openid: openid },
+      });
+      userId = user.id;
+    } else {
+      // 不存在，创建新用户（已确认邮箱，随机密码）
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email: virtualEmail,
+        password: randomBytes(24).toString("hex"),
+        email_confirm: true,
+        user_metadata: { nickname, avatar_url: avatar, qq_openid: openid },
+      });
+      if (createErr || !created) return fail("qq_create_user_failed");
+      userId = created.id;
+
+      // 同步写入 profiles 表
+      await admin.from("profiles").upsert({
+        id: userId,
+        nickname,
+        avatar_url: avatar ?? null,
+      });
+    }
+
+    // 5. 生成 magic link，获取 hashed_token 用于建立会话
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email: virtualEmail,
+    });
+    if (linkErr || !linkData?.properties?.hashed_token) {
+      return fail("qq_link_failed");
+    }
+
+    // 6. 用 anon-key server client 消费 token 建立会话
+    const supabase = createServerClient(supabaseUrl, anonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet: CookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+        },
+      },
+    });
+
+    const { error: verifyErr } = await supabase.auth.verifyOtp({
+      token_hash: linkData.properties.hashed_token,
+      type: "magiclink",
+    });
+    if (verifyErr) return fail("qq_session_failed");
+
+    // 7. 把会话 cookie 同步到重定向响应
+    const response = NextResponse.redirect(`${origin}${redirect}`);
+    for (const c of request.cookies.getAll()) {
+      if (c.name.startsWith("sb-")) {
+        response.cookies.set(c.name, c.value, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+          path: "/",
+        });
+      }
+    }
+    // 清理 state cookie
+    response.cookies.delete("qq_oauth_state");
+    return response;
+  } catch (err) {
+    console.error("QQ 登录回调异常:", err);
+    return fail("qq_callback_error");
+  }
+}
