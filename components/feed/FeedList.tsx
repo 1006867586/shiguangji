@@ -137,7 +137,7 @@ export function FeedList({ groupId, currentUserId }: FeedListProps) {
             updateActivity(id, { is_liked: liked, like_count: count })
           }
           onDeleted={removeActivity}
-          onReposted={refresh}
+          onShared={refresh}
         />
       ))}
 

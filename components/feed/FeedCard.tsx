@@ -2,12 +2,15 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Heart,
   MessageCircle,
   Repeat2,
   MoreHorizontal,
   Trash2,
+  Pencil,
+  Share2,
   ExternalLink as ExternalLinkIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -26,7 +29,9 @@ import {
   ExternalLinkCardCompact,
 } from "@/components/activity/ExternalLinkCard";
 import { CommentSection } from "./CommentSection";
-import { useComments, toggleLike, deleteActivity, repostActivity } from "@/hooks/useActivity";
+import { EditActivityDialog } from "@/components/activity/EditActivityDialog";
+import { ShareDialog } from "@/components/activity/ShareDialog";
+import { useComments, toggleLike, deleteActivity } from "@/hooks/useActivity";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import type { Activity } from "@/types";
 
@@ -35,7 +40,8 @@ interface FeedCardProps {
   currentUserId?: string;
   onLiked?: (id: string, liked: boolean, count: number) => void;
   onDeleted?: (id: string) => void;
-  onReposted?: () => void;
+  onShared?: () => void;
+  onUpdated?: (activity: Activity) => void;
   defaultExpandComments?: boolean;
   groupId?: string;
 }
@@ -45,14 +51,26 @@ export function FeedCard({
   currentUserId,
   onLiked,
   onDeleted,
-  onReposted,
+  onShared,
+  onUpdated,
   defaultExpandComments = false,
   groupId,
 }: FeedCardProps) {
   const [liked, setLiked] = useState(activity.is_liked);
   const [likeCount, setLikeCount] = useState(activity.like_count);
   const [showComments, setShowComments] = useState(defaultExpandComments);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  const handleUpdated = (updated: Activity) => {
+    onUpdated?.(updated);
+    // 父组件若未处理，则强制刷新服务端数据
+    if (!onUpdated) {
+      router.refresh();
+    }
+  };
 
   const { comments, addComment, removeComment } = useComments(
     showComments ? activity.id : null
@@ -88,18 +106,8 @@ export function FeedCard({
     }
   };
 
-  const handleRepost = async () => {
-    const comment = window.prompt("转发附言（可选）：", "") ?? "";
-    try {
-      await repostActivity(activity.id, {
-        groupId,
-        comment: comment.trim() || undefined,
-      });
-      toast.success("已转发");
-      onReposted?.();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "转发失败");
-    }
+  const handleShare = () => {
+    setShowShare(true);
   };
 
   return (
@@ -118,7 +126,7 @@ export function FeedCard({
               {activity.author.nickname}
             </Link>
             {activity.type === "repost" ? (
-              <span className="text-xs text-muted-foreground">转发了</span>
+              <span className="text-xs text-muted-foreground">分享了</span>
             ) : null}
           </div>
           <div className="text-xs text-muted-foreground">
@@ -132,8 +140,8 @@ export function FeedCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleRepost}>
-              <Repeat2 className="h-4 w-4" /> 转发
+            <DropdownMenuItem onClick={handleShare}>
+              <Share2 className="h-4 w-4" /> 分享
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href={`/activity/${activity.id}`}>
@@ -143,6 +151,11 @@ export function FeedCard({
             {isMine ? (
               <>
                 <DropdownMenuSeparator />
+                {activity.type === "original" ? (
+                  <DropdownMenuItem onClick={() => setShowEdit(true)}>
+                    <Pencil className="h-4 w-4" /> 编辑
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem
                   onClick={handleDelete}
                   className="text-destructive focus:text-destructive"
@@ -155,7 +168,7 @@ export function FeedCard({
         </DropdownMenu>
       </div>
 
-      {/* 转发引用 */}
+      {/* 分享引用 */}
       {activity.repost_of ? (
         <div className="mt-3 rounded-lg border-l-2 border-border bg-muted/30 py-2 pl-3 pr-2">
           <div className="text-xs text-muted-foreground">
@@ -225,11 +238,11 @@ export function FeedCard({
         </button>
         <button
           type="button"
-          onClick={handleRepost}
+          onClick={handleShare}
           className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted"
         >
-          <Repeat2 className="h-4 w-4" />
-          转发
+          <Share2 className="h-4 w-4" />
+          分享
         </button>
         <span className="ml-auto text-xs">
           {activity.photo_count > 0 ? `📷 ${activity.photo_count}` : ""}
@@ -249,6 +262,22 @@ export function FeedCard({
           inline
         />
       ) : null}
+
+      {/* 编辑弹窗 */}
+      <EditActivityDialog
+        activity={activity}
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        onUpdated={handleUpdated}
+      />
+
+      {/* 分享弹窗 */}
+      <ShareDialog
+        activity={activity}
+        open={showShare}
+        onOpenChange={setShowShare}
+        onShared={onShared}
+      />
     </article>
   );
 }
