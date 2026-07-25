@@ -9,6 +9,8 @@ import type { ExternalLink as ExternalLinkType } from "@/types";
 interface ExternalLinkCardProps {
   link: ExternalLinkType;
   compact?: boolean;
+  /** 内部跳转路径：若提供则使用 Next.js Link 跳转该路径（如动态页点击进入详情页），否则按外部链接在新标签打开 */
+  internalHref?: string;
 }
 
 const PLATFORM_LABEL: Record<string, string> = {
@@ -18,16 +20,14 @@ const PLATFORM_LABEL: Record<string, string> = {
 };
 
 /** 美团/点评链接卡片：封面图、标题、评分、地址 */
-export function ExternalLinkCard({ link, compact = false }: ExternalLinkCardProps) {
+export function ExternalLinkCard({ link, compact = false, internalHref }: ExternalLinkCardProps) {
   if (!link || (!link.title && !link.url)) return null;
 
-  return (
-    <a
-      href={link.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-stretch gap-3 overflow-hidden rounded-lg border border-border bg-muted/40 p-2 transition-colors hover:bg-muted"
-    >
+  const cardClassName =
+    "group flex items-stretch gap-3 overflow-hidden rounded-lg border border-border bg-muted/40 p-2 transition-colors hover:bg-muted";
+
+  const inner = (
+    <>
       <div
         className={`relative shrink-0 overflow-hidden rounded-md bg-muted ${
           compact ? "h-14 w-14" : "h-20 w-20"
@@ -82,6 +82,27 @@ export function ExternalLinkCard({ link, compact = false }: ExternalLinkCardProp
       </div>
 
       <ExternalLink className="h-4 w-4 shrink-0 self-center text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    </>
+  );
+
+  // 动态页：点击卡片进入活动详情页（内部跳转）
+  if (internalHref) {
+    return (
+      <Link href={internalHref} className={cardClassName} aria-label="查看活动详情">
+        {inner}
+      </Link>
+    );
+  }
+
+  // 详情页：点击卡片在新标签打开外部链接
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cardClassName}
+    >
+      {inner}
     </a>
   );
 }
