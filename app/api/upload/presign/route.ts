@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       contentType: body.contentType,
     });
 
-    return jsonResponse(result);
+    return jsonResponse({ data: result });
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });

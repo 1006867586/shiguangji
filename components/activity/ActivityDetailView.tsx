@@ -77,6 +77,7 @@ export function ActivityDetailView({
         currentUserId={currentUserId}
         groupId={current.group_id}
         defaultExpandComments
+        linkToDetail={false}
         onDeleted={() => router.push(`/g/${current.group_id}`)}
         onUpdated={(updated) => {
           setActivity(updated);

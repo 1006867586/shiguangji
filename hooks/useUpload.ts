@@ -96,26 +96,43 @@ async function performUpload(
     throw new Error("图片过大,请选择小于 3MB 的图片");
   }
 
-  // 1. 获取预签名 URL
-  const presign = await fetchData<{
-    presignedUrl: string;
-    publicUrl: string;
-    key: string;
-  }>("/api/upload/presign", {
-    method: "POST",
-    body: JSON.stringify({
-      filename: processed.name,
-      contentType: processed.type,
-    }),
-  });
+  // 1. 获取预签名 URL(网络错误给友好提示,对应"图片上传无响应"问题)
+  let presign: { presignedUrl: string; publicUrl: string; key: string };
+  try {
+    presign = await fetchData<{
+      presignedUrl: string;
+      publicUrl: string;
+      key: string;
+    }>("/api/upload/presign", {
+      method: "POST",
+      body: JSON.stringify({
+        filename: processed.name,
+        contentType: processed.type,
+      }),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+      throw new Error("无法连接到服务器,请检查网络或稍后重试");
+    }
+    throw e;
+  }
 
-  // 2. PUT 到 R2(XHR 真实进度 + 1 次重试)
-  await uploadWithRetry(
-    presign.presignedUrl,
-    processed,
-    { "content-type": processed.type },
-    onProgress
-  );
+  // 2. PUT 到 R2(XHR 真实进度 + 1 次重试;网络错误给友好提示)
+  try {
+    await uploadWithRetry(
+      presign.presignedUrl,
+      processed,
+      { "content-type": processed.type },
+      onProgress
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("网络错误")) {
+      throw new Error("上传到存储服务失败,请检查存储服务配置或网络连接");
+    }
+    throw e;
+  }
 
   return { url: presign.publicUrl, key: presign.key };
 }
@@ -134,8 +151,9 @@ export function useUpload(): UseUploadReturn {
       setProgress(100);
       return url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "上传失败");
-      return null;
+      const message = e instanceof Error ? e.message : "上传失败";
+      setError(message);
+      throw e;
     } finally {
       setUploading(false);
     }
