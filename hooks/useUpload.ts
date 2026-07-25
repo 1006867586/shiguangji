@@ -77,8 +77,9 @@ export function useUpload(): UseUploadReturn {
       setProgress(100);
       return presign.publicUrl;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "上传失败");
-      return null;
+      const message = e instanceof Error ? e.message : "上传失败";
+      setError(message);
+      throw e;
     } finally {
       setUploading(false);
     }
