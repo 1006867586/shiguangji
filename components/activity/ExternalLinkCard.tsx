@@ -53,7 +53,7 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
             {PLATFORM_LABEL[link.platform] ?? "链接"}
           </Badge>
           {link.rating ? (
-            <span className="flex items-center gap-0.5 text-xs font-medium text-orange-500">
+            <span className="flex items-center gap-0.5 text-xs font-medium text-warning">
               <Star className="h-3 w-3 fill-current" />
               {link.rating.toFixed(1)}
             </span>

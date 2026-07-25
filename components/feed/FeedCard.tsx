@@ -239,7 +239,7 @@ export function FeedCard({
           aria-label={liked ? "取消点赞" : "点赞"}
           className={cn(
             "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]",
-            liked && "text-orange-500"
+            liked && "text-primary"
           )}
         >
           <Heart
