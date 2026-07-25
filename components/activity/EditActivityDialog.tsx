@@ -277,13 +277,18 @@ export function EditActivityDialog({
 
         <DialogFooter>
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={saving}
+            className="touch-manipulation active:scale-[0.97]"
           >
             取消
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="touch-manipulation active:scale-[0.97]"
+          >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             保存
           </Button>

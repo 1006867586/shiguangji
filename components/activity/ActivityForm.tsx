@@ -314,13 +314,18 @@ export function ActivityForm({
       {/* 提交 */}
       <div className="flex items-center justify-end gap-2">
         <Button
-          variant="ghost"
+          variant="outline"
           onClick={() => router.back()}
           disabled={submitting}
+          className="touch-manipulation active:scale-[0.97]"
         >
           取消
         </Button>
-        <Button onClick={submit} disabled={submitting || !groupId}>
+        <Button
+          onClick={submit}
+          disabled={submitting || !groupId}
+          className="touch-manipulation active:scale-[0.97]"
+        >
           {submitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : null}

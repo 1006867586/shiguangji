@@ -92,10 +92,19 @@ export function CreateGroupForm() {
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={() => router.back()} disabled={submitting}>
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          disabled={submitting}
+          className="touch-manipulation active:scale-[0.97]"
+        >
           取消
         </Button>
-        <Button onClick={submit} disabled={submitting}>
+        <Button
+          onClick={submit}
+          disabled={submitting}
+          className="touch-manipulation active:scale-[0.97]"
+        >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           创建团体
         </Button>

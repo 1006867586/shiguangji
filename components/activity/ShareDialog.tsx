@@ -188,15 +188,17 @@ export function ShareDialog({
 
         <DialogFooter>
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
+            className="touch-manipulation active:scale-[0.97]"
           >
             取消
           </Button>
           <Button
             onClick={handleShare}
             disabled={submitting || loading || groups.length === 0}
+            className="touch-manipulation active:scale-[0.97]"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             分享

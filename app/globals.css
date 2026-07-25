@@ -102,4 +102,8 @@
   .pt-safe-t {
     padding-top: env(safe-area-inset-top);
   }
+  /* 长列表渲染优化：屏外卡片跳过渲染（搭配 inline containIntrinsicSize） */
+  .content-visibility-auto {
+    content-visibility: auto;
+  }
 }
