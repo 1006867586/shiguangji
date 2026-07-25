@@ -28,6 +28,10 @@ function getClient() {
       accessKeyId,
       secretAccessKey,
     },
+    // 禁用 SDK 默认的 CRC32 checksum，否则预签名 URL 会带 checksum 参数，
+    // R2 对带 checksum 的预检请求 CORS 支持有问题
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
   return cachedClient;
 }
