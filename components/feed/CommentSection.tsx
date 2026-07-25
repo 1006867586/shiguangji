@@ -108,7 +108,7 @@ export function CommentSection({
         <div className="mt-3 space-y-2">
           {replyTo ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <CornerDownRight className="h-3 w-3" />
+              <CornerDownRight className="h-3 w-3" aria-hidden="true" />
               回复 <span className="font-medium text-foreground">{replyTo.author?.nickname}</span>
               <Button
                 variant="ghost"
@@ -125,6 +125,11 @@ export function CommentSection({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder={replyTo ? `回复 ${replyTo.author?.nickname}…` : "写下你的评论…"}
+              aria-label={replyTo ? `回复 ${replyTo.author?.nickname}` : "写下你的评论"}
+              name="comment"
+              autoComplete="off"
+              spellCheck
+              maxLength={500}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -137,10 +142,14 @@ export function CommentSection({
               size="sm"
               onClick={submit}
               disabled={submitting || !content.trim()}
+              className="touch-manipulation active:scale-[0.97]"
             >
               发送
             </Button>
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            Enter 发送，Shift+Enter 换行
+          </p>
         </div>
       ) : null}
     </div>
@@ -184,7 +193,8 @@ function CommentItem({
           <button
             type="button"
             onClick={onReply}
-            className="text-xs text-muted-foreground hover:text-foreground"
+            aria-label={`回复 ${comment.author?.nickname ?? "用户"}`}
+            className="text-xs text-muted-foreground hover:text-foreground rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring px-1 -mx-1 touch-manipulation"
           >
             回复
           </button>
@@ -192,9 +202,9 @@ function CommentItem({
             <button
               type="button"
               onClick={onDelete}
-              className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-destructive"
+              className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-destructive rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring px-1 -mx-1 touch-manipulation"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-3 w-3" aria-hidden="true" />
               删除
             </button>
           ) : null}

@@ -146,11 +146,13 @@ export function EditActivityDialog({
             <Label htmlFor="edit-content">想说点什么</Label>
             <Textarea
               id="edit-content"
+              name="edit-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="今晚吃火锅！@大家 7点老地方见"
               rows={4}
               maxLength={1000}
+              autoComplete="off"
             />
             <div className="text-right text-xs text-muted-foreground">
               {content.length}/1000
@@ -163,9 +165,14 @@ export function EditActivityDialog({
             <div className="flex gap-2">
               <Input
                 id="edit-link-url"
+                name="edit-link-url"
+                type="url"
+                inputMode="url"
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
                 placeholder="粘贴美团分享文本或链接…"
+                autoComplete="off"
+                spellCheck={false}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -199,7 +206,7 @@ export function EditActivityDialog({
                     type="button"
                     onClick={() => setExternalLink(null)}
                     aria-label="清除链接"
-                    className="text-muted-foreground hover:text-destructive"
+                    className="text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -210,6 +217,7 @@ export function EditActivityDialog({
                   onChange={(e) => updateLinkField("title", e.target.value)}
                   placeholder="标题（如：海底捞火锅）"
                   aria-label="标题"
+                  autoComplete="off"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <Input
@@ -217,12 +225,16 @@ export function EditActivityDialog({
                     onChange={(e) => updateLinkField("address", e.target.value)}
                     placeholder="地址"
                     aria-label="地址"
+                    autoComplete="off"
                   />
                   <Input
                     value={externalLink.phone ?? ""}
                     onChange={(e) => updateLinkField("phone", e.target.value)}
                     placeholder="电话"
                     aria-label="电话"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="off"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -231,13 +243,19 @@ export function EditActivityDialog({
                     onChange={(e) => updateLinkRating(e.target.value)}
                     placeholder="评分（如 4.5）"
                     inputMode="decimal"
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={0.1}
                     aria-label="评分"
+                    autoComplete="off"
                   />
                   <Input
                     value={externalLink.price ?? ""}
                     onChange={(e) => updateLinkField("price", e.target.value)}
                     placeholder="人均（如 ¥80/人）"
                     aria-label="人均"
+                    autoComplete="off"
                   />
                 </div>
                 <Input
@@ -245,6 +263,10 @@ export function EditActivityDialog({
                   onChange={(e) => updateLinkField("coverImage", e.target.value)}
                   placeholder="封面图 URL"
                   aria-label="封面图 URL"
+                  type="url"
+                  inputMode="url"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
 
                 <ExternalLinkCard link={externalLink} />

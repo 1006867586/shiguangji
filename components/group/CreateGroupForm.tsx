@@ -49,10 +49,12 @@ export function CreateGroupForm() {
         <Label htmlFor="name">团体名称 *</Label>
         <Input
           id="name"
+          name="group-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="如：室友的饭局"
           maxLength={30}
+          autoComplete="off"
         />
       </div>
 
@@ -60,11 +62,13 @@ export function CreateGroupForm() {
         <Label htmlFor="desc">团体简介（可选）</Label>
         <Textarea
           id="desc"
+          name="group-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="一句话介绍这个团体"
           rows={3}
           maxLength={200}
+          autoComplete="off"
         />
       </div>
 
@@ -72,9 +76,14 @@ export function CreateGroupForm() {
         <Label htmlFor="avatar">团体头像 URL（可选）</Label>
         <Input
           id="avatar"
+          name="group-avatar"
+          type="url"
+          inputMode="url"
           value={avatarUrl}
           onChange={(e) => setAvatarUrl(e.target.value)}
           placeholder="https://..."
+          autoComplete="off"
+          spellCheck={false}
         />
       </div>
 
