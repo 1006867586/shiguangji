@@ -15,17 +15,19 @@ export default async function HomePage() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        {groups.length > 0 ? (
-          <GroupSelector currentGroupId={groups[0].id} />
-        ) : (
-          <h1 className="px-2 text-lg font-semibold">飨刻</h1>
-        )}
-        <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-          <Link href="/new" aria-label="发起聚餐">
-            <Plus className="h-5 w-5" />
-          </Link>
-        </Button>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
+        <div className="flex h-14 items-center justify-between px-2">
+          {groups.length > 0 ? (
+            <GroupSelector currentGroupId={groups[0].id} />
+          ) : (
+            <h1 className="px-2 text-lg font-semibold">飨刻</h1>
+          )}
+          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+            <Link href="/new" aria-label="发起聚餐">
+              <Plus className="h-5 w-5" />
+            </Link>
+          </Button>
+        </div>
       </header>
 
       {groups.length === 0 ? (

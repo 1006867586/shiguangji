@@ -26,17 +26,19 @@ export function MainShell({
 }: MainShellProps) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col bg-background">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="flex items-center gap-1">
-          {showGroupSelector ? (
-            <GroupSelector currentGroupId={currentGroupId} />
-          ) : (
-            <h1 className="px-2 text-lg font-semibold">
-              {title ?? APP_NAME}
-            </h1>
-          )}
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
+        <div className="flex h-14 items-center justify-between px-2">
+          <div className="flex items-center gap-1">
+            {showGroupSelector ? (
+              <GroupSelector currentGroupId={currentGroupId} />
+            ) : (
+              <h1 className="px-2 text-lg font-semibold">
+                {title ?? APP_NAME}
+              </h1>
+            )}
+          </div>
+          {rightAction}
         </div>
-        {rightAction}
       </header>
 
       <main className="flex-1 pb-20">{children}</main>

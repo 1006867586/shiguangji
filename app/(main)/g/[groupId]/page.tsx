@@ -56,22 +56,24 @@ export default async function GroupFeedPage({ params }: Params) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="flex items-center gap-1">
-          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-            <Link href="/" aria-label="返回">
-              <ChevronLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <GroupSelector currentGroupId={groupId} />
-        </div>
-        <div className="flex items-center gap-1">
-          <InviteCodeButton code={group.invite_code} />
-          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-            <Link href="/new" aria-label="发起聚餐">
-              <Plus className="h-5 w-5" />
-            </Link>
-          </Button>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
+        <div className="flex h-14 items-center justify-between px-1">
+          <div className="flex items-center gap-1">
+            <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+              <Link href="/" aria-label="返回">
+                <ChevronLeft className="h-5 w-5" />
+              </Link>
+            </Button>
+            <GroupSelector currentGroupId={groupId} />
+          </div>
+          <div className="flex items-center gap-1">
+            <InviteCodeButton code={group.invite_code} />
+            <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+              <Link href="/new" aria-label="发起聚餐">
+                <Plus className="h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
 

@@ -73,7 +73,7 @@ export function PhotoUploader({
         {photos.map((p) => (
           <div
             key={p.id}
-            className="group relative aspect-square overflow-hidden rounded-md bg-muted"
+            className="group relative aspect-square overflow-hidden rounded-md bg-muted focus-within:ring-2 focus-within:ring-ring"
           >
             <Image
               src={p.url}
@@ -88,8 +88,8 @@ export function PhotoUploader({
                 type="button"
                 onClick={() => handleDelete(p.id)}
                 disabled={deletingId === p.id}
-                className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50"
-                aria-label="删除"
+                className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-70 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                aria-label="删除照片"
               >
                 {deletingId === p.id ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -106,7 +106,7 @@ export function PhotoUploader({
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
           className={cn(
-            "flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+            "flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-manipulation active:scale-[0.98]",
             uploading && "opacity-60"
           )}
         >

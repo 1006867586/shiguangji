@@ -19,34 +19,36 @@ export default async function GroupsPage() {
 
   return (
     <div className="min-h-dvh pb-20">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="flex items-center gap-1">
-          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-            <Link href="/" aria-label="返回">
-              <ChevronLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <h1 className="text-base font-semibold">我的团体</h1>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <Plus className="h-5 w-5" />
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
+        <div className="flex h-14 items-center justify-between px-1">
+          <div className="flex items-center gap-1">
+            <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+              <Link href="/" aria-label="返回">
+                <ChevronLeft className="h-5 w-5" />
+              </Link>
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link href="/groups/new">
-                <Plus className="h-4 w-4" /> 创建团体
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/join">
-                <LogIn className="h-4 w-4" /> 加入团体
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <h1 className="text-base font-semibold">我的团体</h1>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Plus className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/groups/new">
+                  <Plus className="h-4 w-4" /> 创建团体
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/join">
+                  <LogIn className="h-4 w-4" /> 加入团体
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </header>
 
       {groups.length === 0 ? (

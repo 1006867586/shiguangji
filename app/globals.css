@@ -98,4 +98,8 @@
   .pb-safe {
     padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
   }
+  /* 安全区域顶部留白（刘海/灵动岛下的 sticky header） */
+  .pt-safe-t {
+    padding-top: env(safe-area-inset-top);
+  }
 }
