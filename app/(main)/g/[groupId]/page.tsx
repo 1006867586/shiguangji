@@ -78,7 +78,7 @@ export default async function GroupFeedPage({ params }: Params) {
       </header>
 
       {group.description ? (
-        <div className="border-b border-border bg-muted/30 px-4 py-2 text-sm text-muted-foreground">
+        <div className="border-b border-border bg-muted/30 px-4 py-2 text-sm text-muted-foreground break-words whitespace-pre-wrap">
           {group.description}
         </div>
       ) : null}

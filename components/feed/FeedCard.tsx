@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Heart,
   MessageCircle,
+  Repeat2,
   MoreHorizontal,
   Trash2,
   Pencil,
@@ -178,12 +179,15 @@ export function FeedCard({
 
       {/* 分享引用 */}
       {activity.repost_of ? (
-        <div className="mt-3 rounded-lg border-l-2 border-border bg-muted/30 py-2 pl-3 pr-2">
-          <div className="text-xs text-muted-foreground">
-            @{activity.repost_of.author.nickname}
+        <div className="mt-3 rounded-lg border-l-2 border-primary bg-muted/60 py-2 pl-3 pr-2">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Repeat2 className="h-3 w-3" aria-hidden="true" />
+            <span className="font-medium text-foreground">
+              @{activity.repost_of.author.nickname}
+            </span>
           </div>
           {activity.repost_of.content ? (
-            <p className="mt-0.5 line-clamp-3 text-sm text-foreground">
+            <p className="mt-1 line-clamp-3 text-sm text-foreground">
               {activity.repost_of.content}
             </p>
           ) : null}

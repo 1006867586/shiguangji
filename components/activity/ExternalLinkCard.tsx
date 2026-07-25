@@ -79,7 +79,7 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
         ) : null}
       </div>
 
-      <ExternalLink className="h-4 w-4 shrink-0 self-center text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      <ExternalLink className="h-4 w-4 shrink-0 self-center text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 md:opacity-0" aria-hidden="true" />
     </>
   );
 
