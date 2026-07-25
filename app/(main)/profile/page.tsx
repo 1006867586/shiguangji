@@ -49,8 +49,13 @@ export default async function ProfilePage() {
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{g.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {g.role === "admin" ? "管理员" : "成员"} · 邀请码 {g.invite_code}
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>{g.role === "admin" ? "管理员" : "成员"}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>邀请码</span>
+                  <span className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono tracking-[0.2em] text-foreground">
+                    {g.invite_code}
+                  </span>
                 </p>
               </div>
               <span className="text-xs text-muted-foreground">›</span>

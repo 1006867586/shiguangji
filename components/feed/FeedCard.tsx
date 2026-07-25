@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import {
   Heart,
   MessageCircle,
-  Repeat2,
   MoreHorizontal,
   Trash2,
   Pencil,
   Share2,
+  Camera,
   ExternalLink as ExternalLinkIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -231,35 +231,56 @@ export function FeedCard({
           type="button"
           onClick={handleLike}
           disabled={pending}
+          aria-pressed={liked}
+          aria-label={liked ? "取消点赞" : "点赞"}
           className={cn(
-            "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted",
+            "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]",
             liked && "text-orange-500"
           )}
         >
           <Heart
             className={cn("h-4 w-4", liked && "fill-current")}
+            aria-hidden="true"
           />
-          {likeCount > 0 ? likeCount : "点赞"}
+          {likeCount > 0 ? (
+            <span className="tabular-nums">{likeCount}</span>
+          ) : (
+            "点赞"
+          )}
         </button>
         <button
           type="button"
           onClick={() => setShowComments((v) => !v)}
-          className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted"
+          aria-expanded={showComments}
+          aria-label={`评论${activity.comment_count > 0 ? `，${activity.comment_count} 条` : ""}`}
+          className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]"
         >
-          <MessageCircle className="h-4 w-4" />
-          {activity.comment_count > 0 ? activity.comment_count : "评论"}
+          <MessageCircle className="h-4 w-4" aria-hidden="true" />
+          {activity.comment_count > 0 ? (
+            <span className="tabular-nums">{activity.comment_count}</span>
+          ) : (
+            "评论"
+          )}
         </button>
         <button
           type="button"
           onClick={handleShare}
-          className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted"
+          aria-label="分享"
+          className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]"
         >
-          <Share2 className="h-4 w-4" />
+          <Share2 className="h-4 w-4" aria-hidden="true" />
           分享
         </button>
-        <span className="ml-auto text-xs">
-          {activity.photo_count > 0 ? `📷 ${activity.photo_count}` : ""}
-        </span>
+        {activity.photo_count > 0 ? (
+          <span
+            className="ml-auto flex items-center gap-1 text-xs tabular-nums"
+            aria-label={`共 ${activity.photo_count} 张照片`}
+            title={`${activity.photo_count} 张照片`}
+          >
+            <Camera className="h-3.5 w-3.5" aria-hidden="true" />
+            {activity.photo_count}
+          </span>
+        ) : null}
       </div>
 
       {/* 评论区 */}

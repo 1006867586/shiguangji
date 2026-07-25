@@ -90,8 +90,11 @@ export default async function GroupsPage() {
                       {g.description}
                     </p>
                   ) : null}
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    邀请码 <span className="font-mono">{g.invite_code}</span>
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span>邀请码</span>
+                    <span className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono tracking-[0.2em] text-foreground">
+                      {g.invite_code}
+                    </span>
                   </p>
                 </div>
                 <span className="text-muted-foreground">›</span>
