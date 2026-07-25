@@ -303,6 +303,87 @@ returns text language sql as $$
 $$;
 
 -- ============================================================
+-- 6.1 创建团体函数（security definer，绕过 RLS 的 auth.uid() 识别问题）
+-- ============================================================
+create or replace function public.create_group(
+  p_name text,
+  p_description text default null,
+  p_avatar_url text default null
+)
+returns public.groups
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_group public.groups;
+  v_code text;
+begin
+  if v_user is null then
+    raise exception '未登录' using errcode = '42501';
+  end if;
+
+  -- 生成唯一邀请码（最多 5 次重试）
+  for i in 1..5 loop
+    v_code := public.generate_invite_code();
+    if not exists (select 1 from public.groups where invite_code = v_code) then
+      exit;
+    end if;
+    v_code := null;
+  end loop;
+
+  if v_code is null then
+    raise exception '邀请码生成失败';
+  end if;
+
+  -- 插入团体
+  insert into public.groups (name, description, avatar_url, invite_code, created_by)
+  values (p_name, p_description, p_avatar_url, v_code, v_user)
+  returning * into v_group;
+
+  -- 创建者自动加入为 admin
+  insert into public.group_members (group_id, user_id, role)
+  values (v_group.id, v_user, 'admin');
+
+  return v_group;
+end;
+$$;
+
+-- ============================================================
+-- 6.2 通过邀请码加入团体（security definer，绕过 RLS 的 auth.uid() 识别问题）
+-- ============================================================
+create or replace function public.join_group_by_code(p_code text)
+returns public.groups
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_group public.groups;
+begin
+  if v_user is null then
+    raise exception '未登录' using errcode = '42501';
+  end if;
+
+  select * into v_group from public.groups where upper(invite_code) = upper(p_code);
+  if not found then
+    raise exception '邀请码无效或团体不存在';
+  end if;
+
+  if exists (select 1 from public.group_members where group_id = v_group.id and user_id = v_user) then
+    return v_group;
+  end if;
+
+  insert into public.group_members (group_id, user_id, role)
+  values (v_group.id, v_user, 'member');
+
+  return v_group;
+end;
+$$;
+
+-- ============================================================
 -- 7. Feed 查询函数（避免 N+1）
 -- ============================================================
 create or replace function public.get_group_feed(

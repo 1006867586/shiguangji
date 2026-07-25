@@ -21,41 +21,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: group, error: groupErr } = await supabase
-      .from("groups")
-      .select("id, name, invite_code")
-      .eq("invite_code", code)
-      .maybeSingle();
+    // 调用 join_group_by_code RPC（security definer，绕过 RLS）
+    const { data: group, error: joinErr } = await supabase.rpc(
+      "join_group_by_code",
+      { p_code: code }
+    );
 
-    if (groupErr || !group) {
-      return jsonResponse({ error: "邀请码无效或团体不存在" }, { status: 404 });
-    }
-
-    // 检查是否已加入
-    const { data: existMember } = await supabase
-      .from("group_members")
-      .select("id")
-      .eq("group_id", group.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (existMember) {
-      return jsonResponse({
-        data: group,
-        message: "你已是该团体成员",
-      });
-    }
-
-    const { error: joinErr } = await supabase
-      .from("group_members")
-      .insert({
-        group_id: group.id,
-        user_id: user.id,
-        role: "member",
-      });
-
-    if (joinErr) {
-      return jsonResponse({ error: joinErr.message }, { status: 500 });
+    if (joinErr || !group) {
+      return jsonResponse(
+        { error: joinErr?.message ?? "邀请码无效或团体不存在" },
+        { status: 404 }
+      );
     }
 
     return jsonResponse({ data: group, message: "加入成功" }, { status: 201 });
