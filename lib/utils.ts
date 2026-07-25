@@ -130,6 +130,7 @@ export function isAllowedImageUrl(url: string): boolean {
     if (u.protocol !== "https:" && u.protocol !== "http:") return false;
     const allowedHosts = [
       process.env.NEXT_PUBLIC_R2_PUBLIC_URL,
+      process.env.R2_PUBLIC_URL,
       process.env.NEXT_PUBLIC_APP_URL,
     ]
       .filter(Boolean)
