@@ -172,6 +172,22 @@ function LoginForm() {
             </span>
           )}
         </div>
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">或</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <a
+          href={`/api/auth/qq?redirect=${encodeURIComponent(redirect)}`}
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-[#12B7F5] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0FA3DC]"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 5.94 2 10.8c0 2.77 1.46 5.24 3.74 6.86-.18.62-.7 2.14-.78 2.4-.1.32.12.32.24.26.1-.05 1.6-.98 2.24-1.38.82.2 1.7.3 2.56.3 5.52 0 10-3.94 10-8.8S17.52 2 12 2zm0 14.4c-.8 0-1.58-.1-2.32-.3l-.5-.14-.5.3c-.36.22-.96.58-1.3.76.06-.24.16-.62.22-.86l.06-.24-.2-.14C5.2 14.5 4 12.74 4 10.8 4 7.04 7.58 4 12 4s8 3.04 8 6.8-3.58 6.8-8 6.8z" />
+          </svg>
+          QQ 登录
+        </a>
       </div>
     </div>
   );

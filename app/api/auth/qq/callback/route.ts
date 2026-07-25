@@ -28,10 +28,8 @@ interface QqUserInfo {
 
 /** GET /api/auth/qq/callback — QQ 授权回调，换取用户信息并建立 Supabase 会话 */
 export async function GET(request: NextRequest) {
-  const { origin } = new URL(request.url);
-  const { searchParams } = request.url
-    ? new URL(request.url)
-    : new URL(request.url);
+  const url = new URL(request.url);
+  const { origin, searchParams } = url;
 
   const code = searchParams.get("code");
   const stateParam = searchParams.get("state") ?? "";
@@ -117,52 +115,31 @@ export async function GET(request: NextRequest) {
     const avatar =
       qqUser.figureurl_qq_2 || qqUser.figureurl_qq_1 || undefined;
 
-    // 4. 用 admin client 查找/创建 Supabase 用户
+    // 4. 用 admin client 生成 magic link（自动处理用户存在/不存在）
     const admin = createSupabaseClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     const virtualEmail = `qq_${openid}@qq.local`;
 
-    // 先尝试查找已存在的用户
-    const { data: existing } = await admin.auth.admin.listUsers();
-    const user = existing?.users?.find((u) => u.email === virtualEmail);
-
-    let userId: string;
-    if (user) {
-      // 已存在，更新昵称/头像
-      await admin.auth.admin.updateUserById(user.id, {
-        user_metadata: { nickname, avatar_url: avatar, qq_openid: openid },
-      });
-      userId = user.id;
-    } else {
-      // 不存在，创建新用户（已确认邮箱，随机密码）
-      const { data: created, error: createErr } = await admin.auth.admin.createUser({
-        email: virtualEmail,
-        password: randomBytes(24).toString("hex"),
-        email_confirm: true,
-        user_metadata: { nickname, avatar_url: avatar, qq_openid: openid },
-      });
-      if (createErr || !created) return fail("qq_create_user_failed");
-      userId = created.id;
-
-      // 同步写入 profiles 表
-      await admin.from("profiles").upsert({
-        id: userId,
-        nickname,
-        avatar_url: avatar ?? null,
-      });
-    }
-
-    // 5. 生成 magic link，获取 hashed_token 用于建立会话
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "magiclink",
       email: virtualEmail,
     });
-    if (linkErr || !linkData?.properties?.hashed_token) {
+    if (linkErr || !linkData?.properties?.hashed_token || !linkData.user) {
       return fail("qq_link_failed");
     }
 
-    // 6. 用 anon-key server client 消费 token 建立会话
+    // 更新用户元数据（昵称/头像/QQ openid），新用户首次写入 profiles
+    await admin.auth.admin.updateUserById(linkData.user.id, {
+      user_metadata: { nickname, avatar_url: avatar, qq_openid: openid },
+    });
+    await admin.from("profiles").upsert({
+      id: linkData.user.id,
+      nickname,
+      avatar_url: avatar ?? null,
+    });
+
+    // 5. 用 anon-key server client 消费 token 建立会话
     const supabase = createServerClient(supabaseUrl, anonKey, {
       cookies: {
         getAll() {
@@ -182,7 +159,7 @@ export async function GET(request: NextRequest) {
     });
     if (verifyErr) return fail("qq_session_failed");
 
-    // 7. 把会话 cookie 同步到重定向响应
+    // 6. 把会话 cookie 同步到重定向响应
     const response = NextResponse.redirect(`${origin}${redirect}`);
     for (const c of request.cookies.getAll()) {
       if (c.name.startsWith("sb-")) {
