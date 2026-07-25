@@ -106,4 +106,22 @@
   .content-visibility-auto {
     content-visibility: auto;
   }
+  /* 交互元素：禁止长按选中文字、移除 tap highlight 高亮 */
+  button,
+  a,
+  [role="button"],
+  [role="radio"],
+  [role="menuitem"],
+  [role="tab"] {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* 输入与可编辑区域保持可选中 */
+  input,
+  textarea,
+  [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }

@@ -34,15 +34,15 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
         {link.coverImage ? (
           <Image
             src={link.coverImage}
-            alt={link.title || ""}
+            alt={link.title || "封面图"}
             fill
-            sizes="80px"
+            sizes={compact ? "56px" : "80px"}
             className="object-cover"
             unoptimized
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <Utensils className="h-6 w-6" />
+            <Utensils className="h-6 w-6" aria-hidden="true" />
           </div>
         )}
       </div>
