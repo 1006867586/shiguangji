@@ -1,6 +1,12 @@
 import Link from "next/link";
-import { ChevronLeft, Plus, Users } from "lucide-react";
+import { ChevronLeft, Plus, Users, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/common/EmptyState";
 import { getServerGroups } from "@/lib/server-data";
 
@@ -20,11 +26,25 @@ export default async function GroupsPage() {
           </Button>
           <h1 className="text-base font-semibold">我的团体</h1>
         </div>
-        <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-          <Link href="/groups/new" aria-label="创建团体">
-            <Plus className="h-5 w-5" />
-          </Link>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Plus className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href="/groups/new">
+                <Plus className="h-4 w-4" /> 创建团体
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/join">
+                <LogIn className="h-4 w-4" /> 加入团体
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       {groups.length === 0 ? (

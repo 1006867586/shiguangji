@@ -80,6 +80,9 @@ export function ActivityDetailView({
             window.location.href = `/g/${current.group_id}`;
           }
         }}
+        onUpdated={(updated) => {
+          setActivity(updated);
+        }}
       />
 
       <div className="moment-card">

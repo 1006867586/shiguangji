@@ -144,14 +144,14 @@ export function ActivityForm({
         )}
       </div>
 
-      {/* 转发提示 */}
+      {/* 分享提示 */}
       {repostOfId ? (
         <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
           <p className="text-muted-foreground">
-            转发 <span className="font-medium text-foreground">@{repostAuthorName}</span> 的动态
+            分享 <span className="font-medium text-foreground">@{repostAuthorName}</span> 的动态
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            下方输入框内容将作为转发附言
+            下方输入框内容将作为分享附言
           </p>
         </div>
       ) : null}
@@ -167,7 +167,7 @@ export function ActivityForm({
           onChange={(e) => setContent(e.target.value)}
           placeholder={
             repostOfId
-              ? "添加转发附言…"
+              ? "添加分享附言…"
               : "今晚吃火锅！@大家 7点老地方见"
           }
           rows={4}
