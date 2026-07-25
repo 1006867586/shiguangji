@@ -60,7 +60,11 @@ export async function createPresignedUploadUrl(opts: {
   });
 
   const baseUrl = publicUrl.replace(/\/$/, "");
-  const publicImageUrl = `${baseUrl}/${key}`;
+  // 确保 publicUrl 带协议前缀，避免配置成裸域名导致 URL 校验失败
+  const baseWithProto = /^https?:\/\//i.test(baseUrl)
+    ? baseUrl
+    : `https://${baseUrl}`;
+  const publicImageUrl = `${baseWithProto}/${key}`;
 
   return { presignedUrl, publicUrl: publicImageUrl, key };
 }
