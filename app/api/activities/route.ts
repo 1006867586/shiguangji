@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { parseExternalLinkUrl } from "@/lib/link-preview";
+import { parseExternalLink } from "@/lib/link-preview";
 import { jsonResponse, isUrl, detectPlatform } from "@/lib/utils";
 import type { CreateActivityBody, ExternalLink } from "@/types";
 
@@ -75,17 +75,19 @@ export async function POST(request: NextRequest) {
     let externalLink: ExternalLink | null = body.externalLink ?? null;
 
     // 后端再次解析链接（可选）
-    if (body.parseLink && body.linkUrl && isUrl(body.linkUrl)) {
-      const parsed = await parseExternalLinkUrl(body.linkUrl);
+    if (body.parseLink && body.linkUrl) {
+      const parsed = await parseExternalLink(body.linkUrl);
       if (parsed) externalLink = parsed;
       else if (!externalLink) {
+        const url = body.linkUrl;
         externalLink = {
-          platform: detectPlatform(body.linkUrl),
-          url: body.linkUrl,
+          platform: detectPlatform(url),
+          url,
           title: "",
           coverImage: null,
           rating: null,
           address: null,
+          phone: null,
           price: null,
         };
       }

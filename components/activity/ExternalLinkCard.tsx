@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Star, ExternalLink, Utensils } from "lucide-react";
+import { MapPin, Star, ExternalLink, Utensils, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ExternalLink as ExternalLinkType } from "@/types";
 
@@ -68,6 +68,12 @@ export function ExternalLinkCard({ link, compact = false }: ExternalLinkCardProp
           <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
             <MapPin className="h-3 w-3 shrink-0" />
             <span className="truncate">{link.address}</span>
+          </p>
+        ) : null}
+        {link.phone ? (
+          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+            <Phone className="h-3 w-3 shrink-0" />
+            <span className="truncate">{link.phone}</span>
           </p>
         ) : null}
         {link.price ? (

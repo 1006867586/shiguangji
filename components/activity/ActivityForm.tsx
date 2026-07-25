@@ -12,7 +12,7 @@ import { GroupSelector } from "@/components/group/GroupSelector";
 import { ExternalLinkCard } from "@/components/activity/ExternalLinkCard";
 import { createActivity } from "@/hooks/useActivity";
 import { fetchData } from "@/lib/fetcher";
-import { isUrl, detectPlatform } from "@/lib/utils";
+import { isUrl, detectPlatform, extractUrlFromText } from "@/lib/utils";
 import type { ExternalLink, Group } from "@/types";
 
 interface ActivityFormProps {
@@ -41,9 +41,15 @@ export function ActivityForm({
   }, [groups, groupId]);
 
   const parseLink = async () => {
-    const url = linkUrl.trim();
-    if (!url || !isUrl(url)) {
-      toast.error("请输入合法的链接");
+    const input = linkUrl.trim();
+    if (!input) {
+      toast.error("请输入链接或分享文本");
+      return;
+    }
+    // 支持纯 URL 或含 URL 的分享文本
+    const extractedUrl = extractUrlFromText(input);
+    if (!isUrl(input) && !extractedUrl) {
+      toast.error("未识别到有效链接");
       return;
     }
     setParsing(true);
@@ -52,7 +58,7 @@ export function ActivityForm({
         "/api/link-preview",
         {
           method: "POST",
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({ url: input }),
         }
       );
       setExternalLink(res);
@@ -63,13 +69,15 @@ export function ActivityForm({
       }
     } catch (e) {
       // 降级：直接使用基础信息
+      const fallbackUrl = extractedUrl ?? input;
       setExternalLink({
-        platform: detectPlatform(url),
-        url,
+        platform: detectPlatform(fallbackUrl),
+        url: fallbackUrl,
         title: "",
         coverImage: null,
         rating: null,
         address: null,
+        phone: null,
         price: null,
       });
       toast.info("解析失败，可手动补充信息");
@@ -178,7 +186,7 @@ export function ActivityForm({
             <Input
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://www.dianping.com/shop/..."
+              placeholder="粘贴美团分享文本或链接…"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -229,13 +237,18 @@ export function ActivityForm({
                   placeholder="地址"
                 />
                 <Input
-                  value={externalLink.coverImage ?? ""}
-                  onChange={(e) =>
-                    updateLinkField("coverImage", e.target.value)
-                  }
-                  placeholder="封面图 URL"
+                  value={externalLink.phone ?? ""}
+                  onChange={(e) => updateLinkField("phone", e.target.value)}
+                  placeholder="电话"
                 />
               </div>
+              <Input
+                value={externalLink.coverImage ?? ""}
+                onChange={(e) =>
+                  updateLinkField("coverImage", e.target.value)
+                }
+                placeholder="封面图 URL"
+              />
 
               <ExternalLinkCard link={externalLink} />
             </div>

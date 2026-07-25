@@ -17,6 +17,7 @@ export interface ExternalLink {
   coverImage?: string | null;
   rating?: number | null;
   address?: string | null;
+  phone?: string | null;
   price?: string | null;
 }
 

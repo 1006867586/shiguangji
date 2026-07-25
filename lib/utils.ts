@@ -79,6 +79,13 @@ export function isUrl(s: string): boolean {
   }
 }
 
+/** 从文本中提取第一个 URL（支持被反引号/引号包裹的情况） */
+export function extractUrlFromText(text: string): string | null {
+  if (!text) return null;
+  const m = text.match(/https?:\/\/[^\s`<>】"'，。]+/);
+  return m ? m[0] : null;
+}
+
 /** 识别外部链接平台 */
 export function detectPlatform(url: string): "dianping" | "meituan" | "other" {
   const host = (() => {
@@ -88,7 +95,7 @@ export function detectPlatform(url: string): "dianping" | "meituan" | "other" {
       return "";
     }
   })();
-  if (host.includes("dianping")) return "dianping";
+  if (host.includes("dianping") || host.includes("dpurl")) return "dianping";
   if (host.includes("meituan") || host.includes("meituanwa")) return "meituan";
   return "other";
 }
