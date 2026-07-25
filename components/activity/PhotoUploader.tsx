@@ -33,16 +33,22 @@ export function PhotoUploader({
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    let failed = 0;
     for (const file of Array.from(files)) {
       try {
         const photo = await uploadToActivity(activityId, file);
         if (photo) {
           setPhotos((prev) => [...prev, photo]);
           onUploaded?.(photo);
+        } else {
+          failed += 1;
         }
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "上传失败");
+      } catch {
+        failed += 1;
       }
+    }
+    if (failed > 0) {
+      toast.error(`${failed} 张上传失败`);
     }
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -71,7 +77,7 @@ export function PhotoUploader({
           >
             <Image
               src={p.url}
-              alt={p.caption ?? ""}
+              alt={p.caption ?? "活动照片"}
               fill
               sizes="120px"
               className="object-cover"

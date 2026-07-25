@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { ChevronLeft, Plus, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GroupSelector } from "@/components/group/GroupSelector";
@@ -13,27 +14,45 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ groupId: string }> };
 
+export async function generateMetadata({
+  params,
+}: Params): Promise<Metadata> {
+  const { groupId } = await params;
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from("groups")
+    .select("name")
+    .eq("id", groupId)
+    .maybeSingle();
+  return { title: data?.name ?? "团体" };
+}
+
 export default async function GroupFeedPage({ params }: Params) {
   const { groupId } = await params;
   const user = await getCurrentUser();
-  if (!user) notFound();
+  if (!user) {
+    redirect(`/login?redirect=${encodeURIComponent(`/g/${groupId}`)}`);
+  }
 
   const supabase = await createServerClient();
 
-  // 校验团体存在且用户是成员
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select("role, group:groups!inner(*)")
-    .eq("group_id", groupId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // 校验团体存在且用户是成员；与 getServerGroups 无依赖，并行执行
+  const [membershipRes, { groups }] = await Promise.all([
+    supabase
+      .from("group_members")
+      .select("role, group:groups!inner(*)")
+      .eq("group_id", groupId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    getServerGroups(),
+  ]);
 
+  const membership = membershipRes.data;
   if (!membership) {
     notFound();
   }
 
   const group = membership.group as unknown as Group;
-  const { groups } = await getServerGroups();
 
   return (
     <>

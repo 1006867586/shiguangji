@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { jsonResponse, isValidInviteCode } from "@/lib/utils";
+import { jsonResponse, isValidInviteCode, safeErrorMessage } from "@/lib/utils";
 import type { JoinGroupBody } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,8 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as JoinGroupBody;
     const code = body.inviteCode?.trim().toUpperCase();
 
-    if (!code || !isValidInviteCode(code)) {
+    // 非空 + 长度合理（6-32），再校验格式
+    if (!code || code.length < 6 || code.length > 32 || !isValidInviteCode(code)) {
       return jsonResponse(
         { error: "邀请码格式不正确（6 位字母数字）" },
         { status: 400 }
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     if (joinErr || !group) {
       return jsonResponse(
-        { error: joinErr?.message ?? "邀请码无效或团体不存在" },
+        { error: safeErrorMessage(joinErr, "邀请码无效或团体不存在") },
         { status: 404 }
       );
     }
@@ -39,7 +40,9 @@ export async function POST(request: NextRequest) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

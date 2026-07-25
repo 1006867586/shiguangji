@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { jsonResponse } from "@/lib/utils";
+import { jsonResponse, isUuid, safeErrorMessage } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,10 @@ export async function POST(_request: NextRequest, { params }: Params) {
     const user = await requireUser();
     const supabase = await createServerClient();
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     const { data: activity } = await supabase
       .from("activities")
@@ -49,7 +53,10 @@ export async function POST(_request: NextRequest, { params }: Params) {
         .eq("activity_id", id)
         .eq("user_id", user.id);
       if (error) {
-        return jsonResponse({ error: error.message }, { status: 500 });
+        return jsonResponse(
+          { error: safeErrorMessage(error, "操作失败") },
+          { status: 500 }
+        );
       }
       return jsonResponse({ data: { liked: false } });
     }
@@ -62,14 +69,19 @@ export async function POST(_request: NextRequest, { params }: Params) {
         user_id: user.id,
       });
     if (error) {
-      return jsonResponse({ error: error.message }, { status: 500 });
+      return jsonResponse(
+        { error: safeErrorMessage(error, "操作失败") },
+        { status: 500 }
+      );
     }
     return jsonResponse({ data: { liked: true } }, { status: 201 });
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

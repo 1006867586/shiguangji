@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { jsonResponse } from "@/lib/utils";
+import { jsonResponse, isAllowedImageUrl, safeErrorMessage } from "@/lib/utils";
 import type { CreateGroupBody, Group } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,10 @@ export async function GET() {
       .order("joined_at", { ascending: false });
 
     if (error) {
-      return jsonResponse({ error: error.message }, { status: 500 });
+      return jsonResponse(
+        { error: safeErrorMessage(error, "获取团体列表失败") },
+        { status: 500 }
+      );
     }
 
     const groups = (memberships ?? []).map((m) => {
@@ -33,8 +36,10 @@ export async function GET() {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }
 
@@ -49,16 +54,25 @@ export async function POST(request: NextRequest) {
       return jsonResponse({ error: "团体名称不能为空" }, { status: 400 });
     }
 
+    // 头像 URL 域名校验（允许为空）
+    const avatarUrl = body.avatarUrl ?? null;
+    if (avatarUrl !== null && !isAllowedImageUrl(avatarUrl)) {
+      return jsonResponse(
+        { error: "头像 URL 域名不被允许" },
+        { status: 400 }
+      );
+    }
+
     // 调用 create_group RPC（security definer，绕过 RLS 的 auth.uid() 识别问题）
     const { data: group, error } = await supabase.rpc("create_group", {
       p_name: body.name.trim(),
       p_description: body.description?.trim() ?? null,
-      p_avatar_url: body.avatarUrl ?? null,
+      p_avatar_url: avatarUrl,
     });
 
     if (error || !group) {
       return jsonResponse(
-        { error: error?.message ?? "创建团体失败" },
+        { error: safeErrorMessage(error, "创建团体失败") },
         { status: 500 }
       );
     }
@@ -68,7 +82,9 @@ export async function POST(request: NextRequest) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

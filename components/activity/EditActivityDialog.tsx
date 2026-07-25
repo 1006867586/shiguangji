@@ -48,7 +48,7 @@ export function EditActivityDialog({
       setExternalLink(activity.external_link);
       setLinkUrl("");
     }
-  }, [open, activity]);
+  }, [open, activity.id, activity.content, activity.external_link]);
 
   const parseLink = async () => {
     const input = linkUrl.trim();
@@ -76,7 +76,7 @@ export function EditActivityDialog({
       } else {
         toast.success("已解析链接");
       }
-    } catch (e) {
+    } catch {
       const fallbackUrl = extractedUrl ?? input;
       setExternalLink({
         platform: detectPlatform(fallbackUrl),
@@ -159,9 +159,10 @@ export function EditActivityDialog({
 
           {/* 外部链接 */}
           <div className="space-y-1.5">
-            <Label>美团/点评链接（可选）</Label>
+            <Label htmlFor="edit-link-url">美团/点评链接（可选）</Label>
             <div className="flex gap-2">
               <Input
+                id="edit-link-url"
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
                 placeholder="粘贴美团分享文本或链接…"
@@ -197,6 +198,7 @@ export function EditActivityDialog({
                   <button
                     type="button"
                     onClick={() => setExternalLink(null)}
+                    aria-label="清除链接"
                     className="text-muted-foreground hover:text-destructive"
                   >
                     <X className="h-4 w-4" />
@@ -207,17 +209,20 @@ export function EditActivityDialog({
                   value={externalLink.title ?? ""}
                   onChange={(e) => updateLinkField("title", e.target.value)}
                   placeholder="标题（如：海底捞火锅）"
+                  aria-label="标题"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <Input
                     value={externalLink.address ?? ""}
                     onChange={(e) => updateLinkField("address", e.target.value)}
                     placeholder="地址"
+                    aria-label="地址"
                   />
                   <Input
                     value={externalLink.phone ?? ""}
                     onChange={(e) => updateLinkField("phone", e.target.value)}
                     placeholder="电话"
+                    aria-label="电话"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -226,17 +231,20 @@ export function EditActivityDialog({
                     onChange={(e) => updateLinkRating(e.target.value)}
                     placeholder="评分（如 4.5）"
                     inputMode="decimal"
+                    aria-label="评分"
                   />
                   <Input
                     value={externalLink.price ?? ""}
                     onChange={(e) => updateLinkField("price", e.target.value)}
                     placeholder="人均（如 ¥80/人）"
+                    aria-label="人均"
                   />
                 </div>
                 <Input
                   value={externalLink.coverImage ?? ""}
                   onChange={(e) => updateLinkField("coverImage", e.target.value)}
                   placeholder="封面图 URL"
+                  aria-label="封面图 URL"
                 />
 
                 <ExternalLinkCard link={externalLink} />

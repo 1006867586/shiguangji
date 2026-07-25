@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { randomBytes } from "crypto";
 import type { CookiesToSet } from "@/lib/supabase/cookies";
+import { safeRedirectPath } from "@/lib/utils";
 
 /** QQ 互联 token 接口返回的 query string 解析 */
 function parseQqTokenResponse(text: string): Record<string, string> {
@@ -36,7 +37,10 @@ export async function GET(request: NextRequest) {
   const cookieState = request.cookies.get("qq_oauth_state")?.value;
 
   // 解析 state: 格式为 "{randomState}.{redirectPath}"
-  const [state, redirect] = [stateParam.split(".")[0], stateParam.split(".").slice(1).join(".") || "/"];
+  const [state, redirect] = [
+    stateParam.split(".")[0],
+    safeRedirectPath(stateParam.split(".").slice(1).join(".") || "/"),
+  ];
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

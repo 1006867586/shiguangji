@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeedCard } from "@/components/feed/FeedCard";
@@ -27,6 +28,7 @@ export function ActivityDetailView({
 
   const current = activity ?? initialActivity ?? null;
   const [showUploader, setShowUploader] = useState(false);
+  const router = useRouter();
 
   if (loading && !current) {
     return (
@@ -75,11 +77,7 @@ export function ActivityDetailView({
         currentUserId={currentUserId}
         groupId={current.group_id}
         defaultExpandComments
-        onDeleted={() => {
-          if (typeof window !== "undefined") {
-            window.location.href = `/g/${current.group_id}`;
-          }
-        }}
+        onDeleted={() => router.push(`/g/${current.group_id}`)}
         onUpdated={(updated) => {
           setActivity(updated);
         }}

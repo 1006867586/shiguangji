@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Loader2, Share2, Users } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -104,7 +105,7 @@ export function ShareDialog({
 
           {/* 目标团体选择 */}
           <div className="space-y-1.5">
-            <Label>分享到</Label>
+            <Label htmlFor="share-target">分享到</Label>
             {loading ? (
               <div className="flex items-center justify-center py-6 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -118,7 +119,7 @@ export function ShareDialog({
                 </p>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" id="share-target">
                 {groups.map((g) => (
                   <button
                     key={g.id}
@@ -132,10 +133,11 @@ export function ShareDialog({
                     )}
                   >
                     {g.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={g.avatar_url}
                         alt={g.name}
+                        width={32}
+                        height={32}
                         className="h-8 w-8 rounded-full object-cover"
                       />
                     ) : (

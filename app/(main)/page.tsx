@@ -8,6 +8,8 @@ import { getServerGroups } from "@/lib/server-data";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "动态" };
+
 export default async function HomePage() {
   const { groups, userId } = await getServerGroups();
 

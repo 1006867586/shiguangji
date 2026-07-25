@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Star, ExternalLink, Utensils, Phone } from "lucide-react";

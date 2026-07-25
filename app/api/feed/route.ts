@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { fetchFeed } from "@/lib/activities";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { jsonResponse } from "@/lib/utils";
+import { jsonResponse, isUuid, safeParseInt, safeErrorMessage } from "@/lib/utils";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +16,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const groupId = searchParams.get("groupId");
-    if (!groupId) {
+    if (!groupId || !isUuid(groupId)) {
       return jsonResponse({ error: "缺少 groupId 参数" }, { status: 400 });
     }
     const cursor = searchParams.get("cursor");
-    const limit = Math.min(
-      Number(searchParams.get("limit") ?? DEFAULT_PAGE_SIZE),
+    const limit = safeParseInt(
+      searchParams.get("limit"),
+      DEFAULT_PAGE_SIZE,
       50
     );
 
@@ -34,7 +35,9 @@ export async function GET(request: NextRequest) {
 
     return jsonResponse(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

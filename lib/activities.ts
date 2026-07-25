@@ -124,69 +124,79 @@ export async function fetchActivityDetail(opts: {
 
   const a = activity as Record<string, unknown>;
 
-  // 照片
-  const { data: photos } = await supabase
-    .from("activity_photos")
-    .select(
-      "id, activity_id, uploaded_by, url, caption, created_at, uploader:profiles!activity_photos_uploaded_by_fkey(id, nickname, avatar_url)"
-    )
-    .eq("activity_id", opts.activityId)
-    .order("created_at", { ascending: true });
+  // 并行发起无依赖的查询（photos/comments/photoCount/commentCount/likeCount/myLike/repostOf）
+  const [
+    photosRes,
+    commentsRes,
+    photoCountRes,
+    commentCountRes,
+    likeCountRes,
+    myLikeRes,
+    repostOfRes,
+  ] = await Promise.all([
+    supabase
+      .from("activity_photos")
+      .select(
+        "id, activity_id, uploaded_by, url, caption, created_at, uploader:profiles!activity_photos_uploaded_by_fkey(id, nickname, avatar_url)"
+      )
+      .eq("activity_id", opts.activityId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("comments")
+      .select(
+        "id, activity_id, author_id, content, parent_id, created_at, author:profiles!comments_author_id_fkey(id, nickname, avatar_url)"
+      )
+      .eq("activity_id", opts.activityId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("activity_photos")
+      .select("id", { count: "exact", head: true })
+      .eq("activity_id", opts.activityId),
+    supabase
+      .from("comments")
+      .select("id", { count: "exact", head: true })
+      .eq("activity_id", opts.activityId),
+    supabase
+      .from("activity_likes")
+      .select("id", { count: "exact", head: true })
+      .eq("activity_id", opts.activityId),
+    supabase
+      .from("activity_likes")
+      .select("id")
+      .eq("activity_id", opts.activityId)
+      .eq("user_id", opts.userId)
+      .maybeSingle(),
+    a.repost_of_id
+      ? supabase
+          .from("activities")
+          .select(
+            `id, type, content, external_link, created_at,
+             author:profiles!activities_author_id_fkey(id, nickname, avatar_url)`
+          )
+          .eq("id", a.repost_of_id as string)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
 
-  // 一级评论 + 作者
-  const { data: comments } = await supabase
-    .from("comments")
-    .select(
-      "id, activity_id, author_id, content, parent_id, created_at, author:profiles!comments_author_id_fkey(id, nickname, avatar_url)"
-    )
-    .eq("activity_id", opts.activityId)
-    .order("created_at", { ascending: true });
-
-  // 计数
-  const { count: photoCount } = await supabase
-    .from("activity_photos")
-    .select("id", { count: "exact", head: true })
-    .eq("activity_id", opts.activityId);
-
-  const { count: commentCount } = await supabase
-    .from("comments")
-    .select("id", { count: "exact", head: true })
-    .eq("activity_id", opts.activityId);
-
-  const { count: likeCount } = await supabase
-    .from("activity_likes")
-    .select("id", { count: "exact", head: true })
-    .eq("activity_id", opts.activityId);
-
-  const { data: myLike } = await supabase
-    .from("activity_likes")
-    .select("id")
-    .eq("activity_id", opts.activityId)
-    .eq("user_id", opts.userId)
-    .maybeSingle();
+  const photos = photosRes.data;
+  const comments = commentsRes.data;
+  const photoCount = photoCountRes.count;
+  const commentCount = commentCountRes.count;
+  const likeCount = likeCountRes.count;
+  const myLike = myLikeRes.data;
 
   // 转发源
   let repostOf: Activity["repost_of"] = null;
-  if (a.repost_of_id) {
-    const { data: ro } = await supabase
-      .from("activities")
-      .select(
-        `id, type, content, external_link, created_at,
-         author:profiles!activities_author_id_fkey(id, nickname, avatar_url)`
-      )
-      .eq("id", a.repost_of_id as string)
-      .maybeSingle();
-    if (ro) {
-      const r = ro as Record<string, unknown>;
-      repostOf = {
-        id: r.id as string,
-        type: r.type as Activity["type"],
-        content: (r.content as string) ?? null,
-        external_link: parseExternalLink(r.external_link),
-        created_at: r.created_at as string,
-        author: r.author as Activity["author"],
-      };
-    }
+  if (repostOfRes.data) {
+    const r = repostOfRes.data as Record<string, unknown>;
+    repostOf = {
+      id: r.id as string,
+      type: r.type as Activity["type"],
+      content: (r.content as string) ?? null,
+      external_link: parseExternalLink(r.external_link),
+      created_at: r.created_at as string,
+      author: r.author as Activity["author"],
+    };
   }
 
   const commentList = (comments ?? []) as unknown as Comment[];

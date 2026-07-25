@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
 import { fetchActivityDetail } from "@/lib/activities";
-import { jsonResponse } from "@/lib/utils";
+import { jsonResponse, isUuid, safeErrorMessage, sanitizeExternalLink } from "@/lib/utils";
 import type { UpdateActivityBody } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
   try {
     const user = await requireUser();
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     const activity = await fetchActivityDetail({
       activityId: id,
@@ -27,8 +31,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }
 
@@ -38,6 +44,10 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     const user = await requireUser();
     const supabase = await createServerClient();
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     const { data: activity, error } = await supabase
       .from("activities")
@@ -58,15 +68,20 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       .eq("id", id);
 
     if (delErr) {
-      return jsonResponse({ error: delErr.message }, { status: 500 });
+      return jsonResponse(
+        { error: safeErrorMessage(delErr, "删除失败") },
+        { status: 500 }
+      );
     }
     return jsonResponse({ success: true });
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }
 
@@ -76,6 +91,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const user = await requireUser();
     const supabase = await createServerClient();
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     // 校验存在性 + 作者身份 + 类型（RLS 也会限制，这里提前拦截给出友好错误）
     const { data: activity, error: actErr } = await supabase
@@ -106,7 +125,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
     if (body.externalLink !== undefined) {
       patch.external_link = body.externalLink
-        ? (body.externalLink as unknown as Record<string, unknown>)
+        ? (sanitizeExternalLink(body.externalLink) as unknown as Record<string, unknown>)
         : null;
     }
 
@@ -127,7 +146,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       .eq("id", id);
 
     if (updateErr) {
-      return jsonResponse({ error: updateErr.message }, { status: 500 });
+      return jsonResponse(
+        { error: safeErrorMessage(updateErr, "更新失败") },
+        { status: 500 }
+      );
     }
 
     // 返回最新的活动详情
@@ -137,7 +159,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

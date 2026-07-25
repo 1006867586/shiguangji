@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { jsonResponse } from "@/lib/utils";
+import { jsonResponse, isUuid, safeParseInt, safeErrorMessage } from "@/lib/utils";
 import { COMMENT_PAGE_SIZE } from "@/lib/constants";
 import type { CreateCommentBody } from "@/types";
 
@@ -14,6 +14,10 @@ export async function GET(request: NextRequest, { params }: Params) {
     const user = await requireUser();
     const supabase = await createServerClient();
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     const { data: activity } = await supabase
       .from("activities")
@@ -37,8 +41,9 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(
-      Number(searchParams.get("limit") ?? COMMENT_PAGE_SIZE),
+    const limit = safeParseInt(
+      searchParams.get("limit"),
+      COMMENT_PAGE_SIZE,
       200
     );
 
@@ -52,7 +57,10 @@ export async function GET(request: NextRequest, { params }: Params) {
       .limit(limit);
 
     if (error) {
-      return jsonResponse({ error: error.message }, { status: 500 });
+      return jsonResponse(
+        { error: safeErrorMessage(error, "获取评论失败") },
+        { status: 500 }
+      );
     }
 
     // 组装楼中楼
@@ -73,8 +81,10 @@ export async function GET(request: NextRequest, { params }: Params) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }
 
@@ -84,6 +94,10 @@ export async function POST(request: NextRequest, { params }: Params) {
     const user = await requireUser();
     const supabase = await createServerClient();
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     const { data: activity } = await supabase
       .from("activities")
@@ -111,8 +125,11 @@ export async function POST(request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "评论内容不能为空" }, { status: 400 });
     }
 
-    // 若指定 parent_id，校验其属于同一活动且为一级评论
+    // 若指定 parent_id，校验其为合法 UUID 且属于同一活动且为一级评论
     if (body.parentId) {
+      if (!isUuid(body.parentId)) {
+        return jsonResponse({ error: "参数错误" }, { status: 400 });
+      }
       const { data: parent } = await supabase
         .from("comments")
         .select("id, activity_id, parent_id")
@@ -141,7 +158,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     if (error || !comment) {
       return jsonResponse(
-        { error: error?.message ?? "评论失败" },
+        { error: safeErrorMessage(error, "评论失败") },
         { status: 500 }
       );
     }
@@ -151,7 +168,9 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

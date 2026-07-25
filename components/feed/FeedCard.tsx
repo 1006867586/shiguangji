@@ -135,14 +135,16 @@ export function FeedCard({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="更多操作"
+            >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleShare}>
-              <Share2 className="h-4 w-4" /> 分享
-            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href={`/activity/${activity.id}`}>
                 <ExternalLinkIcon className="h-4 w-4" /> 查看详情
@@ -203,13 +205,7 @@ export function FeedCard({
 
       {/* 照片网格 */}
       {activity.photos.length > 0 ? (
-        <PhotoGrid
-          photos={activity.photos}
-          className="mt-3"
-          onPhotoClick={() => {
-            // 点击照片默认跳转详情页查看大图
-          }}
-        />
+        <PhotoGrid photos={activity.photos} className="mt-3" />
       ) : null}
 
       {/* 操作栏 */}

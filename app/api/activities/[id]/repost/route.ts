@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { jsonResponse } from "@/lib/utils";
+import { jsonResponse, isUuid, safeErrorMessage } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,10 @@ export async function POST(request: NextRequest, { params }: Params) {
     const supabase = await createServerClient();
     const { id } = await params;
 
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
+
     const { data: orig } = await supabase
       .from("activities")
       .select("id, group_id")
@@ -23,6 +27,20 @@ export async function POST(request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "原活动不存在" }, { status: 404 });
     }
 
+    // IDOR 防护：必须是原活动所在团体的成员才能分享
+    const { data: origMembership } = await supabase
+      .from("group_members")
+      .select("id")
+      .eq("group_id", orig.group_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!origMembership) {
+      return jsonResponse(
+        { error: "无权分享该活动" },
+        { status: 403 }
+      );
+    }
+
     const body = (await request.json().catch(() => ({}))) as {
       groupId?: string;
       comment?: string;
@@ -30,7 +48,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     };
 
     // 站内分享必须指定目标团体，且不能是原活动所在团体
-    if (!body.groupId) {
+    if (!body.groupId || !isUuid(body.groupId)) {
       return jsonResponse(
         { error: "请选择要分享到的团体" },
         { status: 400 }
@@ -72,7 +90,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     if (error || !activity) {
       return jsonResponse(
-        { error: error?.message ?? "分享失败" },
+        { error: safeErrorMessage(error, "分享失败") },
         { status: 500 }
       );
     }
@@ -82,7 +100,9 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy, Check, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,19 +15,29 @@ import {
 
 export function InviteCodeButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState<string>("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const copy = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       toast.success(`已复制${label}`);
-      setTimeout(() => setCopied(false), 1500);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1500);
     } catch {
       toast.error("复制失败，请手动复制");
     }
   };
 
-  const inviteUrl = `${window.location.origin}/join?code=${code}`;
+  const inviteUrl = `${origin}/join?code=${code}`;
 
   return (
     <DropdownMenu>

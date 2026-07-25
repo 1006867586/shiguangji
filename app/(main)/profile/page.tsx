@@ -7,9 +7,13 @@ import type { Group } from "@/types";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "个人资料" };
+
 export default async function ProfilePage() {
-  const profile = await getServerProfile();
-  const { groups } = await getServerGroups();
+  const [profile, { groups }] = await Promise.all([
+    getServerProfile(),
+    getServerGroups(),
+  ]);
 
   return (
     <div className="min-h-dvh pb-20">

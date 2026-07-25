@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { CookiesToSet } from "@/lib/supabase/cookies";
+import { safeRedirectPath } from "@/lib/utils";
 
 /** GET /api/auth/callback — 处理 Supabase 邮箱/OAuth 回调 */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const next = safeRedirectPath(searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(`${origin}${next}`);

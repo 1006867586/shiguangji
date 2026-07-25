@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Loader2, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -13,11 +13,17 @@ import type { Activity, Group } from "@/types";
 interface FeedListProps {
   groupId: string;
   currentUserId?: string;
+  /** 服务端预取的首屏数据,作为 useFeed 的 SWR fallback */
+  initialActivities?: Activity[];
   /** realtime 推送新活动时拉取完整数据 */
   onActivityChange?: () => void;
 }
 
-export function FeedList({ groupId, currentUserId }: FeedListProps) {
+export function FeedList({
+  groupId,
+  currentUserId,
+  initialActivities,
+}: FeedListProps) {
   const {
     activities,
     loading,
@@ -30,14 +36,16 @@ export function FeedList({ groupId, currentUserId }: FeedListProps) {
     updateActivity,
     removeActivity,
     bumpCount,
-  } = useFeed({ groupId });
+  } = useFeed({ groupId, initialActivities });
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // 首次加载
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  // 收集当前已加载的 activity id,供 realtime 客户端过滤使用
+  // (photo/comment/like 表无 group_id,需在客户端按 activity_id 过滤避免跨群泄露)
+  const activityIds = useMemo(
+    () => new Set(activities.map((a) => a.id)),
+    [activities]
+  );
 
   // 无限滚动
   useEffect(() => {
@@ -46,7 +54,9 @@ export function FeedList({ groupId, currentUserId }: FeedListProps) {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loadingMore) {
-          loadMore();
+          loadMore().catch(() => {
+            // loadMore 错误已由上层处理或忽略,这里防止 unhandled rejection
+          });
         }
       },
       { rootMargin: "200px" }
@@ -55,16 +65,18 @@ export function FeedList({ groupId, currentUserId }: FeedListProps) {
     return () => observer.disconnect();
   }, [hasMore, loadingMore, loadMore]);
 
-  // Realtime 订阅
+  // Realtime 订阅:activityIds 通过 ref 始终读最新,无需 re-subscribe
   useRealtimeGroup(groupId, {
+    activityIds,
     onActivity: {
       onInsert: async (row) => {
-        // 新活动：拉取完整数据后置顶
+        // 新活动:拉取完整数据后置顶
         try {
           const a = await fetchData<Activity>(`/api/activities/${row.id}`);
           prependActivity(a);
-        } catch {
-          // 忽略：可能是权限未同步
+        } catch (e) {
+          // 之前是静默吞掉,改为 warn 便于排查(权限未同步 / 活动被删等)
+          console.warn("[FeedList] realtime 拉取新活动失败", row.id, e);
         }
       },
       onDelete: (row) => {

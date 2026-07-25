@@ -14,7 +14,15 @@ export async function fetcher<T>(
   });
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // 非 JSON 响应（如 502 HTML 错误页），抛出友好错误而非 SyntaxError
+      throw new Error(`请求失败 (${res.status})`);
+    }
+  }
 
   if (!res.ok) {
     const err = (data as ApiError | null)?.error ?? `请求失败 (${res.status})`;

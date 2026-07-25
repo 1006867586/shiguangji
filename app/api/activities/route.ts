@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
 import { parseExternalLink } from "@/lib/link-preview";
-import { jsonResponse, isUrl, detectPlatform } from "@/lib/utils";
+import { jsonResponse, isUuid, detectPlatform, safeErrorMessage, sanitizeExternalLink } from "@/lib/utils";
 import type { CreateActivityBody, ExternalLink } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
       linkUrl?: string;
     };
 
-    if (!body.groupId) {
-      return jsonResponse({ error: "缺少 groupId" }, { status: 400 });
+    if (!body.groupId || !isUuid(body.groupId)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
     // 校验是否为团体成员
@@ -38,6 +38,9 @@ export async function POST(request: NextRequest) {
 
     // 转发
     if (body.repostOfId) {
+      if (!isUuid(body.repostOfId)) {
+        return jsonResponse({ error: "参数错误" }, { status: 400 });
+      }
       const { data: orig, error: origErr } = await supabase
         .from("activities")
         .select("id, group_id")
@@ -46,6 +49,20 @@ export async function POST(request: NextRequest) {
 
       if (origErr || !orig) {
         return jsonResponse({ error: "原活动不存在" }, { status: 404 });
+      }
+
+      // IDOR 防护：必须是原活动所在团体的成员才能转发
+      const { data: origMembership } = await supabase
+        .from("group_members")
+        .select("id")
+        .eq("group_id", orig.group_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!origMembership) {
+        return jsonResponse(
+          { error: "无权转发该活动" },
+          { status: 403 }
+        );
       }
 
       const { data: activity, error } = await supabase
@@ -63,7 +80,7 @@ export async function POST(request: NextRequest) {
 
       if (error || !activity) {
         return jsonResponse(
-          { error: error?.message ?? "转发失败" },
+          { error: safeErrorMessage(error, "转发失败") },
           { status: 500 }
         );
       }
@@ -72,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     // 原创活动
     const content = body.content?.trim() || null;
-    let externalLink: ExternalLink | null = body.externalLink ?? null;
+    let externalLink: ExternalLink | null = sanitizeExternalLink(body.externalLink);
 
     // 后端再次解析链接（可选）
     if (body.parseLink && body.linkUrl) {
@@ -114,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     if (error || !activity) {
       return jsonResponse(
-        { error: error?.message ?? "发布失败" },
+        { error: safeErrorMessage(error, "发布失败") },
         { status: 500 }
       );
     }
@@ -124,7 +141,9 @@ export async function POST(request: NextRequest) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

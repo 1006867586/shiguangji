@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { ExternalLink, ExternalPlatform } from "@/types";
 
 /** cn: 合并 className（shadcn 约定） */
 export function cn(...inputs: ClassValue[]) {
@@ -112,4 +113,108 @@ export function jsonResponse(
       ...(init?.headers ?? {}),
     },
   });
+}
+
+/** 校验是否为合法 UUID（v1-v5 通用格式） */
+export function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+/**
+ * 校验图片 URL 是否来自允许的域名。
+ * 允许 R2 公开域名、环境变量配置的域名，以及常见第三方图片 CDN（用户头像可能来自第三方）。
+ */
+export function isAllowedImageUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    const allowedHosts = [
+      process.env.NEXT_PUBLIC_R2_PUBLIC_URL,
+      process.env.NEXT_PUBLIC_APP_URL,
+    ]
+      .filter(Boolean)
+      .map((h) => {
+        try {
+          return new URL(h as string).hostname;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean) as string[];
+    const cdnHosts = [
+      "img.xiangke.app",
+      "img.xiangke.dev",
+      "lh3.googleusercontent.com",
+      "avatars.githubusercontent.com",
+      "q.qlogo.cn",
+    ];
+    return [...allowedHosts, ...cdnHosts].includes(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** 安全解析分页 limit 参数：非正数或超限回退到默认值，并限制上限 */
+export function safeParseInt(
+  value: string | null,
+  defaultValue: number,
+  max = 200
+): number {
+  if (value == null) return defaultValue;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return defaultValue;
+  return Math.min(Math.floor(n), max);
+}
+
+/**
+ * 统一安全错误信息处理。
+ * 始终将原始错误记录到 console.error；生产环境返回通用 fallback，开发环境保留详情。
+ * 兼容 Error 实例与 Supabase 的 PostgrestError（含 message 字段的对象）。
+ */
+export function safeErrorMessage(err: unknown, fallback: string): string {
+  let message = fallback;
+  if (err instanceof Error) {
+    message = err.message;
+  } else if (err && typeof err === "object" && "message" in err) {
+    const m = (err as { message: unknown }).message;
+    if (typeof m === "string") message = m;
+  } else if (typeof err === "string") {
+    message = err;
+  }
+  console.error(`[API error] ${message}`, err);
+  return process.env.NODE_ENV === "production" ? fallback : message;
+}
+
+/**
+ * 校验并清洗 externalLink 对象：仅保留已知字段，字段值必须是 string/number。
+ * 非 object（或数组）输入返回 null。
+ */
+export function sanitizeExternalLink(link: unknown): ExternalLink | null {
+  if (!link || typeof link !== "object" || Array.isArray(link)) return null;
+  const obj = link as Record<string, unknown>;
+  const rawPlatform = typeof obj.platform === "string" ? obj.platform : "other";
+  const platform: ExternalPlatform =
+    rawPlatform === "dianping" || rawPlatform === "meituan" || rawPlatform === "other"
+      ? rawPlatform
+      : "other";
+  return {
+    platform,
+    url: typeof obj.url === "string" ? obj.url : "",
+    title: typeof obj.title === "string" ? obj.title : "",
+    coverImage: typeof obj.coverImage === "string" ? obj.coverImage : null,
+    rating: typeof obj.rating === "number" ? obj.rating : null,
+    address: typeof obj.address === "string" ? obj.address : null,
+    phone: typeof obj.phone === "string" ? obj.phone : null,
+    price: typeof obj.price === "string" ? obj.price : null,
+  };
+}
+
+/**
+ * 校验重定向路径，防止开放重定向攻击。
+ * 只允许以 `/` 开头且不以 `//` 开头的站内路径，否则回退到 `/`。
+ */
+export function safeRedirectPath(next: string | null | undefined): string {
+  if (!next || typeof next !== "string") return "/";
+  if (!next.startsWith("/") || next.startsWith("//")) return "/";
+  return next;
 }

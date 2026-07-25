@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { jsonResponse } from "@/lib/utils";
+import { jsonResponse, isUuid, safeErrorMessage } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,11 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
     const user = await requireUser();
     const supabase = await createServerClient();
-    const { commentId } = await params;
+    const { id, commentId } = await params;
+
+    if (!isUuid(id) || !isUuid(commentId)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     const { data: comment, error } = await supabase
       .from("comments")
@@ -32,14 +36,19 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       .eq("id", commentId);
 
     if (delErr) {
-      return jsonResponse({ error: delErr.message }, { status: 500 });
+      return jsonResponse(
+        { error: safeErrorMessage(delErr, "删除失败") },
+        { status: 500 }
+      );
     }
     return jsonResponse({ success: true });
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

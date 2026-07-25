@@ -132,6 +132,12 @@ export interface CreateActivityBody {
   repostComment?: string;
 }
 
+/** 创建活动请求（含链接解析选项） */
+export interface CreateActivityRequest extends CreateActivityBody {
+  parseLink?: boolean;
+  linkUrl?: string;
+}
+
 export interface UpdateActivityBody {
   content?: string;
   externalLink?: ExternalLink | null;

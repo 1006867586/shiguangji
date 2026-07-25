@@ -68,6 +68,73 @@ interface PageMeta {
   address: string | null;
 }
 
+/** 仅允许抓取美团/大众点评相关域名（及其子域名），防止 SSRF 扫描内网 */
+const ALLOWED_PREVIEW_HOSTS = [
+  "dianping.com",
+  "meituan.com",
+  "dpurl.cn",
+  "m.dianping.com",
+  "m.meituan.com",
+];
+
+/**
+ * 检测 hostname 是否为私有/保留 IP 段，防止 SSRF 访问内网。
+ * 覆盖 IPv4 私有段、loopback、link-local、保留段，以及 IPv6 loopback / 本地段。
+ */
+function isPrivateIp(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  // IPv6 loopback 与本地站点地址
+  if (host === "::1") return true;
+  // IPv6 私有 fc00::/7
+  if (/^f[cd][0-9a-f]{0,2}(?::[0-9a-f]{0,4}){0,7}$/i.test(host)) return true;
+  // IPv6 链路本地 fe80::/10
+  if (/^fe[89ab][0-9a-f]?(?::[0-9a-f]{0,4}){0,7}$/i.test(host)) return true;
+
+  // IPv4
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = parseInt(m[1], 10);
+    const b = parseInt(m[2], 10);
+    if (a === 0 || a === 10) return true;
+    if (a === 127) return true; // loopback
+    if (a === 169 && b === 254) return true; // link-local
+    if (a === 172 && b >= 16 && b <= 31) return true; // 私有
+    if (a === 192 && b === 168) return true; // 私有
+    if (a >= 224) return true; // 组播/保留
+  }
+  return false;
+}
+
+/**
+ * 校验待抓取的 URL：仅允许 http(s) + 美团/大众点评域名，拒绝私有 IP 与 localhost。
+ * 校验不通过时抛出友好错误，避免 SSRF。
+ */
+function assertSafeFetchUrl(url: string): void {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    throw new Error("暂不支持该链接,仅支持美团/大众点评");
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error("暂不支持该链接,仅支持美团/大众点评");
+  }
+  const host = u.hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost")) {
+    throw new Error("暂不支持该链接,仅支持美团/大众点评");
+  }
+  if (isPrivateIp(host)) {
+    throw new Error("暂不支持该链接,仅支持美团/大众点评");
+  }
+  const allowed = ALLOWED_PREVIEW_HOSTS.some(
+    (h) => host === h || host.endsWith("." + h)
+  );
+  if (!allowed) {
+    throw new Error("暂不支持该链接,仅支持美团/大众点评");
+  }
+}
+
 /**
  * fetch 商家页 HTML（跟随 302 跳转），解析 og meta、title、可见文本中的评分/人均。
  *
@@ -214,6 +281,8 @@ export async function parseExternalLink(
   // 2. fetch 商家页 HTML 补充封面图、评分、人均
   let pageMeta: PageMeta | null = null;
   if (url) {
+    // SSRF 防护：仅允许美团/大众点评域名，拒绝私有 IP / localhost
+    assertSafeFetchUrl(url);
     pageMeta = await fetchPageMeta(url);
   }
 

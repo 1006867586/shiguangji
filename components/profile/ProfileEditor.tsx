@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import { useAuthContext } from "@/lib/auth-context";
 import { fetchData } from "@/lib/fetcher";
 import type { Profile } from "@/types";
 
 export function ProfileEditor({ profile }: { profile: Profile }) {
   const router = useRouter();
+  const { signOut: signOutAuth } = useAuthContext();
   const [nickname, setNickname] = useState(profile.nickname);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "");
   const [saving, setSaving] = useState(false);
@@ -42,8 +44,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
 
   const signOut = async () => {
     if (!confirm("确定退出登录吗？")) return;
-    const { createClient } = await import("@/lib/supabase/client");
-    await createClient().auth.signOut();
+    await signOutAuth();
     router.push("/login");
     router.refresh();
   };

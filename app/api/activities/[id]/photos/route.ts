@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { jsonResponse, isUrl } from "@/lib/utils";
+import { jsonResponse, isAllowedImageUrl, isUuid, safeErrorMessage } from "@/lib/utils";
 import type { AddPhotoBody } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,10 @@ export async function POST(request: NextRequest, { params }: Params) {
     const user = await requireUser();
     const supabase = await createServerClient();
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     // 校验活动存在且用户为团体成员
     const { data: activity } = await supabase
@@ -37,7 +41,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     const body = (await request.json()) as AddPhotoBody;
-    if (!body.url || !isUrl(body.url)) {
+    if (!body.url || !isAllowedImageUrl(body.url)) {
       return jsonResponse({ error: "图片 URL 不合法" }, { status: 400 });
     }
 
@@ -54,7 +58,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     if (error || !photo) {
       return jsonResponse(
-        { error: error?.message ?? "添加照片失败" },
+        { error: safeErrorMessage(error, "添加照片失败") },
         { status: 500 }
       );
     }
@@ -64,8 +68,10 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }
 
@@ -75,6 +81,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
     const user = await requireUser();
     const supabase = await createServerClient();
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     const { data: activity } = await supabase
       .from("activities")
@@ -106,14 +116,19 @@ export async function GET(_request: NextRequest, { params }: Params) {
       .order("created_at", { ascending: true });
 
     if (error) {
-      return jsonResponse({ error: error.message }, { status: 500 });
+      return jsonResponse(
+        { error: safeErrorMessage(error, "获取照片失败") },
+        { status: 500 }
+      );
     }
     return jsonResponse({ data: photos });
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

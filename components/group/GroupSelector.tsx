@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Users, Plus } from "lucide-react";
+import { ChevronDown, Users, Plus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,27 +18,54 @@ import type { Group } from "@/types";
 interface GroupSelectorProps {
   currentGroupId?: string;
   onSelect?: (group: Group) => void;
+  id?: string;
 }
 
-export function GroupSelector({ currentGroupId, onSelect }: GroupSelectorProps) {
+export function GroupSelector({ currentGroupId, onSelect, id }: GroupSelectorProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData<{ id: string; name: string; invite_code: string }[] | Group[]>(
-      "/api/groups"
-    )
-      .then((data) => setGroups(data as Group[]))
-      .catch(() => setGroups([]))
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetchData<Group[]>("/api/groups")
+      .then((data) => setGroups(data))
+      .catch((e) => {
+        setGroups([]);
+        setError(e instanceof Error ? e.message : "加载团体列表失败");
+      })
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
   const current = groups.find((g) => g.id === currentGroupId);
+
+  if (error && !loading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-destructive">
+        <AlertCircle className="h-4 w-4 shrink-0" />
+        <span className="truncate">{error}</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={load}
+        >
+          重试
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1 px-2">
+        <Button id={id} variant="ghost" size="sm" className="gap-1 px-2">
           <Users className="h-4 w-4" />
           <span className="max-w-[140px] truncate font-medium">
             {current?.name ?? (loading ? "加载中…" : "选择团体")}

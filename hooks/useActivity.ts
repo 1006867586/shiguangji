@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
+import useSWR from "swr";
 import { fetchData, fetcher } from "@/lib/fetcher";
 import type {
   Activity,
@@ -10,38 +11,58 @@ import type {
   UpdateActivityBody,
 } from "@/types";
 
-/** 获取单个活动详情 */
+type SetStateAction<T> = T | ((prev: T) => T);
+
+/** 获取单个活动详情(SWR 自动去重/竞态抑制/缓存) */
 export function useActivity(activityId: string | null) {
-  const [activity, setActivity] = useState<Activity | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error, mutate, isLoading } = useSWR<Activity>(
+    activityId ? `/api/activities/${activityId}` : null,
+    (url: string) => fetchData<Activity>(url),
+    { revalidateOnFocus: false }
+  );
 
-  const load = useCallback(async () => {
-    if (!activityId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchData<Activity>(`/api/activities/${activityId}`);
-      setActivity(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "加载失败");
-    } finally {
-      setLoading(false);
-    }
-  }, [activityId]);
+  // 兼容原 useState 风格 setter:接受值或 updater 函数;返回 null 时清除缓存
+  const setActivity = useCallback(
+    (value: SetStateAction<Activity | null>) => {
+      mutate(
+        (cur) => {
+          const prev = cur ?? null;
+          const next =
+            typeof value === "function"
+              ? (value as (p: Activity | null) => Activity | null)(prev)
+              : value;
+          return next === null ? undefined : next;
+        },
+        { revalidate: false }
+      );
+    },
+    [mutate]
+  );
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const reload = useCallback(async () => {
+    await mutate();
+  }, [mutate]);
 
-  return { activity, setActivity, loading, error, reload: load };
+  return {
+    activity: data ?? null,
+    setActivity,
+    loading: isLoading,
+    error: error
+      ? error instanceof Error
+        ? error.message
+        : "加载失败"
+      : null,
+    reload,
+  };
 }
 
-/** 创建活动（原创或转发） */
-export async function createActivity(body: CreateActivityBody & {
-  parseLink?: boolean;
-  linkUrl?: string;
-}) {
+/** 创建活动(原创或转发) */
+export async function createActivity(
+  body: CreateActivityBody & {
+    parseLink?: boolean;
+    linkUrl?: string;
+  }
+) {
   return fetchData<{ id: string }>("/api/activities", {
     method: "POST",
     body: JSON.stringify(body),
@@ -55,7 +76,7 @@ export async function deleteActivity(id: string) {
   });
 }
 
-/** 编辑活动（仅作者，仅原创类型） */
+/** 编辑活动(仅作者,仅原创类型) */
 export async function updateActivity(
   id: string,
   body: UpdateActivityBody
@@ -84,29 +105,28 @@ export async function repostActivity(
   });
 }
 
-/** 评论：获取 + 发表 */
+/** 评论:获取 + 发表(SWR 提供去重/竞态抑制,新增 error 状态返回) */
 export function useComments(activityId: string | null) {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data, error, mutate, isLoading } = useSWR<Comment[]>(
+    activityId ? `/api/activities/${activityId}/comments` : null,
+    (url: string) => fetchData<Comment[]>(url),
+    { revalidateOnFocus: false }
+  );
 
-  const load = useCallback(async () => {
-    if (!activityId) return;
-    setLoading(true);
-    try {
-      const data = await fetchData<Comment[]>(
-        `/api/activities/${activityId}/comments`
+  const setComments = useCallback(
+    (value: SetStateAction<Comment[]>) => {
+      mutate(
+        (cur) => {
+          const prev = cur ?? [];
+          return typeof value === "function"
+            ? (value as (p: Comment[]) => Comment[])(prev)
+            : value;
+        },
+        { revalidate: false }
       );
-      setComments(data);
-    } catch {
-      // 忽略
-    } finally {
-      setLoading(false);
-    }
-  }, [activityId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+    },
+    [mutate]
+  );
 
   const addComment = useCallback(
     async (body: CreateCommentBody) => {
@@ -117,34 +137,61 @@ export function useComments(activityId: string | null) {
           body: JSON.stringify(body),
         }
       );
-      setComments((prev) => {
-        if (created.parent_id) {
-          return prev.map((c) =>
-            c.id === created.parent_id
-              ? { ...c, replies: [...(c.replies ?? []), created] }
-              : c
-          );
-        }
-        return [...prev, created];
-      });
+      mutate(
+        (cur) => {
+          const prev = cur ?? [];
+          if (created.parent_id) {
+            return prev.map((c) =>
+              c.id === created.parent_id
+                ? { ...c, replies: [...(c.replies ?? []), created] }
+                : c
+            );
+          }
+          return [...prev, created];
+        },
+        { revalidate: false }
+      );
       return created;
     },
-    [activityId]
+    [activityId, mutate]
   );
 
-  const removeComment = useCallback(async (commentId: string) => {
-    await fetcher(`/api/activities/${activityId}/comments/${commentId}`, {
-      method: "DELETE",
-    });
-    setComments((prev) =>
-      prev
-        .map((c) => ({
-          ...c,
-          replies: (c.replies ?? []).filter((r) => r.id !== commentId),
-        }))
-        .filter((c) => c.id !== commentId)
-    );
-  }, [activityId]);
+  const removeComment = useCallback(
+    async (commentId: string) => {
+      await fetcher(`/api/activities/${activityId}/comments/${commentId}`, {
+        method: "DELETE",
+      });
+      mutate(
+        (cur) => {
+          const prev = cur ?? [];
+          return prev
+            .map((c) => ({
+              ...c,
+              replies: (c.replies ?? []).filter((r) => r.id !== commentId),
+            }))
+            .filter((c) => c.id !== commentId);
+        },
+        { revalidate: false }
+      );
+    },
+    [activityId, mutate]
+  );
 
-  return { comments, setComments, loading, addComment, removeComment, reload: load };
+  const reload = useCallback(async () => {
+    await mutate();
+  }, [mutate]);
+
+  return {
+    comments: data ?? [],
+    setComments,
+    loading: isLoading,
+    error: error
+      ? error instanceof Error
+        ? error.message
+        : "加载失败"
+      : null,
+    addComment,
+    removeComment,
+    reload,
+  };
 }

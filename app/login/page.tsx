@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { safeRedirectPath } from "@/lib/utils";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/";
+  const redirect = safeRedirectPath(searchParams.get("redirect"));
   const supabase = createClient();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -23,10 +24,13 @@ function LoginForm() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.replace(redirect);
-      else setChecking(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (session) router.replace(redirect);
+        else setChecking(false);
+      })
+      .catch(() => setChecking(false));
   }, [supabase, router, redirect]);
 
   const submit = async (e: React.FormEvent) => {

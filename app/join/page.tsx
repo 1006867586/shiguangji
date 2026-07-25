@@ -63,7 +63,9 @@ function JoinContent() {
           请先登录后再使用邀请码加入团体
         </p>
         <Button asChild>
-          <a href="/login?redirect=/join">去登录</a>
+          <a href={`/login?redirect=${encodeURIComponent("/join")}`}>
+            去登录
+          </a>
         </Button>
       </div>
     );

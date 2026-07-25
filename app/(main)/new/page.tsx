@@ -7,6 +7,8 @@ import { getServerGroups } from "@/lib/server-data";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "发布动态" };
+
 export default async function NewActivityPage() {
   const { groups } = await getServerGroups();
 

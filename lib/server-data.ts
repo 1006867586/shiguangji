@@ -9,11 +9,16 @@ export async function getServerGroups(): Promise<
   if (!user) return { groups: [], userId: null };
 
   const supabase = await createServerClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("group_members")
     .select("role, group:groups!inner(*)")
     .eq("user_id", user.id)
     .order("joined_at", { ascending: false });
+
+  if (error) {
+    console.error("获取用户团体失败:", error.message);
+    return { groups: [], userId: user.id };
+  }
 
   const groups = (data ?? []).map((m) => {
     const g = m.group as unknown as Group;
@@ -25,13 +30,17 @@ export async function getServerGroups(): Promise<
 
 /** 获取当前用户资料（服务端） */
 export async function getServerProfile() {
-  const { userId } = await getServerGroups();
-  if (!userId) return null;
+  const user = await getCurrentUser();
+  if (!user) return null;
   const supabase = await createServerClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("id, nickname, avatar_url, created_at")
-    .eq("id", userId)
+    .eq("id", user.id)
     .maybeSingle();
+  if (error) {
+    console.error("获取用户资料失败:", error.message);
+    return null;
+  }
   return data;
 }

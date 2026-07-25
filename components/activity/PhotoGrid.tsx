@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ interface PhotoGridProps {
 /** 朋友圈风格照片网格：1 张大图、2 张并排、3-9 张九宫格 */
 export function PhotoGrid({ photos, onPhotoClick, className }: PhotoGridProps) {
   const [lightbox, setLightbox] = useState<number | null>(null);
-  const visible = photos.slice(0, PHOTO_GRID_MAX);
+  const visible = useMemo(() => photos.slice(0, PHOTO_GRID_MAX), [photos]);
   const count = visible.length;
   const overflow = photos.length - count;
 
@@ -45,6 +45,7 @@ export function PhotoGrid({ photos, onPhotoClick, className }: PhotoGridProps) {
             key={p.id}
             type="button"
             onClick={() => handleClick(i)}
+            aria-label={`查看第 ${i + 1} 张照片`}
             className={cn(
               "relative overflow-hidden rounded-md bg-muted",
               aspect
@@ -52,7 +53,7 @@ export function PhotoGrid({ photos, onPhotoClick, className }: PhotoGridProps) {
           >
             <Image
               src={p.url}
-              alt=""
+              alt={`活动照片 ${i + 1}`}
               fill
               sizes="(max-width: 768px) 33vw, 200px"
               className="object-cover transition-transform hover:scale-105"
@@ -130,7 +131,7 @@ function Lightbox({
       >
         <Image
           src={photos[index].url}
-          alt=""
+          alt={`活动照片 ${index + 1}`}
           fill
           sizes="100vw"
           className="object-contain"

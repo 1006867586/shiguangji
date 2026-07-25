@@ -67,7 +67,7 @@ export function ActivityForm({
       } else {
         toast.success("已解析链接");
       }
-    } catch (e) {
+    } catch {
       // 降级：直接使用基础信息
       const fallbackUrl = extractedUrl ?? input;
       setExternalLink({
@@ -124,7 +124,7 @@ export function ActivityForm({
     <div className="space-y-5">
       {/* 团体选择 */}
       <div className="space-y-1.5">
-        <Label>发布到</Label>
+        <Label htmlFor="group-select">发布到</Label>
         {groups.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             你还未加入任何团体，请先{" "}
@@ -138,6 +138,7 @@ export function ActivityForm({
           </p>
         ) : (
           <GroupSelector
+            id="group-select"
             currentGroupId={groupId}
             onSelect={(g) => setGroupId(g.id)}
           />
@@ -181,9 +182,10 @@ export function ActivityForm({
       {/* 外部链接 */}
       {repostOfId ? null : (
         <div className="space-y-1.5">
-          <Label>美团/点评链接（可选）</Label>
+          <Label htmlFor="link-url">美团/点评链接（可选）</Label>
           <div className="flex gap-2">
             <Input
+              id="link-url"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="粘贴美团分享文本或链接…"
@@ -219,6 +221,7 @@ export function ActivityForm({
                 <button
                   type="button"
                   onClick={() => setExternalLink(null)}
+                  aria-label="清除链接"
                   className="text-muted-foreground hover:text-destructive"
                 >
                   <X className="h-4 w-4" />
@@ -229,17 +232,20 @@ export function ActivityForm({
                 value={externalLink.title ?? ""}
                 onChange={(e) => updateLinkField("title", e.target.value)}
                 placeholder="标题（如：海底捞火锅）"
+                aria-label="标题"
               />
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   value={externalLink.address ?? ""}
                   onChange={(e) => updateLinkField("address", e.target.value)}
                   placeholder="地址"
+                  aria-label="地址"
                 />
                 <Input
                   value={externalLink.phone ?? ""}
                   onChange={(e) => updateLinkField("phone", e.target.value)}
                   placeholder="电话"
+                  aria-label="电话"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -259,11 +265,13 @@ export function ActivityForm({
                   }
                   placeholder="评分（如 4.5）"
                   inputMode="decimal"
+                  aria-label="评分"
                 />
                 <Input
                   value={externalLink.price ?? ""}
                   onChange={(e) => updateLinkField("price", e.target.value)}
                   placeholder="人均（如 ¥80/人）"
+                  aria-label="人均"
                 />
               </div>
               <Input
@@ -272,6 +280,7 @@ export function ActivityForm({
                   updateLinkField("coverImage", e.target.value)
                 }
                 placeholder="封面图 URL"
+                aria-label="封面图 URL"
               />
 
               <ExternalLinkCard link={externalLink} />

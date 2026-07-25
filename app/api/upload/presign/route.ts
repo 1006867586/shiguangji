@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
 import { createPresignedUploadUrl } from "@/lib/r2";
-import { jsonResponse } from "@/lib/utils";
+import { jsonResponse, safeErrorMessage } from "@/lib/utils";
 import type { PresignBody } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -20,14 +20,18 @@ export async function POST(request: NextRequest) {
     await requireUser();
 
     const body = (await request.json()) as PresignBody;
-    if (!body.filename || !body.contentType) {
+    if (!body.filename?.trim() || !body.contentType) {
       return jsonResponse(
         { error: "缺少 filename 或 contentType" },
         { status: 400 }
       );
     }
 
-    if (!ALLOWED_CONTENT_TYPES.includes(body.contentType)) {
+    // contentType 必须是 image/* 开头，且在白名单内
+    if (
+      !body.contentType.startsWith("image/") ||
+      !ALLOWED_CONTENT_TYPES.includes(body.contentType)
+    ) {
       return jsonResponse(
         { error: "仅支持图片格式（jpeg/png/webp/gif/heic）" },
         { status: 400 }
@@ -44,7 +48,9 @@ export async function POST(request: NextRequest) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });
     }
-    const message = err instanceof Error ? err.message : "服务器错误";
-    return jsonResponse({ error: message }, { status: 500 });
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
   }
 }

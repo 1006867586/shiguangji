@@ -5,6 +5,8 @@ import { CreateGroupForm } from "@/components/group/CreateGroupForm";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "创建团体" };
+
 export default function NewGroupPage() {
   return (
     <div className="min-h-dvh pb-20">

@@ -12,6 +12,8 @@ import { getServerGroups } from "@/lib/server-data";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "我的团体" };
+
 export default async function GroupsPage() {
   const { groups } = await getServerGroups();
 
