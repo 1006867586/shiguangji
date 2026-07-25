@@ -117,7 +117,7 @@ export function FeedCard({
   };
 
   return (
-    <article className="moment-card animate-slide-up">
+    <article className="moment-card">
       {/* 头部 */}
       <div className="flex items-start gap-3">
         <Link href={`/profile`}>
