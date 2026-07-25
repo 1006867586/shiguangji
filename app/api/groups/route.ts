@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { jsonResponse, generateInviteCode } from "@/lib/utils";
 import type { CreateGroupBody, Group } from "@/types";
 
@@ -43,8 +42,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUser();
-    // 用 admin client 创建团体，绕过 RLS（已通过 requireUser 校验登录态）
-    const admin = createAdminClient();
+    const supabase = await createServerClient();
 
     const body = (await request.json()) as CreateGroupBody;
     if (!body.name?.trim()) {
@@ -55,7 +53,7 @@ export async function POST(request: NextRequest) {
     let inviteCode = "";
     for (let i = 0; i < 5; i++) {
       const code = generateInviteCode();
-      const { data: existing } = await admin
+      const { data: existing } = await supabase
         .from("groups")
         .select("id")
         .eq("invite_code", code)
@@ -69,7 +67,7 @@ export async function POST(request: NextRequest) {
       return jsonResponse({ error: "邀请码生成失败，请重试" }, { status: 500 });
     }
 
-    const { data: group, error } = await admin
+    const { data: group, error } = await supabase
       .from("groups")
       .insert({
         name: body.name.trim(),
@@ -88,8 +86,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 创建者自动加入为 admin（同样用 admin client 绕过 RLS）
-    const { error: memberErr } = await admin
+    // 创建者自动加入为 admin
+    const { error: memberErr } = await supabase
       .from("group_members")
       .insert({
         group_id: group.id,
