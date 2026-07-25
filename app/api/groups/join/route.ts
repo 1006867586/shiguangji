@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { jsonResponse, isValidInviteCode } from "@/lib/utils";
 import type { JoinGroupBody } from "@/types";
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUser();
-    const supabase = await createServerClient();
+    const admin = createAdminClient();
 
     const body = (await request.json()) as JoinGroupBody;
     const code = body.inviteCode?.trim().toUpperCase();
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: group, error: groupErr } = await supabase
+    const { data: group, error: groupErr } = await admin
       .from("groups")
       .select("id, name, invite_code")
       .eq("invite_code", code)
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查是否已加入
-    const { data: existMember } = await supabase
+    const { data: existMember } = await admin
       .from("group_members")
       .select("id")
       .eq("group_id", group.id)
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const { error: joinErr } = await supabase
+    const { error: joinErr } = await admin
       .from("group_members")
       .insert({
         group_id: group.id,
