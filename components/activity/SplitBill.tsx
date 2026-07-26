@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Receipt, Loader2, Check, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Receipt, Loader2, Check, Plus, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,9 @@ import {
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { useSplit } from "@/hooks/useSplit";
 import { useGroupMembers } from "@/hooks/useGroupMembers";
+import { useAiReceipt } from "@/hooks/useAi";
+import { useUpload } from "@/hooks/useUpload";
+import { useAiEnabled } from "@/hooks/useAiEnabled";
 import type { ActivitySplit, UUID } from "@/types";
 
 interface SplitBillProps {
@@ -218,6 +221,55 @@ function CreateSplitDialog({
   const [customShares, setCustomShares] = useState<Record<UUID, number>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  // AI 小票识别
+  const aiEnabled = useAiEnabled();
+  const { parse: parseReceipt, loading: receiptLoading } = useAiReceipt();
+  const { uploadFile, uploading, progress } = useUpload();
+  const receiptInputRef = useRef<HTMLInputElement>(null);
+
+  // ---- AI 小票识别：上传图片 → 调 AI → 回填 totalYuan / title ----
+  const handleReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const imageUrl = await uploadFile(file, "image");
+      if (!imageUrl) return;
+      const parsed = await parseReceipt(imageUrl);
+      // 自动填入总金额（元）
+      if (typeof parsed.totalAmount === "number" && parsed.totalAmount > 0) {
+        setTotalYuan(parsed.totalAmount.toFixed(2));
+      }
+      // 自动填入标题（餐厅名）
+      if (parsed.restaurantName) {
+        setTitle((prev) => prev || parsed.restaurantName!);
+      }
+      toast.success(
+        `小票识别完成${
+          parsed.peopleCount ? `，检测到 ${parsed.peopleCount} 人` : ""
+        }`
+      );
+      if (parsed.peopleCount && parsed.peopleCount > 0) {
+        toast.info(
+          `检测到 ${parsed.peopleCount} 人，可在下方手动勾选对应成员`
+        );
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "小票识别失败");
+    }
+  };
+
+  const triggerReceipt = () => {
+    receiptInputRef.current?.click();
+  };
+
+  const receiptBusy = uploading || receiptLoading;
+  const receiptLabel = uploading
+    ? `上传中 ${progress}%`
+    : receiptLoading
+      ? "识别中…"
+      : "拍小票自动填";
+
   // 打开弹窗时默认选中自己
   useEffect(() => {
     if (open && currentUserId && selected.size === 0) {
@@ -326,9 +378,39 @@ function CreateSplitDialog({
 
           {/* 总金额 */}
           <div className="space-y-1.5">
-            <label htmlFor="split-total" className="text-sm font-medium">
-              总金额（元）
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label htmlFor="split-total" className="text-sm font-medium">
+                总金额（元）
+              </label>
+              {aiEnabled ? (
+                <>
+                  <input
+                    ref={receiptInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleReceipt}
+                    className="hidden"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={triggerReceipt}
+                    disabled={receiptBusy || submitting}
+                    className="h-7 gap-1 px-2 text-xs text-primary hover:text-primary touch-manipulation active:scale-[0.97]"
+                  >
+                    {receiptBusy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Camera className="h-3.5 w-3.5" />
+                    )}
+                    {receiptLabel}
+                  </Button>
+                </>
+              ) : null}
+            </div>
             <Input
               id="split-total"
               type="number"

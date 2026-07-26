@@ -367,3 +367,25 @@ export interface RealtimePayload<T = unknown> {
   old: Partial<T>;
   errors: string[] | null;
 }
+
+// ---- AI 解析结果 ----
+
+/** 截图识别结果（小红书/抖音/点评分享截图） */
+export interface ParsedScreenshot {
+  title: string;
+  address: string | null;
+  phone: string | null;
+  signatureDishes: string[];
+  platform: "xiaohongshu" | "douyin" | "dianping" | "unknown";
+  summary: string;
+}
+
+/** 账单小票识别结果 */
+export interface ParsedReceipt {
+  totalAmount: number;
+  currency: string;
+  items: Array<{ name: string; price: number }>;
+  restaurantName: string | null;
+  datetime: string | null;
+  peopleCount: number | null;
+}

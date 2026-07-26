@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Loader2, Share2, Users } from "lucide-react";
+import { Loader2, Share2, Users, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { repostActivity } from "@/hooks/useActivity";
+import { useAiInviteText } from "@/hooks/useAi";
+import { useAiEnabled } from "@/hooks/useAiEnabled";
 import { fetchData } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
 import type { Activity, Group } from "@/types";
@@ -38,6 +40,43 @@ export function ShareDialog({
   const [targetId, setTargetId] = useState<string>("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // AI 邀请文案
+  const aiEnabled = useAiEnabled();
+  const { generate: generateInvite, loading: inviteLoading } =
+    useAiInviteText();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteCopies, setInviteCopies] = useState<string[]>([]);
+
+  const targetGroupName = groups.find((g) => g.id === targetId)?.name ?? "";
+
+  // ---- AI 邀请文案：调 AI 生成 2-3 版 → 弹选择器 ----
+  const handleGenerateInvite = async () => {
+    if (!targetId || !targetGroupName) {
+      toast.info("请先选择要分享到的团体");
+      return;
+    }
+    try {
+      const result = await generateInvite({
+        activityId: activity.id,
+        targetGroupName,
+      });
+      if (result && result.length > 0) {
+        setInviteCopies(result);
+        setInviteOpen(true);
+      } else {
+        toast.info("暂无可用的邀请文案");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "邀请文案生成失败");
+    }
+  };
+
+  const pickInvite = (text: string) => {
+    setComment(text);
+    setInviteOpen(false);
+    toast.success("已填入邀请文案");
+  };
 
   // 打开时拉取用户已加入的团体，并排除原活动所在团体
   useEffect(() => {
@@ -174,7 +213,26 @@ export function ShareDialog({
 
           {/* 附言 */}
           <div className="space-y-1.5">
-            <Label htmlFor="share-comment">附言（可选）</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="share-comment">附言（可选）</Label>
+              {aiEnabled ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleGenerateInvite}
+                  disabled={inviteLoading || !targetId}
+                  className="h-7 gap-1 px-2 text-xs text-primary hover:text-primary touch-manipulation active:scale-[0.97]"
+                >
+                  {inviteLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  AI 邀请文案
+                </Button>
+              ) : null}
+            </div>
             <Textarea
               id="share-comment"
               value={comment}
@@ -208,6 +266,35 @@ export function ShareDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* AI 邀请文案候选选择器（嵌套 Dialog，渲染在上层） */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4 text-primary" />
+              选一版邀请文案
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {inviteCopies.map((text, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => pickInvite(text)}
+                className="w-full rounded-lg border border-border bg-card p-3 text-left text-sm transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-manipulation active:scale-[0.99]"
+              >
+                {text}
+              </button>
+            ))}
+            {inviteCopies.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                暂无候选文案
+              </p>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
