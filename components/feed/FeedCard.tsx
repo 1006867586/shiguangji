@@ -75,6 +75,8 @@ export function FeedCard({
   const [likeCount, setLikeCount] = useState(activity.like_count);
   /** 点赞粒子触发器：每次点赞 +1，0 表示无粒子 */
   const [burst, setBurst] = useState(0);
+  /** 删除退出动画：true 时触发 card-exit，动画结束再调用 onDeleted */
+  const [removing, setRemoving] = useState(false);
   const [showComments, setShowComments] = useState(defaultExpandComments);
   const [showEdit, setShowEdit] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -121,7 +123,8 @@ export function FeedCard({
     try {
       await deleteActivity(activity.id);
       toast.success("已删除");
-      onDeleted?.(activity.id);
+      // 触发退出动画，动画结束再通知父组件移除
+      setRemoving(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "删除失败");
     }
@@ -132,7 +135,19 @@ export function FeedCard({
   };
 
   return (
-    <article className="moment-card animate-slide-up-fade">
+    <article
+      className={cn(
+        "moment-card animate-slide-up-fade",
+        removing && "animate-card-exit origin-center"
+      )}
+      onAnimationEnd={
+        removing
+          ? () => {
+              onDeleted?.(activity.id);
+            }
+          : undefined
+      }
+    >
       {/* 头部 */}
       <div className="flex items-start gap-3">
         <Link href={`/profile`} className="shrink-0">
@@ -335,18 +350,28 @@ export function FeedCard({
         ) : null}
       </div>
 
-      {/* 评论区 */}
+      {/* 评论区：grid-rows 0fr→1fr 平滑展开 + opacity 淡入 */}
       {showComments ? (
-        <CommentSection
-          activityId={activity.id}
-          comments={comments}
-          currentUserId={currentUserId}
-          onAdd={async (content, parentId) => {
-            await addComment({ content, parentId });
+        <div
+          className="grid animate-fade-in"
+          style={{
+            gridTemplateRows: "1fr",
+            transition: "grid-template-rows 0.3s ease",
           }}
-          onDelete={removeComment}
-          inline
-        />
+        >
+          <div className="overflow-hidden">
+            <CommentSection
+              activityId={activity.id}
+              comments={comments}
+              currentUserId={currentUserId}
+              onAdd={async (content, parentId) => {
+                await addComment({ content, parentId });
+              }}
+              onDelete={removeComment}
+              inline
+            />
+          </div>
+        </div>
       ) : null}
 
       {/* 编辑弹窗 */}

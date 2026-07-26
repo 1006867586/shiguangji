@@ -117,6 +117,17 @@ const config: Config = {
           from: { transform: "translateY(12px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
         },
+        "page-enter": {
+          from: { transform: "translateY(6px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+        "card-exit": {
+          "0%": { opacity: "1", transform: "scale(1) translateX(0)" },
+          "100%": {
+            opacity: "0",
+            transform: "scale(0.92) translateX(-16px)",
+          },
+        },
         "scale-in": {
           from: { transform: "scale(0.96)", opacity: "0" },
           to: { transform: "scale(1)", opacity: "1" },
@@ -135,6 +146,8 @@ const config: Config = {
         "fade-in": "fade-in 0.25s ease-out",
         "slide-up": "slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
         "slide-up-fade": "slide-up-fade 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "page-enter": "page-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "card-exit": "card-exit 0.32s cubic-bezier(0.4, 0, 1, 1) forwards",
         "scale-in": "scale-in 0.2s ease-out",
         "heart-pop": "heart-pop 0.4s ease-out",
       },
