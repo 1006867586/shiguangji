@@ -52,11 +52,18 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
   return (
     <div className="space-y-6 p-4">
       <div className="flex flex-col items-center gap-3 py-4">
-        <UserAvatar
-          profile={{ nickname, avatar_url: avatarUrl || null }}
-          size={72}
-        />
-        <p className="text-base font-medium">{nickname}</p>
+        <div className="relative">
+          <div
+            aria-hidden="true"
+            className="absolute -inset-2 rounded-full bg-gradient-to-br from-primary/15 via-primary/5 to-transparent blur-md"
+          />
+          <UserAvatar
+            profile={{ nickname, avatar_url: avatarUrl || null }}
+            size={80}
+            className="relative ring-4 ring-background shadow-lg"
+          />
+        </div>
+        <p className="font-display text-lg font-semibold tracking-tight">{nickname}</p>
       </div>
 
       <div className="space-y-1.5">
@@ -95,12 +102,16 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         <Button
           variant="outline"
           onClick={signOut}
-          className="gap-1 text-destructive"
+          className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/5"
         >
           <LogOut className="h-4 w-4" />
           退出登录
         </Button>
-        <Button onClick={save} disabled={saving}>
+        <Button
+          onClick={save}
+          disabled={saving}
+          className="shadow-sm transition-transform active:scale-[0.98]"
+        >
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (

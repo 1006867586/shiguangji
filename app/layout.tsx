@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -8,6 +8,15 @@ import { APP_NAME } from "@/lib/constants";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  axes: ["SOFT", "WONK", "opsz"],
+  weight: "variable",
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -51,7 +60,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans`}>
+      <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

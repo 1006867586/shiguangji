@@ -39,7 +39,7 @@ export function PhotoGrid({ photos, onPhotoClick, className }: PhotoGridProps) {
 
   return (
     <>
-      <div className={cn("grid gap-1", gridClass, className)}>
+      <div className={cn("grid gap-1.5", gridClass, className)}>
         {visible.map((p, i) => (
           <button
             key={p.id}
@@ -47,7 +47,7 @@ export function PhotoGrid({ photos, onPhotoClick, className }: PhotoGridProps) {
             onClick={() => handleClick(i)}
             aria-label={`查看第 ${i + 1} 张照片`}
             className={cn(
-              "relative overflow-hidden rounded-md bg-muted",
+              "relative overflow-hidden rounded-lg bg-muted shadow-sm ring-1 ring-border/40 transition-transform hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none",
               aspect
             )}
           >
@@ -56,11 +56,11 @@ export function PhotoGrid({ photos, onPhotoClick, className }: PhotoGridProps) {
               alt={`活动照片 ${i + 1}`}
               fill
               sizes="(max-width: 768px) 33vw, 200px"
-              className="object-cover transition-transform hover:scale-105 motion-reduce:hover:scale-100"
+              className="object-cover transition-transform duration-300 hover:scale-105 motion-reduce:hover:scale-100"
               unoptimized
             />
             {overflow > 0 && i === count - 1 ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-lg font-medium text-white">
+              <div className="absolute inset-0 flex items-center justify-center bg-foreground/60 text-lg font-semibold text-background backdrop-blur-[2px]">
                 +{overflow}
               </div>
             ) : null}

@@ -22,12 +22,12 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
   if (!link || (!link.title && !link.url)) return null;
 
   const cardClassName =
-    "group flex items-stretch gap-3 overflow-hidden rounded-lg border border-border bg-muted/40 p-2 transition-colors hover:bg-muted";
+    "group flex items-stretch gap-3 overflow-hidden rounded-xl border border-border/70 bg-muted/40 p-2 transition-all hover:bg-muted hover:border-border hover:shadow-sm";
 
   const inner = (
     <>
       <div
-        className={`relative shrink-0 overflow-hidden rounded-md bg-muted ${
+        className={`relative shrink-0 overflow-hidden rounded-lg bg-muted ${
           compact ? "h-14 w-14" : "h-20 w-20"
         }`}
       >
@@ -37,11 +37,11 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
             alt={link.title || "封面图"}
             fill
             sizes={compact ? "56px" : "80px"}
-            className="object-cover"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
             unoptimized
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 text-primary/60">
             <Utensils className="h-6 w-6" aria-hidden="true" />
           </div>
         )}
@@ -49,17 +49,17 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
 
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
         <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px]">
+          <Badge variant="secondary" className="shrink-0 border-border/60 bg-background px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             {PLATFORM_LABEL[link.platform] ?? "链接"}
           </Badge>
           {link.rating ? (
-            <span className="flex items-center gap-0.5 text-xs font-medium text-warning">
+            <span className="flex items-center gap-0.5 text-xs font-semibold text-warning">
               <Star className="h-3 w-3 fill-current" />
               {link.rating.toFixed(1)}
             </span>
           ) : null}
         </div>
-        <p className="line-clamp-2 text-sm font-medium text-foreground">
+        <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
           {link.title || link.url}
         </p>
         {link.address ? (
@@ -75,7 +75,7 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
           </p>
         ) : null}
         {link.price ? (
-          <p className="text-xs text-muted-foreground">{link.price}</p>
+          <p className="text-xs font-medium text-accent-foreground">{link.price}</p>
         ) : null}
       </div>
 

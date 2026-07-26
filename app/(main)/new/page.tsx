@@ -14,14 +14,14 @@ export default async function NewActivityPage() {
 
   return (
     <div className="min-h-dvh pb-20">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65 pt-safe-t">
         <div className="flex h-14 items-center gap-1 px-1">
           <Button asChild variant="ghost" size="icon" className="h-9 w-9">
             <Link href="/" aria-label="返回">
               <ChevronLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <h1 className="text-base font-semibold">发起聚餐</h1>
+          <h1 className="font-display text-lg font-semibold tracking-tight">发起聚餐</h1>
         </div>
       </header>
 

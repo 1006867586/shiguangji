@@ -147,7 +147,7 @@ export function ActivityForm({
 
       {/* 分享提示 */}
       {repostOfId ? (
-        <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
+        <div className="rounded-xl border border-border/70 bg-muted/40 p-3 text-sm">
           <p className="text-muted-foreground">
             分享 <span className="font-medium text-foreground">@{repostAuthorName}</span> 的动态
           </p>
@@ -219,9 +219,9 @@ export function ActivityForm({
           </div>
 
           {externalLink ? (
-            <div className="space-y-3 rounded-lg border border-border p-3">
+            <div className="space-y-3 rounded-xl border border-border/70 bg-card p-3 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Link2 className="h-3 w-3" />
                   链接卡片预览
                 </span>
@@ -324,7 +324,7 @@ export function ActivityForm({
         <Button
           onClick={submit}
           disabled={submitting || !groupId}
-          className="touch-manipulation active:scale-[0.97]"
+          className="shadow-sm touch-manipulation active:scale-[0.97]"
         >
           {submitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />

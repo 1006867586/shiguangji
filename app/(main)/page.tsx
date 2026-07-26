@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Home, Plus, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GroupSelector } from "@/components/group/GroupSelector";
 import { FeedList } from "@/components/feed/FeedList";
 import { EmptyState } from "@/components/common/EmptyState";
 import { getServerGroups } from "@/lib/server-data";
+import { APP_NAME } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -15,16 +16,29 @@ export default async function HomePage() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65 pt-safe-t">
         <div className="flex h-14 items-center justify-between px-2">
           {groups.length > 0 ? (
             <GroupSelector currentGroupId={groups[0].id} />
           ) : (
-            <h1 className="px-2 text-lg font-semibold">飨刻</h1>
+            <div className="flex items-baseline gap-2 px-2">
+              <h1 className="font-display text-2xl font-semibold tracking-tight">
+                {APP_NAME}
+              </h1>
+              <span className="editorial-dot" aria-hidden="true" />
+              <span className="font-display text-[11px] italic text-muted-foreground">
+                est. 2026
+              </span>
+            </div>
           )}
-          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-full hover:bg-primary/10 hover:text-primary"
+          >
             <Link href="/new" aria-label="发起聚餐">
-              <Plus className="h-5 w-5" />
+              <Plus className="h-5 w-5" strokeWidth={2.2} />
             </Link>
           </Button>
         </div>
@@ -47,7 +61,9 @@ export default async function HomePage() {
           }
         />
       ) : (
-        <FeedList groupId={groups[0].id} currentUserId={userId ?? undefined} />
+        <div className="px-3 pt-3">
+          <FeedList groupId={groups[0].id} currentUserId={userId ?? undefined} />
+        </div>
       )}
     </>
   );

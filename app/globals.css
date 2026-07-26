@@ -4,80 +4,90 @@
 
 @layer base {
   :root {
-    /* 暖调浅色：以白底 + 焦糖橙为主，整体偏暖食欲感 */
-    --background: 30 20% 99%;
-    --foreground: 20 14% 4%;
+    /* 暖调编辑感浅色：纸感米白底 + 朱砂红主色，整体偏温润的食记感 */
+    --background: 38 36% 97%;
+    --background-soft: 36 30% 95%;
+    --foreground: 24 18% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 20 14% 4%;
+    --card-foreground: 24 18% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 20 14% 4%;
-    --primary: 22 88% 52%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 30 20% 96%;
-    --secondary-foreground: 20 14% 10%;
-    --muted: 30 20% 96%;
-    --muted-foreground: 25 6% 42%;
-    --accent: 28 80% 94%;
-    --accent-foreground: 22 88% 32%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 142 62% 40%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 30 50% 8%;
-    --border: 30 15% 90%;
-    --input: 30 15% 90%;
-    --ring: 22 88% 52%;
-    --radius: 0.75rem;
-    /* 图表色板：暖色为主，红黄绿紫青搭配 */
-    --chart-1: 22 88% 52%;
-    --chart-2: 38 92% 50%;
-    --chart-3: 152 55% 42%;
-    --chart-4: 348 70% 55%;
-    --chart-5: 268 50% 58%;
-    /* 阴影系统：带暖色调（rgba 替代纯黑） */
-    --shadow-color: 20 30% 20%;
-    --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / 0.08);
-    --shadow-md: 0 4px 8px -2px hsl(var(--shadow-color) / 0.10), 0 2px 4px -2px hsl(var(--shadow-color) / 0.06);
-    --shadow-lg: 0 12px 20px -4px hsl(var(--shadow-color) / 0.12), 0 4px 8px -4px hsl(var(--shadow-color) / 0.08);
-    --shadow-xl: 0 24px 40px -8px hsl(var(--shadow-color) / 0.18);
+    --popover-foreground: 24 18% 12%;
+    /* 朱砂红：比焦糖橙更克制成熟 */
+    --primary: 9 74% 44%;
+    --primary-foreground: 40 30% 98%;
+    --primary-soft: 9 60% 94%;
+    --secondary: 36 28% 94%;
+    --secondary-foreground: 24 18% 18%;
+    --muted: 36 24% 94%;
+    --muted-foreground: 28 10% 40%;
+    --accent: 28 70% 92%;
+    --accent-foreground: 14 70% 34%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 40 30% 98%;
+    --success: 142 50% 38%;
+    --success-foreground: 40 30% 98%;
+    /* 评分金色：克制的旧金，替代亮黄 */
+    --warning: 38 70% 46%;
+    --warning-foreground: 24 30% 8%;
+    --border: 30 18% 88%;
+    --input: 30 18% 88%;
+    --ring: 9 74% 44%;
+    --radius: 0.875rem;
+    /* 图表色板：朱砂、旧金、松绿、茄紫、靛青 */
+    --chart-1: 9 74% 44%;
+    --chart-2: 38 70% 46%;
+    --chart-3: 152 40% 38%;
+    --chart-4: 348 55% 52%;
+    --chart-5: 268 40% 55%;
+    /* 阴影系统：带暖色调（rgba 替代纯黑），更柔和的层级 */
+    --shadow-color: 24 40% 18%;
+    --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.06);
+    --shadow-sm: 0 1px 3px 0 hsl(var(--shadow-color) / 0.08), 0 1px 2px -1px hsl(var(--shadow-color) / 0.05);
+    --shadow-md: 0 6px 12px -4px hsl(var(--shadow-color) / 0.10), 0 2px 4px -2px hsl(var(--shadow-color) / 0.06);
+    --shadow-lg: 0 16px 28px -8px hsl(var(--shadow-color) / 0.14), 0 6px 10px -6px hsl(var(--shadow-color) / 0.08);
+    --shadow-xl: 0 28px 48px -12px hsl(var(--shadow-color) / 0.20);
+    --shadow-glow: 0 0 0 4px hsl(var(--primary) / 0.10);
   }
 
   .dark {
-    /* 暖调深色：深棕底 + 提亮主橙，避免冷感 */
-    --background: 20 8% 6%;
-    --foreground: 30 10% 96%;
-    --card: 20 8% 10%;
-    --card-foreground: 30 10% 96%;
-    --popover: 20 8% 8%;
-    --popover-foreground: 30 10% 96%;
-    --primary: 24 90% 56%;
-    --primary-foreground: 20 30% 5%;
-    --secondary: 22 6% 16%;
-    --secondary-foreground: 30 10% 96%;
-    --muted: 22 6% 14%;
-    --muted-foreground: 28 8% 68%;
-    --accent: 28 40% 18%;
-    --accent-foreground: 28 90% 75%;
+    /* 暖调编辑感深色：深可可底 + 提亮朱砂，避免冷感 */
+    --background: 20 10% 7%;
+    --background-soft: 20 10% 9%;
+    --foreground: 36 18% 94%;
+    --card: 22 10% 11%;
+    --card-foreground: 36 18% 94%;
+    --popover: 22 10% 9%;
+    --popover-foreground: 36 18% 94%;
+    --primary: 12 78% 56%;
+    --primary-foreground: 20 30% 6%;
+    --primary-soft: 12 40% 18%;
+    --secondary: 22 8% 16%;
+    --secondary-foreground: 36 18% 94%;
+    --muted: 22 8% 14%;
+    --muted-foreground: 30 10% 64%;
+    --accent: 24 30% 18%;
+    --accent-foreground: 28 80% 72%;
     --destructive: 0 62.8% 50.6%;
-    --destructive-foreground: 30 10% 96%;
-    --success: 142 55% 50%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 90% 55%;
-    --warning-foreground: 30 50% 8%;
-    --border: 22 6% 18%;
-    --input: 22 6% 18%;
-    --ring: 24 90% 56%;
-    --chart-1: 24 90% 56%;
-    --chart-2: 38 90% 55%;
-    --chart-3: 152 50% 50%;
-    --chart-4: 348 65% 60%;
-    --chart-5: 268 55% 65%;
-    --shadow-color: 10 30% 2%;
-    --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / 0.20);
-    --shadow-md: 0 4px 8px -2px hsl(var(--shadow-color) / 0.25), 0 2px 4px -2px hsl(var(--shadow-color) / 0.20);
-    --shadow-lg: 0 12px 20px -4px hsl(var(--shadow-color) / 0.35), 0 4px 8px -4px hsl(var(--shadow-color) / 0.25);
-    --shadow-xl: 0 24px 40px -8px hsl(var(--shadow-color) / 0.45);
+    --destructive-foreground: 36 18% 94%;
+    --success: 142 45% 48%;
+    --success-foreground: 40 30% 98%;
+    --warning: 38 70% 55%;
+    --warning-foreground: 24 30% 8%;
+    --border: 22 8% 19%;
+    --input: 22 8% 19%;
+    --ring: 12 78% 56%;
+    --chart-1: 12 78% 56%;
+    --chart-2: 38 70% 55%;
+    --chart-3: 152 40% 48%;
+    --chart-4: 348 55% 60%;
+    --chart-5: 268 45% 65%;
+    --shadow-color: 8 40% 2%;
+    --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.30);
+    --shadow-sm: 0 1px 3px 0 hsl(var(--shadow-color) / 0.35), 0 1px 2px -1px hsl(var(--shadow-color) / 0.25);
+    --shadow-md: 0 6px 12px -4px hsl(var(--shadow-color) / 0.40), 0 2px 4px -2px hsl(var(--shadow-color) / 0.30);
+    --shadow-lg: 0 16px 28px -8px hsl(var(--shadow-color) / 0.50), 0 6px 10px -6px hsl(var(--shadow-color) / 0.35);
+    --shadow-xl: 0 28px 48px -12px hsl(var(--shadow-color) / 0.60);
+    --shadow-glow: 0 0 0 4px hsl(var(--primary) / 0.20);
   }
 }
 
@@ -95,7 +105,17 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    /* 纸感纹理：极淡的噪点叠在暖色底上，营造食记纸张质感 */
+    background-image:
+      radial-gradient(hsl(var(--foreground) / 0.022) 1px, transparent 1px),
+      radial-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px);
+    background-size: 22px 22px, 11px 11px;
+    background-position: 0 0, 11px 11px;
+  }
+  /* 标题排版：使用衬线 display 字体，提升编辑感 */
+  h1, h2, h3 {
+    letter-spacing: -0.012em;
   }
   /* 隐藏滚动条但保留滚动功能（横向照片预览用） */
   .scrollbar-none {
@@ -119,12 +139,28 @@
       scroll-behavior: auto !important;
     }
   }
+  /* 选区颜色：朱砂主调 */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
 }
 
 @layer components {
-  /* 朋友圈卡片样式 */
+  /* 朋友圈卡片样式：纸感卡片，带细微阴影与圆角 */
   .moment-card {
-    @apply bg-card border-b border-border/60 px-4 py-4;
+    @apply bg-card border border-border/70 px-4 py-4 shadow-xs;
+    border-radius: 0;
+  }
+  .moment-card:first-child {
+    @apply rounded-t-2xl;
+  }
+  .moment-card:last-child {
+    @apply rounded-b-2xl;
+  }
+  /* 编辑感分隔点：用在品牌名旁 */
+  .editorial-dot {
+    @apply inline-block h-1 w-1 rounded-full bg-primary/60 align-middle;
   }
   /* 安全区域底部留白（移动端导航） */
   .pb-safe {
@@ -155,5 +191,29 @@
   [contenteditable="true"] {
     -webkit-user-select: text;
     user-select: text;
+  }
+  /* 品牌字：衬线 display 字体 + 紧凑字距 */
+  .font-display {
+    font-family: var(--font-display), "Songti SC", "STSong", "SimSun", serif;
+    font-optical-sizing: auto;
+  }
+  /* 装饰性分隔线：中间带一个小菱形 */
+  .ornament-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: hsl(var(--muted-foreground));
+  }
+  .ornament-divider::before,
+  .ornament-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      hsl(var(--border)),
+      transparent
+    );
   }
 }

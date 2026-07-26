@@ -23,10 +23,12 @@ const config: Config = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
+        "background-soft": "hsl(var(--background-soft))",
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          soft: "hsl(var(--primary-soft))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -69,16 +71,20 @@ const config: Config = {
         },
       },
       borderRadius: {
+        "2xl": "calc(var(--radius) + 0.5rem)",
+        xl: "var(--radius)",
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
       },
       boxShadow: {
+        xs: "var(--shadow-xs)",
         sm: "var(--shadow-sm)",
         DEFAULT: "var(--shadow-md)",
         md: "var(--shadow-md)",
         lg: "var(--shadow-lg)",
         xl: "var(--shadow-xl)",
+        glow: "var(--shadow-glow)",
       },
       fontFamily: {
         sans: [
@@ -90,6 +96,13 @@ const config: Config = {
           "Microsoft YaHei",
           "sans-serif",
         ],
+        display: [
+          "var(--font-display)",
+          "Songti SC",
+          "STSong",
+          "SimSun",
+          "serif",
+        ],
       },
       keyframes: {
         "fade-in": {
@@ -100,10 +113,30 @@ const config: Config = {
           from: { transform: "translateY(8px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
         },
+        "slide-up-fade": {
+          from: { transform: "translateY(12px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+        "scale-in": {
+          from: { transform: "scale(0.96)", opacity: "0" },
+          to: { transform: "scale(1)", opacity: "1" },
+        },
+        "heart-pop": {
+          "0%": { transform: "scale(1)" },
+          "40%": { transform: "scale(1.3)" },
+          "70%": { transform: "scale(0.92)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "shimmer": {
+          "100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
-        "fade-in": "fade-in 0.2s ease-out",
-        "slide-up": "slide-up 0.25s ease-out",
+        "fade-in": "fade-in 0.25s ease-out",
+        "slide-up": "slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
+        "slide-up-fade": "slide-up-fade 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "scale-in": "scale-in 0.2s ease-out",
+        "heart-pop": "heart-pop 0.4s ease-out",
       },
     },
   },

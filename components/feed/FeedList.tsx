@@ -102,8 +102,9 @@ export function FeedList({
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin text-primary/70" />
+        <p className="text-xs tracking-wide">加载飨聚时刻…</p>
       </div>
     );
   }
@@ -129,7 +130,7 @@ export function FeedList({
         title="还没有聚餐记录"
         description="发起第一次聚餐，开启你们的飨刻时刻"
         action={
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="shadow-sm">
             <a href="/new">发起聚餐</a>
           </Button>
         }
@@ -138,11 +139,11 @@ export function FeedList({
   }
 
   return (
-    <div>
+    <div className="space-y-2.5">
       {activities.map((a) => (
         <div
           key={a.id}
-          className="content-visibility-auto"
+          className="content-visibility-auto overflow-hidden rounded-2xl"
           style={{ containIntrinsicSize: "320px" }}
         >
           <FeedCard
@@ -162,13 +163,15 @@ export function FeedList({
 
       {loadingMore ? (
         <div className="flex justify-center py-6 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
+          <Loader2 className="h-5 w-5 animate-spin text-primary/70" />
         </div>
       ) : null}
 
       {!hasMore && activities.length > 0 ? (
-        <div className="py-6 text-center text-xs text-muted-foreground">
-          没有更多了
+        <div className="py-8">
+          <div className="ornament-divider text-[10px] uppercase tracking-[0.3em]">
+            <span>已到尽头</span>
+          </div>
         </div>
       ) : null}
     </div>

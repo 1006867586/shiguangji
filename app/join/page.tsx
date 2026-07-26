@@ -57,12 +57,14 @@ function JoinContent() {
   if (!user) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
-        <Ticket className="h-12 w-12 text-primary" />
-        <h1 className="text-xl font-semibold">加入团体</h1>
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/10">
+          <Ticket className="h-10 w-10" strokeWidth={1.8} />
+        </div>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">加入团体</h1>
         <p className="max-w-xs text-sm text-muted-foreground">
           请先登录后再使用邀请码加入团体
         </p>
-        <Button asChild>
+        <Button asChild className="shadow-sm">
           <a href={`/login?redirect=${encodeURIComponent("/join")}`}>
             去登录
           </a>
@@ -73,17 +75,17 @@ function JoinContent() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background">
-      <header className="flex h-14 items-center justify-center border-b border-border">
-        <h1 className="text-base font-semibold">加入团体</h1>
+      <header className="flex h-14 items-center justify-center border-b border-border/60 bg-background/80 backdrop-blur-xl pt-safe-t">
+        <h1 className="font-display text-lg font-semibold tracking-tight">加入团体</h1>
       </header>
 
-      <div className="flex flex-1 flex-col justify-center gap-6 p-6">
+      <div className="flex flex-1 flex-col justify-center gap-7 p-6">
         <div className="text-center">
-          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Ticket className="h-8 w-8" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/10">
+            <Ticket className="h-8 w-8" strokeWidth={1.8} />
           </div>
-          <h2 className="text-lg font-semibold">输入邀请码</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="font-display text-xl font-semibold tracking-tight">输入邀请码</h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
             向团体创建者索取 6 位邀请码
           </p>
         </div>
@@ -96,7 +98,7 @@ function JoinContent() {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="ABCDEF"
-            className="text-center text-2xl font-mono tracking-[0.5em] pl-[0.25em]"
+            className="rounded-xl bg-card text-center text-2xl font-mono tracking-[0.5em] pl-[0.25em] shadow-xs"
             maxLength={6}
             autoComplete="off"
             autoCapitalize="characters"
@@ -108,7 +110,11 @@ function JoinContent() {
           />
         </div>
 
-        <Button onClick={join} disabled={submitting || code.length !== 6}>
+        <Button
+          onClick={join}
+          disabled={submitting || code.length !== 6}
+          className="shadow-sm transition-transform active:scale-[0.98]"
+        >
           {submitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (

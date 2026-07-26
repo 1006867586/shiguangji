@@ -65,16 +65,23 @@ export function GroupSelector({ currentGroupId, onSelect, id }: GroupSelectorPro
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button id={id} variant="ghost" size="sm" className="gap-1 px-2">
-          <Users className="h-4 w-4" />
-          <span className="max-w-[140px] truncate font-medium">
+        <Button
+          id={id}
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 px-2 font-display text-lg font-semibold tracking-tight hover:bg-muted/60"
+        >
+          <Users className="h-4 w-4 text-primary/70" strokeWidth={2} />
+          <span className="max-w-[140px] truncate">
             {current?.name ?? (loading ? "加载中…" : "选择团体")}
           </span>
-          <ChevronDown className="h-4 w-4 opacity-60" />
+          <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
-        <DropdownMenuLabel>我的团体</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground">
+          我的团体
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {groups.length === 0 ? (
           <div className="px-2 py-3 text-sm text-muted-foreground">
@@ -89,7 +96,7 @@ export function GroupSelector({ currentGroupId, onSelect, id }: GroupSelectorPro
             >
               <span className="truncate">{g.name}</span>
               {g.id === currentGroupId ? (
-                <span className="text-xs text-primary">●</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
               ) : null}
             </DropdownMenuItem>
           ))

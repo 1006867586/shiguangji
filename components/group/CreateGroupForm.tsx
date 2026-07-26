@@ -87,8 +87,9 @@ export function CreateGroupForm() {
         />
       </div>
 
-      <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-        创建后将自动生成 6 位邀请码，可分享给朋友加入。
+      <div className="flex items-start gap-2.5 rounded-xl border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+        <span className="mt-0.5 text-primary">◆</span>
+        <span>创建后将自动生成 6 位邀请码，可分享给朋友加入。</span>
       </div>
 
       <div className="flex justify-end gap-2">
@@ -103,7 +104,7 @@ export function CreateGroupForm() {
         <Button
           onClick={submit}
           disabled={submitting}
-          className="touch-manipulation active:scale-[0.97]"
+          className="shadow-sm touch-manipulation active:scale-[0.97]"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           创建团体

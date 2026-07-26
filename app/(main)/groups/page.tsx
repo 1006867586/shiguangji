@@ -19,7 +19,7 @@ export default async function GroupsPage() {
 
   return (
     <div className="min-h-dvh pb-20">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65 pt-safe-t">
         <div className="flex h-14 items-center justify-between px-1">
           <div className="flex items-center gap-1">
             <Button asChild variant="ghost" size="icon" className="h-9 w-9">
@@ -27,12 +27,12 @@ export default async function GroupsPage() {
                 <ChevronLeft className="h-5 w-5" />
               </Link>
             </Button>
-            <h1 className="text-base font-semibold">我的团体</h1>
+            <h1 className="font-display text-lg font-semibold tracking-tight">我的团体</h1>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9">
-                <Plus className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-primary/10 hover:text-primary">
+                <Plus className="h-5 w-5" strokeWidth={2.2} />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -58,7 +58,7 @@ export default async function GroupsPage() {
           description="创建一个团体或通过邀请码加入"
           action={
             <div className="flex gap-2">
-              <Button asChild size="sm">
+              <Button asChild size="sm" className="shadow-sm">
                 <Link href="/groups/new">创建团体</Link>
               </Button>
               <Button asChild variant="outline" size="sm">
@@ -68,19 +68,19 @@ export default async function GroupsPage() {
           }
         />
       ) : (
-        <div className="space-y-2 p-3">
+        <div className="space-y-2.5 p-3">
           {groups.map((g) => (
             <Link
               key={g.id}
               href={`/g/${g.id}`}
-              className="block rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/40"
+              className="block rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:-translate-y-0.5 hover:border-border hover:shadow-md motion-reduce:transform-none"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="truncate text-base font-semibold">{g.name}</h3>
+                    <h3 className="truncate font-display text-base font-semibold tracking-tight">{g.name}</h3>
                     {g.role === "admin" ? (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                         管理员
                       </span>
                     ) : null}

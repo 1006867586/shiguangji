@@ -32,8 +32,9 @@ export function ActivityDetailView({
 
   if (loading && !current) {
     return (
-      <div className="flex justify-center py-16 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin text-primary/70" />
+        <p className="text-xs tracking-wide">加载活动详情…</p>
       </div>
     );
   }
@@ -63,77 +64,88 @@ export function ActivityDetailView({
 
   return (
     <div className="pb-20">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65 pt-safe-t">
         <div className="flex h-14 items-center gap-1 px-1">
           <Button asChild variant="ghost" size="icon" className="h-9 w-9">
             <Link href={`/g/${current.group_id}`} aria-label="返回">
               <ChevronLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <h1 className="text-base font-semibold">详情</h1>
+          <h1 className="font-display text-lg font-semibold tracking-tight">详情</h1>
         </div>
       </header>
 
-      <FeedCard
-        activity={current}
-        currentUserId={currentUserId}
-        groupId={current.group_id}
-        defaultExpandComments
-        linkToDetail={false}
-        onDeleted={() => router.push(`/g/${current.group_id}`)}
-        onUpdated={(updated) => {
-          setActivity(updated);
-        }}
-      />
-
-      <div className="moment-card">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium">
-            照片墙 {current.photo_count > 0 ? `(${current.photo_count})` : ""}
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setShowUploader((v) => !v)}
-          >
-            {showUploader ? "收起" : "补充照片"}
-          </Button>
-        </div>
-
-        {showUploader ? (
-          <div className="mb-4">
-            <PhotoUploader
-              activityId={current.id}
-              existingPhotos={current.photos}
-              canDelete
-              onUploaded={(p) => {
-                setActivity({
-                  ...current,
-                  photos: [...current.photos, p],
-                  photo_count: current.photo_count + 1,
-                });
-              }}
-            />
-          </div>
-        ) : current.photos.length > 0 ? (
-          <PhotoUploader
-            activityId={current.id}
-            existingPhotos={current.photos}
-            canDelete
-            onUploaded={(p) => {
-              setActivity({
-                ...current,
-                photos: [...current.photos, p],
-                photo_count: current.photo_count + 1,
-              });
+      <div className="space-y-2.5 p-3">
+        <div className="overflow-hidden rounded-2xl">
+          <FeedCard
+            activity={current}
+            currentUserId={currentUserId}
+            groupId={current.group_id}
+            defaultExpandComments
+            linkToDetail={false}
+            onDeleted={() => router.push(`/g/${current.group_id}`)}
+            onUpdated={(updated) => {
+              setActivity(updated);
             }}
           />
-        ) : (
-          <p className="py-3 text-center text-xs text-muted-foreground">
-            还没有照片，点击「补充照片」上传
-          </p>
-        )}
+        </div>
+
+        <div className="overflow-hidden rounded-2xl">
+          <div className="moment-card">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-1.5 font-display text-base font-semibold tracking-tight">
+                照片墙
+                {current.photo_count > 0 ? (
+                  <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                    {current.photo_count}
+                  </span>
+                ) : null}
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setShowUploader((v) => !v)}
+              >
+                {showUploader ? "收起" : "补充照片"}
+              </Button>
+            </div>
+
+            {showUploader ? (
+              <div className="mb-4">
+                <PhotoUploader
+                  activityId={current.id}
+                  existingPhotos={current.photos}
+                  canDelete
+                  onUploaded={(p) => {
+                    setActivity({
+                      ...current,
+                      photos: [...current.photos, p],
+                      photo_count: current.photo_count + 1,
+                    });
+                  }}
+                />
+              </div>
+            ) : current.photos.length > 0 ? (
+              <PhotoUploader
+                activityId={current.id}
+                existingPhotos={current.photos}
+                canDelete
+                onUploaded={(p) => {
+                  setActivity({
+                    ...current,
+                    photos: [...current.photos, p],
+                    photo_count: current.photo_count + 1,
+                  });
+                }}
+              />
+            ) : (
+              <p className="py-3 text-center text-xs text-muted-foreground">
+                还没有照片，点击「补充照片」上传
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
