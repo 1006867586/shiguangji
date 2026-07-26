@@ -4,20 +4,21 @@ import { useCallback, useState } from "react";
 import imageCompression from "browser-image-compression";
 import type { Options } from "browser-image-compression";
 import { fetchData, fetcher } from "@/lib/fetcher";
-import { MAX_IMAGE_BYTES } from "@/lib/constants";
-import type { ActivityPhoto, AddPhotoBody } from "@/types";
+import { MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from "@/lib/constants";
+import type { ActivityPhoto, AddPhotoBody, MediaKind } from "@/types";
 
 interface UseUploadReturn {
   uploading: boolean;
   progress: number;
   error: string | null;
   /** 压缩并直传 R2,返回公开访问 URL */
-  uploadFile: (file: File) => Promise<string | null>;
+  uploadFile: (file: File, kind?: MediaKind) => Promise<string | null>;
   /** 上传并把 URL 写入某活动(合并 presign + PUT + 写库) */
   uploadToActivity: (
     activityId: string,
     file: File,
-    caption?: string
+    caption?: string,
+    kind?: MediaKind
   ) => Promise<ActivityPhoto | null>;
 }
 
@@ -76,14 +77,23 @@ async function uploadWithRetry(
 /**
  * 压缩 + presign + PUT 到 R2。返回 { url, key }。
  * 不管理 hook 状态,便于 uploadFile / uploadToActivity 复用。
+ * - kind === "video" 跳过 browser-image-compression 直传,使用 50MB 体积限制
+ * - 其他情况走图片压缩 + 3MB 体积限制
  */
 async function performUpload(
   file: File,
-  onProgress?: (pct: number) => void
+  onProgress?: (pct: number) => void,
+  kind?: MediaKind
 ): Promise<{ url: string; key: string }> {
-  // 压缩(非图片直接跳过)
+  // 根据文件类型 / kind 决定走图片压缩还是视频直传
+  const isVideo =
+    kind === "video" ||
+    (!kind && file.type.startsWith("video/"));
+
   let processed: File = file;
-  if (file.type.startsWith("image/")) {
+
+  if (!isVideo && file.type.startsWith("image/")) {
+    // 图片:压缩
     try {
       processed = await imageCompression(file, COMPRESSION_OPTIONS);
     } catch {
@@ -92,7 +102,12 @@ async function performUpload(
     }
   }
 
-  if (processed.size > MAX_IMAGE_BYTES) {
+  // 体积限制:图片 3MB,视频 50MB
+  if (isVideo) {
+    if (processed.size > MAX_VIDEO_BYTES) {
+      throw new Error("视频过大,请选择小于 50MB 的视频");
+    }
+  } else if (processed.size > MAX_IMAGE_BYTES) {
     throw new Error("图片过大,请选择小于 3MB 的图片");
   }
 
@@ -108,6 +123,7 @@ async function performUpload(
       body: JSON.stringify({
         filename: processed.name,
         contentType: processed.type,
+        kind: isVideo ? "video" : "image",
       }),
     });
   } catch (e) {
@@ -142,28 +158,32 @@ export function useUpload(): UseUploadReturn {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadFile = useCallback(async (file: File): Promise<string | null> => {
-    setUploading(true);
-    setError(null);
-    setProgress(0);
-    try {
-      const { url } = await performUpload(file, setProgress);
-      setProgress(100);
-      return url;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "上传失败";
-      setError(message);
-      throw e;
-    } finally {
-      setUploading(false);
-    }
-  }, []);
+  const uploadFile = useCallback(
+    async (file: File, kind?: MediaKind): Promise<string | null> => {
+      setUploading(true);
+      setError(null);
+      setProgress(0);
+      try {
+        const { url } = await performUpload(file, setProgress, kind);
+        setProgress(100);
+        return url;
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "上传失败";
+        setError(message);
+        throw e;
+      } finally {
+        setUploading(false);
+      }
+    },
+    []
+  );
 
   const uploadToActivity = useCallback(
     async (
       activityId: string,
       file: File,
-      caption?: string
+      caption?: string,
+      kind?: MediaKind
     ): Promise<ActivityPhoto | null> => {
       setUploading(true);
       setError(null);
@@ -172,7 +192,7 @@ export function useUpload(): UseUploadReturn {
       // Step 1: 压缩 + presign + PUT 到 R2
       let uploadResult: { url: string; key: string };
       try {
-        uploadResult = await performUpload(file, setProgress);
+        uploadResult = await performUpload(file, setProgress, kind);
         setProgress(100);
       } catch (e) {
         setError(e instanceof Error ? e.message : "上传失败");
@@ -183,7 +203,11 @@ export function useUpload(): UseUploadReturn {
       // Step 2: 写库 POST /photos。
       // 若 PUT 成功但 POST 失败,会产生 R2 孤儿对象:best-effort 清理 + 记录 key
       try {
-        const body: AddPhotoBody = { url: uploadResult.url, caption };
+        const body: AddPhotoBody = {
+          url: uploadResult.url,
+          caption,
+          kind,
+        };
         return await fetchData<ActivityPhoto>(
           `/api/activities/${activityId}/photos`,
           {

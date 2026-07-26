@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
 import { jsonResponse, isUuid, safeParseInt, safeErrorMessage } from "@/lib/utils";
 import { COMMENT_PAGE_SIZE } from "@/lib/constants";
+import { containsSensitiveWord } from "@/lib/sensitive-words";
+import { extractMentionedUserIds } from "@/lib/mention";
 import type { CreateCommentBody } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -125,6 +127,15 @@ export async function POST(request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "评论内容不能为空" }, { status: 400 });
     }
 
+    // 敏感词检查（阻断策略）
+    const sensitiveCheck = containsSensitiveWord(body.content);
+    if (sensitiveCheck.found) {
+      return jsonResponse(
+        { error: "内容包含敏感词，请修改后重试" },
+        { status: 400 }
+      );
+    }
+
     // 若指定 parent_id，校验其为合法 UUID 且属于同一活动且为一级评论
     if (body.parentId) {
       if (!isUuid(body.parentId)) {
@@ -161,6 +172,53 @@ export async function POST(request: NextRequest, { params }: Params) {
         { error: safeErrorMessage(error, "评论失败") },
         { status: 500 }
       );
+    }
+
+    // 解析 @提及并为被提及的同团体成员创建 mention 通知（best-effort，失败不阻塞评论创建）
+    try {
+      // 拉取团体成员 + profile 用于昵称匹配
+      const { data: members } = await supabase
+        .from("group_members")
+        .select("user_id")
+        .eq("group_id", activity.group_id);
+
+      const memberUserIds = (members ?? []).map((m) => m.user_id);
+      let mentionedIds: string[] = [];
+
+      if (memberUserIds.length > 0) {
+        const { data: memberProfiles } = await supabase
+          .from("profiles")
+          .select("id, nickname")
+          .in("id", memberUserIds);
+
+        const membersWithProfile = (memberProfiles ?? [])
+          .filter((p) => p.nickname)
+          .map((p) => ({
+            user_id: p.id,
+            profile: { nickname: p.nickname },
+          }));
+
+        mentionedIds = extractMentionedUserIds(body.content, membersWithProfile);
+      }
+
+      // 排除评论作者自己
+      const targetIds = mentionedIds.filter((uid) => uid !== user.id);
+
+      if (targetIds.length > 0) {
+        const notifications = targetIds.map((uid) => ({
+          user_id: uid,
+          actor_id: user.id,
+          type: "mention" as const,
+          activity_id: id,
+          group_id: activity.group_id,
+          comment_id: comment.id,
+          data: { snippet: body.content.trim().slice(0, 100) },
+        }));
+        await supabase.from("notifications").insert(notifications);
+      }
+    } catch (mentionErr) {
+      // 通知失败不影响评论创建
+      console.error("[comments/mention] 创建提及通知失败", mentionErr);
     }
 
     return jsonResponse({ data: comment }, { status: 201 });

@@ -15,6 +15,9 @@ export const INVITE_CODE_LENGTH = 6;
 /** 单张图片压缩后最大体积（字节） */
 export const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB
 
+/** 单个视频最大体积（字节） */
+export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50MB
+
 /** 预签名 URL 有效期（秒） */
 export const PRESIGN_EXPIRY_SECONDS = 300; // 5 分钟
 

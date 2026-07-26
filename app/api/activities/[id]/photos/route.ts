@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
 import { jsonResponse, isAllowedImageUrl, isUuid, safeErrorMessage } from "@/lib/utils";
-import type { AddPhotoBody } from "@/types";
+import type { AddPhotoBody, MediaKind } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** POST /api/activities/[id]/photos — 追加活动照片（仅记录 URL） */
+/** POST /api/activities/[id]/photos — 追加活动照片/视频（仅记录 URL + kind） */
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const user = await requireUser();
@@ -42,8 +42,11 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     const body = (await request.json()) as AddPhotoBody;
     if (!body.url || !isAllowedImageUrl(body.url)) {
-      return jsonResponse({ error: "图片 URL 不合法" }, { status: 400 });
+      return jsonResponse({ error: "媒体 URL 不合法" }, { status: 400 });
     }
+
+    // kind 字段：'image' | 'video'，默认 'image' 保持向后兼容
+    const kind: MediaKind = body.kind === "video" ? "video" : "image";
 
     const { data: photo, error } = await supabase
       .from("activity_photos")
@@ -52,13 +55,16 @@ export async function POST(request: NextRequest, { params }: Params) {
         uploaded_by: user.id,
         url: body.url,
         caption: body.caption?.trim() || null,
+        kind,
       })
-      .select("id, activity_id, uploaded_by, url, caption, created_at")
+      .select(
+        "id, activity_id, uploaded_by, url, caption, kind, created_at"
+      )
       .single();
 
     if (error || !photo) {
       return jsonResponse(
-        { error: safeErrorMessage(error, "添加照片失败") },
+        { error: safeErrorMessage(error, "添加媒体失败") },
         { status: 500 }
       );
     }
@@ -110,7 +116,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
     const { data: photos, error } = await supabase
       .from("activity_photos")
       .select(
-        "id, activity_id, uploaded_by, url, caption, created_at, uploader:profiles!activity_photos_uploaded_by_fkey(id, nickname, avatar_url)"
+        "id, activity_id, uploaded_by, url, caption, kind, created_at, uploader:profiles!activity_photos_uploaded_by_fkey(id, nickname, avatar_url)"
       )
       .eq("activity_id", id)
       .order("created_at", { ascending: true });

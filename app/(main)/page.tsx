@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { Home, Plus, Users } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GroupSelector } from "@/components/group/GroupSelector";
 import { FeedList } from "@/components/feed/FeedList";
+import { GroupFeedLoader } from "@/components/feed/GroupFeedLoader";
 import { EmptyState } from "@/components/common/EmptyState";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { getServerGroups } from "@/lib/server-data";
 
 export const dynamic = "force-dynamic";
@@ -18,15 +20,26 @@ export default async function HomePage() {
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
         <div className="flex h-14 items-center justify-between px-2">
           {groups.length > 0 ? (
-            <GroupSelector currentGroupId={groups[0].id} />
+            <GroupSelector
+              initialGroups={groups}
+              storageKey="lastGroupId"
+            />
           ) : (
             <h1 className="px-2 text-lg font-semibold">飨刻</h1>
           )}
-          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-            <Link href="/new" aria-label="发起聚餐">
-              <Plus className="h-5 w-5" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+              <Link href="/search" aria-label="搜索">
+                <Search className="h-5 w-5" />
+              </Link>
+            </Button>
+            <NotificationBell />
+            <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+              <Link href="/new" aria-label="发起聚餐">
+                <Plus className="h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -47,7 +60,7 @@ export default async function HomePage() {
           }
         />
       ) : (
-        <FeedList groupId={groups[0].id} currentUserId={userId ?? undefined} />
+        <GroupFeedLoader groups={groups} userId={userId ?? undefined} />
       )}
     </>
   );

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Users, Plus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,18 +14,35 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { fetchData } from "@/lib/fetcher";
+import { STORAGE_KEYS } from "@/lib/constants";
 import type { Group } from "@/types";
 
 interface GroupSelectorProps {
+  /** 服务端预取的团体列表（可选） */
+  initialGroups?: Group[];
+  /** 受控当前团体 ID */
   currentGroupId?: string;
+  /** 选中团体回调 */
   onSelect?: (group: Group) => void;
+  /** 是否持久化到 localStorage（用于首页 lastGroupId） */
+  storageKey?: "lastGroupId";
   id?: string;
 }
 
-export function GroupSelector({ currentGroupId, onSelect, id }: GroupSelectorProps) {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
+export function GroupSelector({
+  initialGroups,
+  currentGroupId,
+  onSelect,
+  storageKey,
+  id,
+}: GroupSelectorProps) {
+  const router = useRouter();
+  const [groups, setGroups] = useState<Group[]>(initialGroups ?? []);
+  const [loading, setLoading] = useState(!initialGroups);
   const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | undefined>(
+    currentGroupId ?? initialGroups?.[0]?.id
+  );
 
   const load = useCallback(() => {
     setLoading(true);
@@ -38,11 +56,37 @@ export function GroupSelector({ currentGroupId, onSelect, id }: GroupSelectorPro
       .finally(() => setLoading(false));
   }, []);
 
+  // 无 initialGroups 时从 API 加载
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!initialGroups) load();
+  }, [initialGroups, load]);
 
-  const current = groups.find((g) => g.id === currentGroupId);
+  // 读取 localStorage 中上次访问的团体
+  useEffect(() => {
+    if (storageKey && groups.length > 0) {
+      const last = localStorage.getItem(STORAGE_KEYS.lastGroupId);
+      if (last && groups.some((g) => g.id === last)) {
+        setSelectedId(last);
+      }
+    }
+  }, [storageKey, groups]);
+
+  const current = groups.find((g) => g.id === selectedId);
+
+  const handleSelect = (g: Group) => {
+    setSelectedId(g.id);
+    onSelect?.(g);
+    if (storageKey) {
+      localStorage.setItem(STORAGE_KEYS.lastGroupId, g.id);
+      // 触发事件让 GroupFeedLoader 切换
+      window.dispatchEvent(
+        new CustomEvent("group-change", { detail: { groupId: g.id } })
+      );
+    } else {
+      // 非首页：跳转到该团体 Feed 页
+      router.push(`/g/${g.id}`);
+    }
+  };
 
   if (error && !loading) {
     return (
@@ -84,11 +128,11 @@ export function GroupSelector({ currentGroupId, onSelect, id }: GroupSelectorPro
           groups.map((g) => (
             <DropdownMenuItem
               key={g.id}
-              onClick={() => onSelect?.(g)}
+              onClick={() => handleSelect(g)}
               className="justify-between"
             >
               <span className="truncate">{g.name}</span>
-              {g.id === currentGroupId ? (
+              {g.id === selectedId ? (
                 <span className="text-xs text-primary">●</span>
               ) : null}
             </DropdownMenuItem>
