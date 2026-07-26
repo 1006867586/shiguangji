@@ -771,12 +771,28 @@ end;
 $$;
 
 -- ============================================================
--- 20. Realtime 配置
+-- 20. Realtime 配置(幂等:仅在尚未加入 publication 时添加)
 -- ============================================================
-alter publication supabase_realtime add table public.notifications;
-alter publication supabase_realtime add table public.activity_reactions;
-alter publication supabase_realtime add table public.activity_favorites;
-alter publication supabase_realtime add table public.activity_rsvp;
-alter publication supabase_realtime add table public.activity_splits;
-alter publication supabase_realtime add table public.activity_pins;
-alter publication supabase_realtime add table public.activity_ratings;
+do $$
+declare
+  t text;
+  tables text[] := array[
+    'public.notifications',
+    'public.activity_reactions',
+    'public.activity_favorites',
+    'public.activity_rsvp',
+    'public.activity_splits',
+    'public.activity_pins',
+    'public.activity_ratings'
+  ];
+begin
+  foreach t in array tables loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname || '.' || tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table %s', t);
+    end if;
+  end loop;
+end $$;
