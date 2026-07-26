@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeedCard } from "@/components/feed/FeedCard";
+import { FeedCardSkeleton } from "@/components/feed/FeedCardSkeleton";
 import { PhotoUploader } from "@/components/activity/PhotoUploader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { useActivity } from "@/hooks/useActivity";
@@ -32,9 +33,10 @@ export function ActivityDetailView({
 
   if (loading && !current) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin text-primary/70" />
-        <p className="text-xs tracking-wide">加载活动详情…</p>
+      <div className="p-3">
+        <div className="overflow-hidden rounded-2xl">
+          <FeedCardSkeleton />
+        </div>
       </div>
     );
   }

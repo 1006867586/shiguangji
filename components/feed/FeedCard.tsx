@@ -36,6 +36,17 @@ import { useComments, toggleLike, deleteActivity } from "@/hooks/useActivity";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import type { Activity } from "@/types";
 
+/** 点赞朱砂粒子：8 个方向飞出，距离略有变化更自然 */
+const HEART_PARTICLES = Array.from({ length: 8 }, (_, i) => {
+  const angle = (i / 8) * Math.PI * 2;
+  const dist = 18 + (i % 2) * 6;
+  return {
+    x: Math.round(Math.cos(angle) * dist),
+    y: Math.round(Math.sin(angle) * dist),
+    delay: i * 18,
+  };
+});
+
 interface FeedCardProps {
   activity: Activity;
   currentUserId?: string;
@@ -62,6 +73,8 @@ export function FeedCard({
 }: FeedCardProps) {
   const [liked, setLiked] = useState(activity.is_liked);
   const [likeCount, setLikeCount] = useState(activity.like_count);
+  /** 点赞粒子触发器：每次点赞 +1，0 表示无粒子 */
+  const [burst, setBurst] = useState(0);
   const [showComments, setShowComments] = useState(defaultExpandComments);
   const [showEdit, setShowEdit] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -89,6 +102,7 @@ export function FeedCard({
     const next = !liked;
     setLiked(next);
     setLikeCount((c) => Math.max(0, c + (next ? 1 : -1)));
+    if (next) setBurst((b) => b + 1);
     onLiked?.(activity.id, next, likeCount + (next ? 1 : -1));
     startTransition(async () => {
       try {
@@ -245,13 +259,38 @@ export function FeedCard({
             liked && "text-primary"
           )}
         >
-          <Heart
-            className={cn(
-              "h-4 w-4 transition-transform",
-              liked && "scale-110 fill-current animate-heart-pop"
-            )}
-            aria-hidden="true"
-          />
+          <span className="relative inline-flex">
+            <Heart
+              className={cn(
+                "h-4 w-4 transition-transform",
+                liked && "scale-110 fill-current animate-heart-pop"
+              )}
+              aria-hidden="true"
+            />
+            {burst > 0 ? (
+              <span
+                key={burst}
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+              >
+                {HEART_PARTICLES.map((p, i) => (
+                  <span
+                    key={i}
+                    className="heart-particle"
+                    style={
+                      {
+                        "--burst-end": `translate(${p.x}px, ${p.y}px)`,
+                        animationDelay: `${p.delay}ms`,
+                      } as React.CSSProperties
+                    }
+                    onAnimationEnd={
+                      i === 0 ? () => setBurst(0) : undefined
+                    }
+                  />
+                ))}
+              </span>
+            ) : null}
+          </span>
           {likeCount > 0 ? (
             <span className="tabular-nums">{likeCount}</span>
           ) : (

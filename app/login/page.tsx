@@ -98,10 +98,16 @@ function LoginForm() {
       />
       <div className="flex flex-1 flex-col justify-center gap-7 p-6 pt-16">
         <div className="text-center">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg ring-1 ring-primary/20">
+          <div
+            className="mx-auto mb-5 flex h-16 w-16 animate-slide-up-fade items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg ring-1 ring-primary/20"
+            style={{ animationDelay: "0ms" }}
+          >
             <UtensilsCrossed className="h-8 w-8" strokeWidth={2.2} />
           </div>
-          <div className="flex items-center justify-center gap-2">
+          <div
+            className="flex animate-slide-up-fade items-center justify-center gap-2"
+            style={{ animationDelay: "80ms" }}
+          >
             <h1 className="font-display text-4xl font-semibold tracking-tight">
               {APP_NAME}
             </h1>
@@ -110,12 +116,19 @@ function LoginForm() {
               XiangKe
             </span>
           </div>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p
+            className="mt-2 animate-slide-up-fade text-sm text-muted-foreground"
+            style={{ animationDelay: "160ms" }}
+          >
             记录每一次与朋友的飨聚时刻
           </p>
         </div>
 
-        <form onSubmit={submit} className="space-y-4">
+        <form
+          onSubmit={submit}
+          className="animate-slide-up-fade space-y-4"
+          style={{ animationDelay: "240ms" }}
+        >
           {mode === "signup" ? (
             <div className="space-y-1.5">
               <Label htmlFor="nickname">昵称</Label>
@@ -177,7 +190,10 @@ function LoginForm() {
           </Button>
         </form>
 
-        <div className="text-center text-sm">
+        <div
+          className="animate-slide-up-fade text-center text-sm"
+          style={{ animationDelay: "320ms" }}
+        >
           {mode === "signin" ? (
             <span className="text-muted-foreground">
               还没有账号？{" "}
@@ -203,13 +219,17 @@ function LoginForm() {
           )}
         </div>
 
-        <div className="ornament-divider text-[11px] uppercase tracking-[0.3em]">
+        <div
+          className="ornament-divider animate-slide-up-fade text-[11px] uppercase tracking-[0.3em]"
+          style={{ animationDelay: "400ms" }}
+        >
           <span>或</span>
         </div>
 
         <a
           href={`/api/auth/qq?redirect=${encodeURIComponent(redirect)}`}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#12B7F5] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0FA3DC] hover:shadow-md active:scale-[0.98]"
+          className="flex w-full animate-slide-up-fade items-center justify-center gap-2 rounded-lg bg-[#12B7F5] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#0FA3DC] hover:shadow-md active:scale-[0.98]"
+          style={{ animationDelay: "480ms" }}
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
             <path d="M12 2C6.48 2 2 5.94 2 10.8c0 2.77 1.46 5.24 3.74 6.86-.18.62-.7 2.14-.78 2.4-.1.32.12.32.24.26.1-.05 1.6-.98 2.24-1.38.82.2 1.7.3 2.56.3 5.52 0 10-3.94 10-8.8S17.52 2 12 2zm0 14.4c-.8 0-1.58-.1-2.32-.3l-.5-.14-.5.3c-.36.22-.96.58-1.3.76.06-.24.16-.62.22-.86l.06-.24-.2-.14C5.2 14.5 4 12.74 4 10.8 4 7.04 7.58 4 12 4s8 3.04 8 6.8-3.58 6.8-8 6.8z" />

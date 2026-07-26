@@ -5,6 +5,7 @@ import { Loader2, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/EmptyState";
 import { FeedCard } from "./FeedCard";
+import { FeedCardSkeletonList } from "./FeedCardSkeleton";
 import { useFeed } from "@/hooks/useFeed";
 import { useRealtimeGroup } from "@/hooks/useRealtime";
 import { fetchData } from "@/lib/fetcher";
@@ -102,9 +103,8 @@ export function FeedList({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin text-primary/70" />
-        <p className="text-xs tracking-wide">加载飨聚时刻…</p>
+      <div className="pt-1">
+        <FeedCardSkeletonList count={3} />
       </div>
     );
   }
