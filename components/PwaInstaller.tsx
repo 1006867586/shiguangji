@@ -9,10 +9,24 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+/** localStorage 标记 key：用户是否已被提示过安装 */
+const INSTALL_PROMPTED_KEY = "xiangke_pwa_install_prompted";
+
+/** 判断当前是否已作为 PWA 运行（standalone 模式） */
+function isRunningAsPWA(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia?.("(display-mode: standalone)").matches === true ||
+    // iOS Safari
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true
+  );
+}
+
 /**
  * PWA 安装与 Service Worker 注册组件。
  * - 仅在生产环境且浏览器支持 serviceWorker 时注册 SW
  * - 监听 beforeinstallprompt，通过 sonner toast 提示用户安装
+ * - **仅首次访问提示一次**：用 localStorage 标记，已安装或已提示过则不再打扰
  * - 不渲染任何可见 UI（toast 自带视觉表现）
  */
 export function PwaInstaller() {
@@ -27,12 +41,22 @@ export function PwaInstaller() {
       });
     }
 
+    // 已作为 PWA 运行，无需再提示安装
+    if (isRunningAsPWA()) return;
+
+    // 已经提示过安装，不再重复打扰
+    if (localStorage.getItem(INSTALL_PROMPTED_KEY) === "1") return;
+
     // 2. 监听安装提示
     let deferredPrompt: BeforeInstallPromptEvent | null = null;
 
     const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       deferredPrompt = e as BeforeInstallPromptEvent;
+
+      // 标记为已提示，之后不再弹出（即使用户刷新或重新访问）
+      localStorage.setItem(INSTALL_PROMPTED_KEY, "1");
+
       toast("安装飨刻到桌面", {
         description: "获得更流畅的全屏体验",
         action: {
