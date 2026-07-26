@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     try {
       const aiResult = await vision(imageUrl, prompt, {
         temperature: 0.2,
-        maxTokens: 1024,
+        maxTokens: 4096,
       });
       aiModel = aiResult.model;
       aiTokens = aiResult.totalTokens;
@@ -112,13 +112,25 @@ export async function POST(req: NextRequest) {
     if (e instanceof UnauthorizedError) {
       return jsonResponse({ error: "未登录" }, { status: 401 });
     }
-    const fallback =
-      e instanceof MiniMaxError ? "AI 识别失败，请稍后重试" : "服务器错误";
     return jsonResponse(
-      { error: safeErrorMessage(e, fallback) },
+      { error: buildAiErrorMessage(e, "AI 识别失败") },
       { status: 500 }
     );
   }
+}
+
+/**
+ * 构造 AI 调用失败时返回给前端的错误信息。
+ * - MiniMaxError：始终透传状态码 + 原始消息（401 已包含 Base URL 排查提示），
+ *   让 prod 环境也能看到真实失败原因，而不是被 safeErrorMessage 覆盖成通用 fallback。
+ * - 其他错误：开发环境透传，生产环境回退通用提示。
+ */
+function buildAiErrorMessage(e: unknown, fallbackPrefix: string): string {
+  if (e instanceof MiniMaxError) {
+    const code = e.statusCode ? `(${e.statusCode}) ` : "";
+    return `${fallbackPrefix} ${code}${e.message}`;
+  }
+  return safeErrorMessage(e, `${fallbackPrefix}，请稍后重试`);
 }
 
 /** 构造视觉识别 prompt */
