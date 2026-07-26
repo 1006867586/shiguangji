@@ -4,48 +4,80 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* 暖调浅色：以白底 + 焦糖橙为主，整体偏暖食欲感 */
+    --background: 30 20% 99%;
+    --foreground: 20 14% 4%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 20 14% 4%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 24 95% 53%;
+    --popover-foreground: 20 14% 4%;
+    --primary: 22 88% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 24 95% 96%;
-    --accent-foreground: 24 95% 40%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 30 20% 96%;
+    --secondary-foreground: 20 14% 10%;
+    --muted: 30 20% 96%;
+    --muted-foreground: 25 6% 42%;
+    --accent: 28 80% 94%;
+    --accent-foreground: 22 88% 32%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 24 95% 53%;
+    --success: 142 62% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 30 50% 8%;
+    --border: 30 15% 90%;
+    --input: 30 15% 90%;
+    --ring: 22 88% 52%;
     --radius: 0.75rem;
+    /* 图表色板：暖色为主，红黄绿紫青搭配 */
+    --chart-1: 22 88% 52%;
+    --chart-2: 38 92% 50%;
+    --chart-3: 152 55% 42%;
+    --chart-4: 348 70% 55%;
+    --chart-5: 268 50% 58%;
+    /* 阴影系统：带暖色调（rgba 替代纯黑） */
+    --shadow-color: 20 30% 20%;
+    --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / 0.08);
+    --shadow-md: 0 4px 8px -2px hsl(var(--shadow-color) / 0.10), 0 2px 4px -2px hsl(var(--shadow-color) / 0.06);
+    --shadow-lg: 0 12px 20px -4px hsl(var(--shadow-color) / 0.12), 0 4px 8px -4px hsl(var(--shadow-color) / 0.08);
+    --shadow-xl: 0 24px 40px -8px hsl(var(--shadow-color) / 0.18);
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 5.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 24 95% 53%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 24 40% 18%;
-    --accent-foreground: 24 95% 70%;
+    /* 暖调深色：深棕底 + 提亮主橙，避免冷感 */
+    --background: 20 8% 6%;
+    --foreground: 30 10% 96%;
+    --card: 20 8% 10%;
+    --card-foreground: 30 10% 96%;
+    --popover: 20 8% 8%;
+    --popover-foreground: 30 10% 96%;
+    --primary: 24 90% 56%;
+    --primary-foreground: 20 30% 5%;
+    --secondary: 22 6% 16%;
+    --secondary-foreground: 30 10% 96%;
+    --muted: 22 6% 14%;
+    --muted-foreground: 28 8% 68%;
+    --accent: 28 40% 18%;
+    --accent-foreground: 28 90% 75%;
     --destructive: 0 62.8% 50.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 24 95% 53%;
+    --destructive-foreground: 30 10% 96%;
+    --success: 142 55% 50%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 90% 55%;
+    --warning-foreground: 30 50% 8%;
+    --border: 22 6% 18%;
+    --input: 22 6% 18%;
+    --ring: 24 90% 56%;
+    --chart-1: 24 90% 56%;
+    --chart-2: 38 90% 55%;
+    --chart-3: 152 50% 50%;
+    --chart-4: 348 65% 60%;
+    --chart-5: 268 55% 65%;
+    --shadow-color: 10 30% 2%;
+    --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / 0.20);
+    --shadow-md: 0 4px 8px -2px hsl(var(--shadow-color) / 0.25), 0 2px 4px -2px hsl(var(--shadow-color) / 0.20);
+    --shadow-lg: 0 12px 20px -4px hsl(var(--shadow-color) / 0.35), 0 4px 8px -4px hsl(var(--shadow-color) / 0.25);
+    --shadow-xl: 0 24px 40px -8px hsl(var(--shadow-color) / 0.45);
   }
 }
 
@@ -56,6 +88,10 @@
   html {
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
   body {
     @apply bg-background text-foreground antialiased;
@@ -69,6 +105,20 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+  /* 尊重用户的减弱动画偏好：关闭所有动画与平滑滚动 */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer components {
@@ -79,5 +129,31 @@
   /* 安全区域底部留白（移动端导航） */
   .pb-safe {
     padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+  }
+  /* 安全区域顶部留白（刘海/灵动岛下的 sticky header） */
+  .pt-safe-t {
+    padding-top: env(safe-area-inset-top);
+  }
+  /* 长列表渲染优化：屏外卡片跳过渲染（搭配 inline containIntrinsicSize） */
+  .content-visibility-auto {
+    content-visibility: auto;
+  }
+  /* 交互元素：禁止长按选中文字、移除 tap highlight 高亮 */
+  button,
+  a,
+  [role="button"],
+  [role="radio"],
+  [role="menuitem"],
+  [role="tab"] {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* 输入与可编辑区域保持可选中 */
+  input,
+  textarea,
+  [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }

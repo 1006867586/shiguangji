@@ -17,13 +17,15 @@ export default async function ProfilePage() {
 
   return (
     <div className="min-h-dvh pb-20">
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-1 border-b border-border bg-background/95 px-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-          <Link href="/" aria-label="返回">
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <h1 className="text-base font-semibold">个人中心</h1>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-safe-t">
+        <div className="flex h-14 items-center gap-1 px-1">
+          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+            <Link href="/" aria-label="返回">
+              <ChevronLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <h1 className="text-base font-semibold">个人中心</h1>
+        </div>
       </header>
 
       {profile ? <ProfileEditor profile={profile} /> : null}
@@ -47,8 +49,13 @@ export default async function ProfilePage() {
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{g.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {g.role === "admin" ? "管理员" : "成员"} · 邀请码 {g.invite_code}
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>{g.role === "admin" ? "管理员" : "成员"}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>邀请码</span>
+                  <span className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono tracking-[0.2em] text-foreground">
+                    {g.invite_code}
+                  </span>
                 </p>
               </div>
               <span className="text-xs text-muted-foreground">›</span>

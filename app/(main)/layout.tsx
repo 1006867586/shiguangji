@@ -22,8 +22,16 @@ export default async function MainLayout({
 
   return (
     <AuthProvider user={user} profile={profile}>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground focus:shadow-lg"
+      >
+        跳到主内容
+      </a>
       <div className="mx-auto flex min-h-dvh max-w-2xl flex-col bg-background">
-        <main className="flex-1 pb-20">{children}</main>
+        <main id="main-content" className="flex-1 pb-20 focus:outline-none">
+          {children}
+        </main>
         <MainNav />
       </div>
     </AuthProvider>

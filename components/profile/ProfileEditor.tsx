@@ -63,9 +63,13 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         <Label htmlFor="nickname">昵称</Label>
         <Input
           id="nickname"
+          name="nickname"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
           maxLength={20}
+          autoComplete="nickname"
+          autoCapitalize="off"
+          spellCheck={false}
         />
       </div>
 
@@ -73,9 +77,14 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         <Label htmlFor="avatar">头像 URL</Label>
         <Input
           id="avatar"
+          name="avatar-url"
+          type="url"
+          inputMode="url"
           value={avatarUrl}
           onChange={(e) => setAvatarUrl(e.target.value)}
           placeholder="https://..."
+          autoComplete="off"
+          spellCheck={false}
         />
         <p className="text-xs text-muted-foreground">
           填入图片直链，留空则使用默认头像

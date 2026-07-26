@@ -92,11 +92,16 @@ function JoinContent() {
           <Label htmlFor="code">邀请码</Label>
           <Input
             id="code"
+            name="invite-code"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="ABCDEF"
-            className="text-center text-2xl font-mono tracking-[0.5em]"
+            className="text-center text-2xl font-mono tracking-[0.5em] pl-[0.25em]"
             maxLength={6}
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            inputMode="text"
             onKeyDown={(e) => {
               if (e.key === "Enter") join();
             }}

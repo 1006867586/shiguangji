@@ -140,17 +140,22 @@ export function FeedList({
   return (
     <div>
       {activities.map((a) => (
-        <FeedCard
+        <div
           key={a.id}
-          activity={a}
-          currentUserId={currentUserId}
-          groupId={groupId}
-          onLiked={(id, liked, count) =>
-            updateActivity(id, { is_liked: liked, like_count: count })
-          }
-          onDeleted={removeActivity}
-          onShared={refresh}
-        />
+          className="content-visibility-auto"
+          style={{ containIntrinsicSize: "320px" }}
+        >
+          <FeedCard
+            activity={a}
+            currentUserId={currentUserId}
+            groupId={groupId}
+            onLiked={(id, liked, count) =>
+              updateActivity(id, { is_liked: liked, like_count: count })
+            }
+            onDeleted={removeActivity}
+            onShared={refresh}
+          />
+        </div>
       ))}
 
       <div ref={sentinelRef} className="h-1" />

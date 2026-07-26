@@ -34,15 +34,15 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
         {link.coverImage ? (
           <Image
             src={link.coverImage}
-            alt={link.title || ""}
+            alt={link.title || "封面图"}
             fill
-            sizes="80px"
+            sizes={compact ? "56px" : "80px"}
             className="object-cover"
             unoptimized
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <Utensils className="h-6 w-6" />
+            <Utensils className="h-6 w-6" aria-hidden="true" />
           </div>
         )}
       </div>
@@ -53,7 +53,7 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
             {PLATFORM_LABEL[link.platform] ?? "链接"}
           </Badge>
           {link.rating ? (
-            <span className="flex items-center gap-0.5 text-xs font-medium text-orange-500">
+            <span className="flex items-center gap-0.5 text-xs font-medium text-warning">
               <Star className="h-3 w-3 fill-current" />
               {link.rating.toFixed(1)}
             </span>
@@ -79,7 +79,7 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
         ) : null}
       </div>
 
-      <ExternalLink className="h-4 w-4 shrink-0 self-center text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      <ExternalLink className="h-4 w-4 shrink-0 self-center text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 md:opacity-0" aria-hidden="true" />
     </>
   );
 

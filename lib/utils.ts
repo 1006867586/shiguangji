@@ -7,39 +7,49 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** 相对时间格式化（中文） */
+/** 相对时间格式化（中文）。基于 Intl.RelativeTimeFormat，兼顾 i18n。 */
+const rtf = new Intl.RelativeTimeFormat("zh-CN", { numeric: "auto" });
+const dateShortFormatter = new Intl.DateTimeFormat("zh-CN", {
+  month: "2-digit",
+  day: "2-digit",
+});
+const dateFullFormatter = new Intl.DateTimeFormat("zh-CN", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function formatRelativeTime(input: string | Date): string {
   const date = typeof input === "string" ? new Date(input) : input;
   const now = Date.now();
-  const diff = now - date.getTime();
-  const sec = Math.floor(diff / 1000);
+  const diffMs = now - date.getTime();
+  const sec = Math.floor(diffMs / 1000);
   const min = Math.floor(sec / 60);
   const hour = Math.floor(min / 60);
   const day = Math.floor(hour / 24);
 
   if (sec < 60) return "刚刚";
-  if (min < 60) return `${min}分钟前`;
-  if (hour < 24) return `${hour}小时前`;
-  if (day < 7) return `${day}天前`;
+  if (min < 60) return rtf.format(-min, "minute");
+  if (hour < 24) return rtf.format(-hour, "hour");
+  if (day < 7) return rtf.format(-day, "day");
 
-  // 超过 7 天显示日期
-  const y = date.getFullYear();
-  const sameYear = y === new Date().getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const dayStr = String(date.getDate()).padStart(2, "0");
-  if (sameYear) return `${month}-${dayStr}`;
-  return `${y}-${month}-${dayStr}`;
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return sameYear ? dateShortFormatter.format(date) : dateFullFormatter.format(date);
 }
 
-/** 完整日期时间格式化 */
+/** 完整日期时间格式化（基于 Intl.DateTimeFormat） */
+const dateTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
 export function formatDateTime(input: string | Date): string {
   const date = typeof input === "string" ? new Date(input) : input;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  const h = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${d} ${h}:${min}`;
+  return dateTimeFormatter.format(date);
 }
 
 /** 生成 6 位邀请码（排除易混淆字符） */
@@ -130,7 +140,6 @@ export function isAllowedImageUrl(url: string): boolean {
     if (u.protocol !== "https:" && u.protocol !== "http:") return false;
     const allowedHosts = [
       process.env.NEXT_PUBLIC_R2_PUBLIC_URL,
-      process.env.R2_PUBLIC_URL,
       process.env.NEXT_PUBLIC_APP_URL,
     ]
       .filter(Boolean)

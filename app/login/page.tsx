@@ -107,10 +107,14 @@ function LoginForm() {
               <Label htmlFor="nickname">昵称</Label>
               <Input
                 id="nickname"
+                name="nickname"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder="你的昵称"
                 maxLength={20}
+                autoComplete="nickname"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
           ) : null}
@@ -119,11 +123,14 @@ function LoginForm() {
             <Label htmlFor="email">邮箱</Label>
             <Input
               id="email"
+              name="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
+              inputMode="email"
+              spellCheck={false}
             />
           </div>
 
@@ -131,6 +138,7 @@ function LoginForm() {
             <Label htmlFor="password">密码</Label>
             <Input
               id="password"
+              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

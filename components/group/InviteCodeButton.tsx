@@ -54,9 +54,11 @@ export function InviteCodeButton({ code }: { code: string }) {
         </div>
         <DropdownMenuItem
           onClick={() => copy(code, "邀请码")}
-          className="justify-between font-mono"
+          className="justify-between"
         >
-          <span className="tracking-widest">{code}</span>
+          <span className="rounded-md border border-border bg-muted px-2 py-1 font-mono text-sm tracking-[0.3em]">
+            {code}
+          </span>
           {copied ? (
             <Check className="h-4 w-4 text-green-500" />
           ) : (

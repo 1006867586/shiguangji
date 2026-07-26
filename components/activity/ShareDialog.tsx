@@ -119,16 +119,18 @@ export function ShareDialog({
                 </p>
               </div>
             ) : (
-              <div className="space-y-1.5" id="share-target">
+              <div className="space-y-1.5" id="share-target" role="radiogroup" aria-label="选择分享到的团体">
                 {groups.map((g) => (
                   <button
                     key={g.id}
                     type="button"
+                    role="radio"
+                    aria-checked={targetId === g.id}
                     onClick={() => setTargetId(g.id)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
+                      "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors touch-manipulation active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       targetId === g.id
-                        ? "border-primary bg-primary/5"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
                         : "border-border hover:bg-muted/40"
                     )}
                   >
@@ -142,7 +144,7 @@ export function ShareDialog({
                       />
                     ) : (
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Users className="h-4 w-4" />
+                        <Users className="h-4 w-4" aria-hidden="true" />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
@@ -162,6 +164,7 @@ export function ShareDialog({
                           ? "border-primary bg-primary"
                           : "border-border"
                       )}
+                      aria-hidden="true"
                     />
                   </button>
                 ))}
@@ -188,15 +191,17 @@ export function ShareDialog({
 
         <DialogFooter>
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
+            className="touch-manipulation active:scale-[0.97]"
           >
             取消
           </Button>
           <Button
             onClick={handleShare}
             disabled={submitting || loading || groups.length === 0}
+            className="touch-manipulation active:scale-[0.97]"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             分享

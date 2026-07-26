@@ -11,6 +11,7 @@ import {
   Trash2,
   Pencil,
   Share2,
+  Camera,
   ExternalLink as ExternalLinkIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -117,7 +118,7 @@ export function FeedCard({
   };
 
   return (
-    <article className="moment-card animate-slide-up">
+    <article className="moment-card">
       {/* 头部 */}
       <div className="flex items-start gap-3">
         <Link href={`/profile`}>
@@ -178,12 +179,15 @@ export function FeedCard({
 
       {/* 分享引用 */}
       {activity.repost_of ? (
-        <div className="mt-3 rounded-lg border-l-2 border-border bg-muted/30 py-2 pl-3 pr-2">
-          <div className="text-xs text-muted-foreground">
-            @{activity.repost_of.author.nickname}
+        <div className="mt-3 rounded-lg border-l-2 border-primary bg-muted/60 py-2 pl-3 pr-2">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Repeat2 className="h-3 w-3" aria-hidden="true" />
+            <span className="font-medium text-foreground">
+              @{activity.repost_of.author.nickname}
+            </span>
           </div>
           {activity.repost_of.content ? (
-            <p className="mt-0.5 line-clamp-3 text-sm text-foreground">
+            <p className="mt-1 line-clamp-3 text-sm text-foreground">
               {activity.repost_of.content}
             </p>
           ) : null}
@@ -231,35 +235,56 @@ export function FeedCard({
           type="button"
           onClick={handleLike}
           disabled={pending}
+          aria-pressed={liked}
+          aria-label={liked ? "取消点赞" : "点赞"}
           className={cn(
-            "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted",
-            liked && "text-orange-500"
+            "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]",
+            liked && "text-primary"
           )}
         >
           <Heart
             className={cn("h-4 w-4", liked && "fill-current")}
+            aria-hidden="true"
           />
-          {likeCount > 0 ? likeCount : "点赞"}
+          {likeCount > 0 ? (
+            <span className="tabular-nums">{likeCount}</span>
+          ) : (
+            "点赞"
+          )}
         </button>
         <button
           type="button"
           onClick={() => setShowComments((v) => !v)}
-          className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted"
+          aria-expanded={showComments}
+          aria-label={`评论${activity.comment_count > 0 ? `，${activity.comment_count} 条` : ""}`}
+          className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]"
         >
-          <MessageCircle className="h-4 w-4" />
-          {activity.comment_count > 0 ? activity.comment_count : "评论"}
+          <MessageCircle className="h-4 w-4" aria-hidden="true" />
+          {activity.comment_count > 0 ? (
+            <span className="tabular-nums">{activity.comment_count}</span>
+          ) : (
+            "评论"
+          )}
         </button>
         <button
           type="button"
           onClick={handleShare}
-          className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted"
+          aria-label="分享"
+          className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]"
         >
-          <Share2 className="h-4 w-4" />
+          <Share2 className="h-4 w-4" aria-hidden="true" />
           分享
         </button>
-        <span className="ml-auto text-xs">
-          {activity.photo_count > 0 ? `📷 ${activity.photo_count}` : ""}
-        </span>
+        {activity.photo_count > 0 ? (
+          <span
+            className="ml-auto flex items-center gap-1 text-xs tabular-nums"
+            aria-label={`共 ${activity.photo_count} 张照片`}
+            title={`${activity.photo_count} 张照片`}
+          >
+            <Camera className="h-3.5 w-3.5" aria-hidden="true" />
+            {activity.photo_count}
+          </span>
+        ) : null}
       </div>
 
       {/* 评论区 */}

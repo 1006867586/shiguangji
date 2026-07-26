@@ -56,7 +56,7 @@ export function PhotoGrid({ photos, onPhotoClick, className }: PhotoGridProps) {
               alt={`活动照片 ${i + 1}`}
               fill
               sizes="(max-width: 768px) 33vw, 200px"
-              className="object-cover transition-transform hover:scale-105"
+              className="object-cover transition-transform hover:scale-105 motion-reduce:hover:scale-100"
               unoptimized
             />
             {overflow > 0 && i === count - 1 ? (
@@ -104,8 +104,11 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 animate-fade-in overscroll-contain touch-none"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="照片预览"
     >
       <button
         type="button"
@@ -146,7 +149,7 @@ function Lightbox({
             e.stopPropagation();
             onNavigate(index - 1);
           }}
-          className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
+          className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 active:scale-95"
           aria-label="上一张"
         >
           ‹
@@ -159,7 +162,7 @@ function Lightbox({
             e.stopPropagation();
             onNavigate(index + 1);
           }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 active:scale-95"
           aria-label="下一张"
         >
           ›

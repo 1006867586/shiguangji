@@ -16,7 +16,10 @@ export function MainNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-safe">
+    <nav
+      aria-label="主导航"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-safe"
+    >
       <div className="mx-auto flex max-w-2xl items-stretch justify-around">
         {NAV_ITEMS.map((item) => {
           const active =
@@ -29,8 +32,9 @@ export function MainNav() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition-colors",
+                "flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset rounded-md",
                 active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground",
@@ -38,11 +42,14 @@ export function MainNav() {
               )}
             >
               {isCenter ? (
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform active:scale-95">
                   <Icon className="h-5 w-5" />
                 </span>
               ) : (
-                <Icon className="h-5 w-5" />
+                <Icon
+                  className={cn("h-5 w-5", active && "fill-current")}
+                  aria-hidden="true"
+                />
               )}
               <span>{item.label}</span>
             </Link>
