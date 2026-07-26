@@ -139,6 +139,9 @@ export function isAllowedImageUrl(url: string): boolean {
     const u = new URL(url);
     if (u.protocol !== "https:" && u.protocol !== "http:") return false;
     const allowedHosts = [
+      // 与 lib/r2.ts 保持一致：上传返回的公开 URL 来自 R2_PUBLIC_URL，
+      // 这里必须校验同一个变量，否则自定义 R2 域名会被误判为非法。
+      process.env.R2_PUBLIC_URL,
       process.env.NEXT_PUBLIC_R2_PUBLIC_URL,
       process.env.NEXT_PUBLIC_APP_URL,
     ]
