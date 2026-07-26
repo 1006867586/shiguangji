@@ -389,3 +389,50 @@ export interface ParsedReceipt {
   datetime: string | null;
   peopleCount: number | null;
 }
+
+/** 收藏夹截图来源平台 */
+export type FavoritePlatform =
+  | "meituan"
+  | "dianping"
+  | "xiaohongshu"
+  | "douyin"
+  | "unknown";
+
+/** 收藏夹截图识别结果（一张图含多家店） */
+export interface ParsedFavoritesScreenshot {
+  platform: FavoritePlatform;
+  places: Array<{
+    title: string;
+    address: string | null;
+    phone: string | null;
+    signatureDishes: string[];
+    summary: string;
+  }>;
+}
+
+/** 店铺收藏夹条目 */
+export interface FavoritePlace {
+  id: UUID;
+  user_id: UUID;
+  title: string;
+  address: string | null;
+  phone: string | null;
+  signature_dishes: string[];
+  platform: FavoritePlatform;
+  summary: string;
+  source_screenshot_url: string | null;
+  created_at: string;
+}
+
+/** 批量创建店铺收藏请求体 */
+export interface CreateFavoritePlacesBody {
+  platform?: FavoritePlatform;
+  sourceScreenshotUrl?: string;
+  places: Array<{
+    title: string;
+    address?: string | null;
+    phone?: string | null;
+    signatureDishes?: string[];
+    summary?: string;
+  }>;
+}

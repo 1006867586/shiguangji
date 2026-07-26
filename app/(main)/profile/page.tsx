@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
+import { FavoritePlacesSection } from "@/components/profile/FavoritePlacesSection";
 import { getServerProfile, getServerGroups } from "@/lib/server-data";
 import type { Group } from "@/types";
 
@@ -73,6 +74,8 @@ export default async function ProfilePage() {
           ) : null}
         </div>
       </div>
+
+      <FavoritePlacesSection />
     </div>
   );
 }
