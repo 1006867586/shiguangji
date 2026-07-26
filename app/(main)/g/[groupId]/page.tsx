@@ -1,8 +1,20 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { ChevronLeft, Plus, Copy, Check } from "lucide-react";
+import {
+  ChevronLeft,
+  Plus,
+  Settings as SettingsIcon,
+  BarChart3,
+  Users as UsersIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { GroupSelector } from "@/components/group/GroupSelector";
 import { FeedList } from "@/components/feed/FeedList";
 import { InviteCodeButton } from "@/components/group/InviteCodeButton";
@@ -53,6 +65,7 @@ export default async function GroupFeedPage({ params }: Params) {
   }
 
   const group = membership.group as unknown as Group;
+  const isAdmin = membership.role === "admin";
 
   return (
     <>
@@ -78,6 +91,44 @@ export default async function GroupFeedPage({ params }: Params) {
                 <Plus className="h-5 w-5" strokeWidth={2.2} />
               </Link>
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  aria-label="团体管理"
+                >
+                  <SettingsIcon className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href={`/g/${groupId}/stats`}>
+                    <BarChart3 className="h-4 w-4" /> 团体统计
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/g/${groupId}/members`}>
+                    <UsersIcon className="h-4 w-4" /> 成员管理
+                  </Link>
+                </DropdownMenuItem>
+                {isAdmin ? (
+                  <DropdownMenuItem asChild>
+                    <Link href={`/g/${groupId}/settings`}>
+                      <SettingsIcon className="h-4 w-4" /> 团体设置
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+                {isAdmin ? (
+                  <DropdownMenuItem asChild>
+                    <Link href={`/g/${groupId}/reports`}>
+                      <SettingsIcon className="h-4 w-4" /> 举报管理
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>

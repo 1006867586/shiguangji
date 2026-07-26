@@ -38,9 +38,18 @@ export interface Group {
   invite_code: string;
   created_by: UUID;
   created_at: string;
+  updated_at?: string;
+  settings?: GroupSettings;
   /** 仅在列表接口中附带 */
   member_count?: number;
   role?: MemberRole;
+}
+
+/** 团体设置 */
+export interface GroupSettings {
+  join_approval?: boolean;
+  allow_member_pin?: boolean;
+  allow_video?: boolean;
 }
 
 /** 团体成员 */
@@ -53,6 +62,9 @@ export interface GroupMember {
   profile?: Profile;
 }
 
+/** 媒体类型 */
+export type MediaKind = "image" | "video";
+
 /** 活动照片 */
 export interface ActivityPhoto {
   id: UUID;
@@ -60,6 +72,7 @@ export interface ActivityPhoto {
   uploaded_by: UUID;
   url: string;
   caption: string | null;
+  kind: MediaKind;
   created_at: string;
   uploader?: Pick<Profile, "id" | "nickname" | "avatar_url">;
 }
@@ -102,6 +115,124 @@ export interface Activity {
   repost_of: RepostOf | null;
   repost_comment?: string | null;
   group_id: UUID;
+  // 扩展字段
+  is_pinned?: boolean;
+  is_favorited?: boolean;
+  tags?: Tag[];
+  reactions?: ReactionSummary;
+  my_rating?: number | null;
+  average_rating?: number | null;
+  rating_count?: number;
+  rsvp?: { status: RsvpStatus } | null;
+  rsvp_summary?: RsvpSummary;
+  split?: ActivitySplit | null;
+}
+
+/** 标签 */
+export interface Tag {
+  id: UUID;
+  group_id: UUID;
+  name: string;
+  created_by?: UUID | null;
+  created_at: string;
+}
+
+/** 反应汇总 */
+export interface ReactionSummary {
+  like: number;
+  love: number;
+  haha: number;
+  wow: number;
+  sad: number;
+  angry: number;
+  my_reaction?: ReactionEmoji | null;
+}
+
+export type ReactionEmoji = "like" | "love" | "haha" | "wow" | "sad" | "angry";
+
+/** RSVP 状态 */
+export type RsvpStatus = "attending" | "maybe" | "declined";
+
+export interface RsvpSummary {
+  attending: number;
+  maybe: number;
+  declined: number;
+  attendees?: Pick<Profile, "id" | "nickname" | "avatar_url">[];
+}
+
+/** AA 账单分摊 */
+export interface ActivitySplit {
+  id: UUID;
+  activity_id: UUID;
+  group_id: UUID;
+  created_by: UUID;
+  title: string;
+  total_amount: number; // 单位:分
+  currency: string;
+  split_mode: "equal" | "custom";
+  status: "open" | "settled";
+  created_at: string;
+  updated_at: string;
+  participants?: SplitParticipant[];
+}
+
+export interface SplitParticipant {
+  id: UUID;
+  split_id: UUID;
+  user_id: UUID;
+  share_amount: number;
+  paid: boolean;
+  paid_at: string | null;
+  created_at: string;
+  profile?: Pick<Profile, "id" | "nickname" | "avatar_url">;
+}
+
+/** 通知 */
+export type NotificationType =
+  | "comment"
+  | "reply"
+  | "like"
+  | "repost"
+  | "mention"
+  | "photo_added"
+  | "rsvp"
+  | "split"
+  | "group_invite"
+  | "report_resolved"
+  | "system";
+
+export interface AppNotification {
+  id: UUID;
+  user_id: UUID;
+  actor_id: UUID | null;
+  type: NotificationType;
+  activity_id: UUID | null;
+  group_id: UUID | null;
+  comment_id: UUID | null;
+  data: Record<string, unknown> | null;
+  read_at: string | null;
+  created_at: string;
+  actor?: Pick<Profile, "id" | "nickname" | "avatar_url"> | null;
+}
+
+/** 内容举报 */
+export type ReportTargetType = "activity" | "comment" | "photo";
+export type ReportReason = "spam" | "abuse" | "porn" | "illegal" | "other";
+export type ReportStatus = "pending" | "resolved" | "dismissed";
+
+export interface ContentReport {
+  id: UUID;
+  reporter_id: UUID;
+  target_type: ReportTargetType;
+  target_id: UUID;
+  group_id: UUID;
+  reason: ReportReason;
+  detail: string | null;
+  status: ReportStatus;
+  resolved_by: UUID | null;
+  resolved_at: string | null;
+  created_at: string;
+  reporter?: Pick<Profile, "id" | "nickname" | "avatar_url">;
 }
 
 /** Feed 分页响应 */
@@ -156,6 +287,7 @@ export interface JoinGroupBody {
 export interface AddPhotoBody {
   url: string;
   caption?: string;
+  kind?: MediaKind;
 }
 
 export interface CreateCommentBody {
@@ -166,6 +298,66 @@ export interface CreateCommentBody {
 export interface PresignBody {
   filename: string;
   contentType: string;
+  kind?: "image" | "video";
+}
+
+// ---- 扩展功能请求体 ----
+export interface CreateReactionBody {
+  emoji: ReactionEmoji;
+}
+
+export interface RateActivityBody {
+  score: number; // 1-5
+  comment?: string;
+}
+
+export interface RsvpBody {
+  status: RsvpStatus;
+}
+
+export interface CreateSplitBody {
+  activityId: UUID;
+  groupId: UUID;
+  title?: string;
+  totalAmount: number; // 分
+  splitMode?: "equal" | "custom";
+  participantIds: UUID[];
+  shares?: Record<UUID, number>; // custom 模式下
+}
+
+export interface UpdateSplitParticipantBody {
+  paid: boolean;
+}
+
+export interface UpdateGroupBody {
+  name?: string;
+  description?: string | null;
+  avatarUrl?: string | null;
+  settings?: GroupSettings;
+}
+
+export interface CreateReportBody {
+  targetType: ReportTargetType;
+  targetId: UUID;
+  groupId: UUID;
+  reason: ReportReason;
+  detail?: string;
+}
+
+export interface ResolveReportBody {
+  status: "resolved" | "dismissed";
+}
+
+export interface UpdateActivityTagsBody {
+  tagNames: string[];
+}
+
+export interface SearchActivitiesQuery {
+  q: string;
+  groupId?: UUID;
+  tag?: string;
+  limit?: number;
+  cursor?: string;
 }
 
 // ---- Realtime 事件载荷 ----

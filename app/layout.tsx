@@ -3,6 +3,7 @@ import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { PwaInstaller } from "@/components/PwaInstaller";
 import { APP_NAME } from "@/lib/constants";
 
 const inter = Inter({
@@ -29,6 +30,7 @@ export const metadata: Metadata = {
   },
   description: "记录每一次与朋友的飨聚时刻——团体聚餐分享应用",
   applicationName: APP_NAME,
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -69,6 +71,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster position="top-center" />
+          <PwaInstaller />
         </ThemeProvider>
       </body>
     </html>

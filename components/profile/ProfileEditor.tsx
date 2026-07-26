@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserAvatar } from "@/components/common/UserAvatar";
+import { AvatarUploader } from "@/components/common/AvatarUploader";
 import { useAuthContext } from "@/lib/auth-context";
 import { fetchData } from "@/lib/fetcher";
 import type { Profile } from "@/types";
@@ -16,7 +16,9 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
   const router = useRouter();
   const { signOut: signOutAuth } = useAuthContext();
   const [nickname, setNickname] = useState(profile.nickname);
-  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    profile.avatar_url ?? null
+  );
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -30,7 +32,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         method: "PATCH",
         body: JSON.stringify({
           nickname: nickname.trim(),
-          avatarUrl: avatarUrl.trim() || null,
+          avatarUrl: avatarUrl || null,
         }),
       });
       toast.success("已保存");
@@ -55,15 +57,18 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
         <div className="relative">
           <div
             aria-hidden="true"
-            className="absolute -inset-2 rounded-full bg-gradient-to-br from-primary/15 via-primary/5 to-transparent blur-md"
+            className="pointer-events-none absolute -inset-2 rounded-full bg-gradient-to-br from-primary/15 via-primary/5 to-transparent blur-md"
           />
-          <UserAvatar
-            profile={{ nickname, avatar_url: avatarUrl || null }}
+          <AvatarUploader
+            value={avatarUrl}
+            nickname={nickname}
+            onChange={setAvatarUrl}
             size={80}
-            className="relative ring-4 ring-background shadow-lg"
+            className="relative"
           />
         </div>
         <p className="font-display text-lg font-semibold tracking-tight">{nickname}</p>
+        <p className="text-xs text-muted-foreground">点击头像上传新图片</p>
       </div>
 
       <div className="space-y-1.5">
@@ -78,24 +83,6 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
           autoCapitalize="off"
           spellCheck={false}
         />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="avatar">头像 URL</Label>
-        <Input
-          id="avatar"
-          name="avatar-url"
-          type="url"
-          inputMode="url"
-          value={avatarUrl}
-          onChange={(e) => setAvatarUrl(e.target.value)}
-          placeholder="https://..."
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <p className="text-xs text-muted-foreground">
-          填入图片直链，留空则使用默认头像
-        </p>
       </div>
 
       <div className="flex items-center justify-between">

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GroupSelector } from "@/components/group/GroupSelector";
-import { FeedList } from "@/components/feed/FeedList";
+import { GroupFeedLoader } from "@/components/feed/GroupFeedLoader";
 import { EmptyState } from "@/components/common/EmptyState";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { getServerGroups } from "@/lib/server-data";
 import { APP_NAME } from "@/lib/constants";
 
@@ -19,7 +20,10 @@ export default async function HomePage() {
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65 pt-safe-t">
         <div className="flex h-14 items-center justify-between px-2">
           {groups.length > 0 ? (
-            <GroupSelector currentGroupId={groups[0].id} />
+            <GroupSelector
+              initialGroups={groups}
+              storageKey="lastGroupId"
+            />
           ) : (
             <div className="flex items-baseline gap-2 px-2">
               <h1 className="font-display text-2xl font-semibold tracking-tight">
@@ -31,16 +35,29 @@ export default async function HomePage() {
               </span>
             </div>
           )}
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 rounded-full hover:bg-primary/10 hover:text-primary"
-          >
-            <Link href="/new" aria-label="发起聚餐">
-              <Plus className="h-5 w-5" strokeWidth={2.2} />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full hover:bg-primary/10 hover:text-primary"
+            >
+              <Link href="/search" aria-label="搜索">
+                <Search className="h-5 w-5" strokeWidth={2.2} />
+              </Link>
+            </Button>
+            <NotificationBell />
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full hover:bg-primary/10 hover:text-primary"
+            >
+              <Link href="/new" aria-label="发起聚餐">
+                <Plus className="h-5 w-5" strokeWidth={2.2} />
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -62,7 +79,7 @@ export default async function HomePage() {
         />
       ) : (
         <div className="px-3 pt-3">
-          <FeedList groupId={groups[0].id} currentUserId={userId ?? undefined} />
+          <GroupFeedLoader groups={groups} userId={userId ?? undefined} />
         </div>
       )}
     </>
