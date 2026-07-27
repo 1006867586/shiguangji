@@ -199,8 +199,11 @@ export async function POST(req: NextRequest) {
           duplicated: toInsert.length,
         });
       }
+      // 透传数据库错误码 + 消息，便于排查（如 migration 未执行导致列不存在 PGRST204 / 42703）
       return jsonResponse(
-        { error: safeErrorMessage(error, "保存收藏失败") },
+        {
+          error: `保存收藏失败 [${error.code ?? "?"}] ${error.message ?? ""}`.trim(),
+        },
         { status: 500 }
       );
     }
