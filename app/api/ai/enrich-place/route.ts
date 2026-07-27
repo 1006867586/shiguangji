@@ -178,8 +178,12 @@ export async function POST(req: NextRequest) {
         {
           system: SYSTEM_PROMPT,
           enableWebSearch: true,
+          // 关闭 thinking：联网搜索只需结构化 JSON 输出，
+          // 避免 M3 思考吃满 max_tokens 导致空内容
+          thinking: "disabled",
           temperature: 0.3,
-          maxTokens: 2048,
+          // 文档推荐 8192，给搜索结果摘要 + JSON 回复留足空间
+          maxTokens: 8192,
           // 留 10s 余量给 Vercel maxDuration，避免被硬杀导致前端 "failed to fetch"
           timeoutMs: 50_000,
         }

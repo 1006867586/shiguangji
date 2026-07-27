@@ -42,6 +42,14 @@ export interface AnthropicChatOptions {
   temperature?: number;
   /** 是否启用 web_search 服务端工具，默认 false */
   enableWebSearch?: boolean;
+  /**
+   * thinking 控制：
+   * - "disabled": 关闭思考（适合结构化提取，token 消耗少）
+   * - "adaptive": 由模型自行决定
+   * 不传则由模型使用默认行为（M3 默认会思考，可能消耗大量 token）
+   * 注意：web_search 场景建议关闭 thinking，避免思考吃满 max_tokens 导致空内容
+   */
+  thinking?: "disabled" | "adaptive";
   /** 超时毫秒，默认 90s（联网搜索耗时较长） */
   timeoutMs?: number;
 }
@@ -112,6 +120,9 @@ export async function chat(
     if (opts.system) {
       body.system = opts.system;
     }
+    if (opts.thinking) {
+      body.thinking = { type: opts.thinking };
+    }
     if (opts.enableWebSearch) {
       body.tools = [
         { type: WEB_SEARCH_TOOL_TYPE, name: "web_search" },
@@ -174,8 +185,12 @@ export async function chat(
 
     const content = textParts.join("\n\n");
     if (!content) {
+      // 诊断信息：列出 content 块的类型，便于排查为何没有 text 块
+      const blockTypes = contentBlocks.map((b) => String(b?.type ?? "?")).join(", ");
+      const stopReason = typeof data?.stop_reason === "string" ? data.stop_reason : "?";
       throw new MiniMaxAnthropicError(
-        "MiniMax (Anthropic) 返回空内容",
+        `MiniMax (Anthropic) 返回空内容 (stop_reason=${stopReason}, blocks=[${blockTypes}])。` +
+          `可能原因：max_tokens 过小被 thinking 占满，或模型未生成最终回复。`,
         500
       );
     }
