@@ -1,7 +1,7 @@
 /**
  * MiniMax AI 客户端封装
  *
- * 文档: https://platform.minimaxi.com/docs/api-reference/api-overview
+ * 文档: https://platform.minimaxi.com/docs/api-reference/text-openai-api
  *
  * 支持:
  * - 文本对话（含多模态视觉理解）
@@ -9,10 +9,7 @@
  *
  * 环境变量:
  * - MINIMAX_API_KEY: 必填，API Key
- * - MINIMAX_BASE_URL: 可选，按 Key 类型自动选择（见下）
- *   - 普通 Pay-as-you-go Key（platform.minimaxi.com）→ https://api.minimaxi.com/v1
- *   - Token Plan Key（platform.minimax.io）        → https://api.minimax.io/v1
- *   域名填错会返回 401 invalid_api_key，需显式设置 MINIMAX_BASE_URL 切换。
+ * - MINIMAX_BASE_URL: 可选，默认 https://api.minimaxi.com/v1
  * - MINIMAX_MODEL: 可选，默认 MiniMax-M2.5-highspeed（性价比高，速度优先）
  * - MINIMAX_VISION_MODEL: 可选，多模态默认 MiniMax-M3
  */
@@ -116,13 +113,10 @@ export async function chat(
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      // 401 通常是 Key 与 Base URL 不匹配（token plan key 走了 pay-as-you-go 域名，或反之）
-      // 在错误信息里附带 baseUrl，便于排查
+      // 401 通常是 API Key 无效或与 Base URL 不匹配
       if (res.status === 401) {
         throw new MiniMaxError(
-          `MiniMax 鉴权失败 (401): API Key 与 Base URL 不匹配，当前 baseUrl=${cfg.baseUrl}。` +
-            `Token Plan Key 请设置 MINIMAX_BASE_URL=https://api.minimax.io/v1；` +
-            `普通 Key 请用 https://api.minimaxi.com/v1。原始返回: ${errText.slice(0, 120)}`,
+          `MiniMax 鉴权失败 (401): 请检查 MINIMAX_API_KEY 是否有效，当前 baseUrl=${cfg.baseUrl}。原始返回: ${errText.slice(0, 120)}`,
           res.status
         );
       }
