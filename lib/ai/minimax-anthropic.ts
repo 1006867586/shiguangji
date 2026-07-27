@@ -209,19 +209,38 @@ export async function chat(
 }
 
 /**
- * 解析 JSON 输出：容忍模型输出 ```json ... ``` 包裹
- * 与 lib/ai/minimax.ts 的 parseJsonContent 行为一致
+ * 解析 JSON 输出：容忍模型输出 ```json ... ``` 包裹，或前后带引导语
+ * 联网搜索场景下 M3 可能先说"我来帮你搜索..."再给出 JSON，
+ * 这里从文本中提取最后一个完整的 {...} 块作为候选。
  */
 export function parseJsonContent<T = unknown>(content: string): T {
   let text = content.trim();
+  // 1. 优先匹配 ```json ... ``` 代码块
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     text = fenceMatch[1].trim();
   }
-  const firstBrace = text.indexOf("{");
+  // 2. 提取最后一个 {...} 块（贪婪到末尾）
+  //    使用平衡花括号扫描，避免嵌套对象被截断
   const lastBrace = text.lastIndexOf("}");
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    text = text.slice(firstBrace, lastBrace + 1);
+  if (lastBrace > 0) {
+    // 从最后一个 } 向前找匹配的 {
+    let depth = 0;
+    let startIdx = -1;
+    for (let i = lastBrace; i >= 0; i--) {
+      const ch = text[i];
+      if (ch === "}") depth++;
+      else if (ch === "{") {
+        depth--;
+        if (depth === 0) {
+          startIdx = i;
+          break;
+        }
+      }
+    }
+    if (startIdx >= 0) {
+      text = text.slice(startIdx, lastBrace + 1);
+    }
   }
   return JSON.parse(text) as T;
 }

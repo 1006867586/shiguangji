@@ -293,7 +293,7 @@ export async function POST(req: NextRequest) {
 }
 
 const SYSTEM_PROMPT = [
-  "你是一个店铺信息检索助手。",
+  "你是一个店铺信息检索助手，只能输出 JSON。",
   "用户会给你一家餐厅/店铺的名称、地址等已知信息，请你使用 web_search 工具联网搜索，补齐这家店的：",
   "1. 封面图 URL（coverImageUrl）：店铺首页/详情页的封面图，必须是可直接访问的图片 URL（以 http 开头）",
   "2. 店铺链接（storeUrl）：美团/大众点评/小红书/抖音/高德等平台上的店铺详情页 URL",
@@ -301,7 +301,13 @@ const SYSTEM_PROMPT = [
   "4. 地址（address）：店铺完整地址",
   "搜索时优先使用「店名 + 城市/地址 + 美团/点评」等关键词。",
   "搜索不到的字段返回 null，不要编造。",
-  "必须严格按 JSON 格式返回，不要包含任何额外文本或 markdown 代码块。",
+  "",
+  "【输出格式硬性要求】",
+  "- 输出必须是单个合法 JSON 对象，第一个字符必须是 {，最后一个字符必须是 }",
+  "- 不要输出任何引导语、解释、思考过程、markdown 代码块标记",
+  "- 不要说“我来帮你搜索”之类的话，直接输出 JSON",
+  "- 错误示例：‘我来帮你搜索这家店的信息。\\n{...}’",
+  "- 正确示例：‘{...}’",
 ].join("\n");
 
 function buildPrompt(place: {
@@ -321,12 +327,12 @@ function buildPrompt(place: {
     known.push(`来源平台：${place.platform}`);
 
   return [
-    "请帮我搜索以下店铺的信息，补齐封面图、店铺链接、电话、地址。",
+    "请联网搜索以下店铺信息，并直接输出 JSON（第一个字符必须是 {）：",
     "",
     "已知信息：",
     ...known,
     "",
-    "请联网搜索后严格按以下 JSON 格式返回（不要 markdown 代码块）：",
+    "JSON 格式：",
     "{",
     '  "coverImageUrl": "https://...jpg 或 null",',
     '  "storeUrl": "https://www.dianping.com/... 或 null",',
@@ -334,10 +340,12 @@ function buildPrompt(place: {
     '  "address": "完整地址 或 null"',
     "}",
     "",
-    "注意：",
+    "字段要求：",
     "- coverImageUrl 必须是图片直链（以 http 开头，结尾为 .jpg/.png/.webp 等），不能是网页 URL",
     "- storeUrl 必须是美团/大众点评/小红书/抖音/高德等可信平台的店铺详情页 URL",
     "- 搜索不到的字段必须为 null，不要返回空字符串或编造内容",
+    "",
+    "再次强调：直接输出 JSON，不要说任何话。",
   ].join("\n");
 }
 
