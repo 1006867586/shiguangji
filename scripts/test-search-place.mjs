@@ -55,10 +55,10 @@ async function step1Search() {
     model: MODEL,
     max_tokens: 4096,
     temperature: 0.3,
-    system: "你是店铺信息检索助手。请使用 web_search 工具联网搜索用户提供的店铺，找出大众点评网链接、电话、地址、封面图。搜索完成后简要总结找到的信息。",
+    system: "你是店铺信息检索助手。请使用 web_search 工具联网搜索用户提供的店铺，找出大众点评网链接、电话、地址、封面图。搜索时务必尝试多个关键词，包括「店名 大众点评」「店名 电话 地址」「店名 城市 点评」。搜索完成后简要总结找到的信息。",
     messages: [{
       role: "user",
-      content: `请搜索这家店：${place.title}（分类：${place.category}）\n\n建议搜索关键词："${place.title} 大众点评"、"${place.title} 电话 地址"`,
+      content: `请搜索这家店：${place.title}（分类：${place.category}）\n\n请务必尝试以下搜索关键词：\n1. "${place.title} 大众点评"\n2. "${place.title} 电话 地址 武汉"\n3. "${place.title} dianping"`,
     }],
     tools: [{ type: "web_search_20250305", name: "web_search" }],
   };
@@ -111,6 +111,17 @@ async function step1Search() {
     console.log(textParts.join("\n---\n"));
     console.log("───────────────────────────────\n");
   }
+
+  // 打印所有搜索结果详情（调试用）
+  console.log("📋 全部搜索结果:");
+  allResults.forEach((r, i) => {
+    console.log(`  [${i + 1}] ${r.title}`);
+    console.log(`      URL: ${r.url}`);
+    if (r.content) {
+      console.log(`      内容: ${r.content.slice(0, 200)}...`);
+    }
+  });
+  console.log("");
 
   return { allResults, textParts, raw: data };
 }
