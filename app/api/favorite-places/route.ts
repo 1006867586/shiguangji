@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from("favorite_places")
       .select(
-        "id, user_id, title, address, phone, signature_dishes, platform, summary, source_screenshot_url, created_at"
+        "id, user_id, title, address, phone, signature_dishes, platform, summary, source_screenshot_url, created_at, category, rating, price"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -107,6 +107,23 @@ export async function POST(req: NextRequest) {
       .map((p) => {
         const title = typeof p?.title === "string" ? p.title.trim() : "";
         if (!title) return null;
+        // rating: 0-5 保留一位小数；非法值视为 null
+        let rating: number | null = null;
+        if (p.rating != null) {
+          const n =
+            typeof p.rating === "number" ? p.rating : parseFloat(String(p.rating));
+          if (Number.isFinite(n) && n >= 0 && n <= 5) {
+            rating = Math.round(n * 10) / 10;
+          }
+        }
+        const price =
+          typeof p.averagePrice === "string" && p.averagePrice.trim()
+            ? p.averagePrice.trim()
+            : null;
+        const category =
+          typeof p.category === "string" && p.category.trim()
+            ? p.category.trim()
+            : null;
         return {
           user_id: user.id,
           title,
@@ -126,6 +143,9 @@ export async function POST(req: NextRequest) {
           platform,
           summary: typeof p.summary === "string" ? p.summary.trim() : "",
           source_screenshot_url: sourceScreenshotUrl,
+          category,
+          rating,
+          price,
         };
       })
       .filter((r): r is NonNullable<typeof r> => r !== null);
@@ -167,7 +187,7 @@ export async function POST(req: NextRequest) {
       .from("favorite_places")
       .insert(toInsert)
       .select(
-        "id, user_id, title, address, phone, signature_dishes, platform, summary, source_screenshot_url, created_at"
+        "id, user_id, title, address, phone, signature_dishes, platform, summary, source_screenshot_url, created_at, category, rating, price"
       );
 
     if (error) {

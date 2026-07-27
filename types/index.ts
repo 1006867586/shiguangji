@@ -415,6 +415,12 @@ export interface ParsedFavoritesScreenshot {
     phone: string | null;
     signatureDishes: string[];
     summary: string;
+    /** 评分，如 4.5；识别不到为 null */
+    rating: number | null;
+    /** 人均消费，如 "￥80"；识别不到为 null */
+    averagePrice: string | null;
+    /** 餐厅分类，如 火锅/烤肉；识别不到为 null */
+    category: string | null;
   }>;
 }
 
@@ -430,6 +436,12 @@ export interface FavoritePlace {
   summary: string;
   source_screenshot_url: string | null;
   created_at: string;
+  /** 餐厅分类，如 火锅/烤肉/川菜 */
+  category: string | null;
+  /** 评分 0-5，保留一位小数 */
+  rating: number | null;
+  /** 人均消费，如 "￥80" 或 "80元" */
+  price: string | null;
 }
 
 /** 批量创建店铺收藏请求体 */
@@ -442,6 +454,9 @@ export interface CreateFavoritePlacesBody {
     phone?: string | null;
     signatureDishes?: string[];
     summary?: string;
+    rating?: number | null;
+    averagePrice?: string | null;
+    category?: string | null;
   }>;
 }
 

@@ -137,6 +137,9 @@ function buildPrompt(platformHint?: FavoritePlatform): string {
     '      "address": "地址，没有则为 null",',
     '      "phone": "电话，没有则为 null",',
     '      "signatureDishes": ["招牌菜1", "招牌菜2"],',
+    '      "rating": 4.5,',
+    '      "averagePrice": "￥80",',
+    '      "category": "火锅",',
     '      "summary": "一句话简介（20字以内）"',
     "    }",
     "  ]",
@@ -147,6 +150,9 @@ function buildPrompt(platformHint?: FavoritePlatform): string {
     "- 如果截图不是收藏夹列表（例如是单店详情页），places 仍应返回包含那一家店的数组",
     "- signatureDishes 没有识别到时返回空数组 []",
     "- address/phone 识别不到时必须为 null，而不是空字符串",
+    "- rating 是店铺评分（如 4.5、4.8），只能是数字，识别不到为 null",
+    "- averagePrice 是人均消费，保留截图里展示的原样（含货币符号或单位，如 ￥80、80元），识别不到为 null",
+    "- category 是餐厅分类，常见值如：火锅、烤肉、烧烤、川菜、粤菜、湘菜、日料、韩餐、西餐、东南亚菜、快餐、咖啡甜品、饮品、面食、海鲜、自助餐、家常菜、私房菜、其他；以截图实际展示为准，识别不到为 null",
     "- summary 是对这家店的一句话概括，简短有信息量",
     "- 如果完全无法识别任何店铺，places 返回空数组 []",
   ]
@@ -162,9 +168,20 @@ function normalizeParsed(
       ? raw.platform
       : "unknown";
 
-  const places = Array.isArray(raw.places)
+  type NormalizedPlace = {
+    title: string;
+    address: string | null;
+    phone: string | null;
+    signatureDishes: string[];
+    summary: string;
+    rating: number | null;
+    averagePrice: string | null;
+    category: string | null;
+  };
+
+  const places: NormalizedPlace[] = Array.isArray(raw.places)
     ? raw.places
-        .map((p) => {
+        .map((p): NormalizedPlace | null => {
           if (!p || typeof p !== "object") return null;
           const title =
             typeof p.title === "string" && p.title.trim()
@@ -185,19 +202,41 @@ function normalizeParsed(
             : [];
           const summary =
             typeof p.summary === "string" ? p.summary.trim() : "";
-          return { title, address, phone, signatureDishes: dishes, summary };
+
+          // rating: AI 可能返回数字或字符串，统一转 number；非有限数字或越界视为 null
+          let rating: number | null = null;
+          if (p.rating != null) {
+            const n =
+              typeof p.rating === "number"
+                ? p.rating
+                : parseFloat(String(p.rating));
+            if (Number.isFinite(n) && n >= 0 && n <= 5) {
+              rating = Math.round(n * 10) / 10;
+            }
+          }
+
+          const averagePrice =
+            typeof p.averagePrice === "string" && p.averagePrice.trim()
+              ? p.averagePrice.trim()
+              : null;
+
+          const category =
+            typeof p.category === "string" && p.category.trim()
+              ? p.category.trim()
+              : null;
+
+          return {
+            title,
+            address,
+            phone,
+            signatureDishes: dishes,
+            summary,
+            rating,
+            averagePrice,
+            category,
+          };
         })
-        .filter(
-          (
-            p
-          ): p is {
-            title: string;
-            address: string | null;
-            phone: string | null;
-            signatureDishes: string[];
-            summary: string;
-          } => p !== null
-        )
+        .filter((p): p is NormalizedPlace => p !== null)
     : [];
 
   return { platform, places };

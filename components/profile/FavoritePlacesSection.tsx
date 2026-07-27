@@ -9,6 +9,7 @@ import {
   MapPin,
   Phone,
   Utensils,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,9 @@ type DraftPlace = {
   phone: string;
   signatureDishes: string[];
   summary: string;
+  rating: number | null;
+  averagePrice: string;
+  category: string;
 };
 
 /**
@@ -86,6 +90,9 @@ export function FavoritePlacesSection() {
           phone: p.phone ?? "",
           signatureDishes: p.signatureDishes,
           summary: p.summary,
+          rating: p.rating,
+          averagePrice: p.averagePrice ?? "",
+          category: p.category ?? "",
         }))
       );
       setDraftPlatform(result.platform);
@@ -125,6 +132,9 @@ export function FavoritePlacesSection() {
           phone: d.phone.trim() || null,
           signatureDishes: d.signatureDishes,
           summary: d.summary.trim(),
+          rating: d.rating,
+          averagePrice: d.averagePrice.trim() || null,
+          category: d.category.trim() || null,
         })),
       });
       const parts: string[] = [];
@@ -220,6 +230,25 @@ export function FavoritePlacesSection() {
                     >
                       {PLATFORM_LABEL[p.platform]}
                     </Badge>
+                    {p.category ? (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
+                      >
+                        {p.category}
+                      </Badge>
+                    ) : null}
+                    {p.rating != null ? (
+                      <span className="flex items-center gap-0.5 text-[11px] font-semibold text-warning">
+                        <Star className="h-3 w-3 fill-current" />
+                        {p.rating.toFixed(1)}
+                      </span>
+                    ) : null}
+                    {p.price ? (
+                      <span className="text-[11px] font-medium text-accent-foreground">
+                        {p.price}
+                      </span>
+                    ) : null}
                   </div>
                   {p.summary ? (
                     <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
@@ -421,6 +450,56 @@ function ParsePreviewDialog({
                       }
                       className="h-8 text-sm"
                     />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-[11px] text-muted-foreground">
+                        评分
+                      </Label>
+                      <Input
+                        value={d.rating?.toString() ?? ""}
+                        onChange={(e) =>
+                          onUpdate(idx, {
+                            rating: e.target.value
+                              ? parseFloat(e.target.value) || null
+                              : null,
+                          })
+                        }
+                        placeholder="4.5"
+                        inputMode="decimal"
+                        type="number"
+                        min={0}
+                        max={5}
+                        step={0.1}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[11px] text-muted-foreground">
+                        人均
+                      </Label>
+                      <Input
+                        value={d.averagePrice}
+                        onChange={(e) =>
+                          onUpdate(idx, { averagePrice: e.target.value })
+                        }
+                        placeholder="￥80"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[11px] text-muted-foreground">
+                        分类
+                      </Label>
+                      <Input
+                        value={d.category}
+                        onChange={(e) =>
+                          onUpdate(idx, { category: e.target.value })
+                        }
+                        placeholder="火锅"
+                        className="h-8 text-sm"
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label className="text-[11px] text-muted-foreground">
