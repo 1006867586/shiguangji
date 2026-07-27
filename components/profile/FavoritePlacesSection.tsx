@@ -10,6 +10,8 @@ import {
   Phone,
   Utensils,
   Star,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,7 @@ import { useUpload } from "@/hooks/useUpload";
 import {
   useFavoritePlaces,
   useAiParseFavorites,
+  useEnrichPlace,
 } from "@/hooks/useFavoritePlaces";
 import type { FavoritePlatform } from "@/types";
 import { useAiEnabled } from "@/hooks/useAiEnabled";
@@ -60,9 +63,16 @@ type DraftPlace = {
  */
 export function FavoritePlacesSection() {
   const aiEnabled = useAiEnabled();
-  const { places, loading, addMany, remove } = useFavoritePlaces();
+  const { places, loading, addMany, remove, patchPlace } = useFavoritePlaces();
   const { uploadFile, uploading } = useUpload();
   const { parse, loading: parsing } = useAiParseFavorites();
+  const {
+    enrichingIds,
+    batchProgress,
+    enrichOne,
+    enrichMany,
+    error: enrichError,
+  } = useEnrichPlace(patchPlace);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [drafts, setDrafts] = useState<DraftPlace[]>([]);
@@ -163,7 +173,41 @@ export function FavoritePlacesSection() {
     }
   };
 
+  const handleEnrichOne = async (placeId: string, force = false) => {
+    try {
+      const res = await enrichOne(placeId, force);
+      if (res.skipped) {
+        toast.info("该店铺信息已完整，无需补齐");
+      } else if (res.updatedFields && res.updatedFields.length > 0) {
+        toast.success(`已补齐 ${res.updatedFields.length} 个字段`);
+      } else {
+        toast.info("未搜索到可补齐的信息");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "联网搜索失败");
+    }
+  };
+
+  const handleEnrichAll = async () => {
+    // 仅补齐缺少封面图或店铺链接的条目，避免重复消耗配额
+    const targets = places.filter(
+      (p) => !p.cover_image_url || !p.store_url || !p.phone || !p.address
+    );
+    if (targets.length === 0) {
+      toast.success("所有店铺信息已完整");
+      return;
+    }
+    toast.info(`开始批量补齐 ${targets.length} 家店铺，请稍候`);
+    try {
+      await enrichMany(targets, false);
+      toast.success("批量补齐完成");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "批量补齐失败");
+    }
+  };
+
   const busy = uploading || parsing;
+  const batchRunning = batchProgress != null;
 
   return (
     <div className="mt-2 border-t border-border/60 p-4">
@@ -175,21 +219,71 @@ export function FavoritePlacesSection() {
             {places.length}
           </span>
         </h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1 text-xs"
-          disabled={!aiEnabled || busy}
-          onClick={() => inputRef.current?.click()}
-        >
-          {busy ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Upload className="h-3.5 w-3.5" />
-          )}
-          上传截图识别
-        </Button>
+        <div className="flex items-center gap-1.5">
+          {aiEnabled && places.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              disabled={batchRunning || enrichingIds.size > 0}
+              onClick={handleEnrichAll}
+              title="联网搜索补齐封面图、店铺链接、电话、地址"
+            >
+              {batchRunning ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Globe className="h-3.5 w-3.5" />
+              )}
+              联网补齐
+            </Button>
+          ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            disabled={!aiEnabled || busy}
+            onClick={() => inputRef.current?.click()}
+          >
+            {busy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )}
+            上传截图识别
+          </Button>
+        </div>
       </div>
+
+      {batchProgress ? (
+        <div className="mb-2 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-[11px]">
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-primary">
+              批量补齐中 {batchProgress.done}/{batchProgress.total}
+            </span>
+            <span className="text-muted-foreground">
+              成功 {batchProgress.success} · 失败 {batchProgress.failed}
+            </span>
+          </div>
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-primary transition-all"
+              style={{
+                width: `${
+                  batchProgress.total > 0
+                    ? (batchProgress.done / batchProgress.total) * 100
+                    : 0
+                }%`,
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {enrichError ? (
+        <p className="mb-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-[11px] text-destructive">
+          {enrichError}
+        </p>
+      ) : null}
 
       <input
         ref={inputRef}
@@ -215,92 +309,155 @@ export function FavoritePlacesSection() {
         />
       ) : (
         <div className="space-y-2">
-          {places.map((p) => (
-            <div
-              key={p.id}
-              className="group relative rounded-xl border border-border/70 bg-card px-3 py-2.5 shadow-xs transition-all hover:border-border hover:shadow-md"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <p className="truncate text-sm font-medium">{p.title}</p>
-                    <Badge
-                      variant="secondary"
-                      className="shrink-0 px-1.5 py-0 text-[10px] font-normal"
-                    >
-                      {PLATFORM_LABEL[p.platform]}
-                    </Badge>
-                    {p.category ? (
-                      <Badge
-                        variant="outline"
-                        className="shrink-0 px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
-                      >
-                        {p.category}
-                      </Badge>
-                    ) : null}
-                    {p.rating != null ? (
-                      <span className="flex items-center gap-0.5 text-[11px] font-semibold text-warning">
-                        <Star className="h-3 w-3 fill-current" />
-                        {p.rating.toFixed(1)}
-                      </span>
-                    ) : null}
-                    {p.price ? (
-                      <span className="text-[11px] font-medium text-accent-foreground">
-                        {p.price}
-                      </span>
-                    ) : null}
-                  </div>
-                  {p.summary ? (
-                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                      {p.summary}
-                    </p>
-                  ) : null}
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                    {p.address ? (
-                      <span className="inline-flex items-center gap-0.5">
-                        <MapPin className="h-3 w-3" />
-                        <span className="line-clamp-1 max-w-[12rem]">
-                          {p.address}
-                        </span>
-                      </span>
-                    ) : null}
-                    {p.phone ? (
-                      <span className="inline-flex items-center gap-0.5">
-                        <Phone className="h-3 w-3" />
-                        {p.phone}
-                      </span>
-                    ) : null}
-                  </div>
-                  {p.signature_dishes.length > 0 ? (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                      <Utensils className="h-3 w-3 text-muted-foreground" />
-                      {p.signature_dishes.slice(0, 4).map((d) => (
-                        <span
-                          key={d}
-                          className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-                        >
-                          {d}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(p.id)}
-                  disabled={removingId === p.id}
-                  aria-label="删除"
-                  className="shrink-0 rounded-full p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 disabled:opacity-50"
-                >
-                  {removingId === p.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          {places.map((p) => {
+            const enriching = enrichingIds.has(p.id);
+            const needEnrich =
+              !p.cover_image_url || !p.store_url || !p.phone || !p.address;
+            return (
+              <div
+                key={p.id}
+                className="group relative rounded-xl border border-border/70 bg-card px-3 py-2.5 shadow-xs transition-all hover:border-border hover:shadow-md"
+              >
+                <div className="flex items-start gap-2">
+                  {p.cover_image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.cover_image_url}
+                      alt={p.title}
+                      className="h-12 w-12 shrink-0 rounded-md object-cover"
+                      loading="lazy"
+                    />
                   ) : (
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <Utensils className="h-5 w-5" />
+                    </div>
                   )}
-                </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {p.store_url ? (
+                        <a
+                          href={p.store_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="truncate text-sm font-medium text-primary hover:underline"
+                          title="点击查看店铺详情"
+                        >
+                          {p.title}
+                        </a>
+                      ) : (
+                        <p className="truncate text-sm font-medium">{p.title}</p>
+                      )}
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 px-1.5 py-0 text-[10px] font-normal"
+                      >
+                        {PLATFORM_LABEL[p.platform]}
+                      </Badge>
+                      {p.category ? (
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
+                        >
+                          {p.category}
+                        </Badge>
+                      ) : null}
+                      {p.rating != null ? (
+                        <span className="flex items-center gap-0.5 text-[11px] font-semibold text-warning">
+                          <Star className="h-3 w-3 fill-current" />
+                          {p.rating.toFixed(1)}
+                        </span>
+                      ) : null}
+                      {p.price ? (
+                        <span className="text-[11px] font-medium text-accent-foreground">
+                          {p.price}
+                        </span>
+                      ) : null}
+                    </div>
+                    {p.summary ? (
+                      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                        {p.summary}
+                      </p>
+                    ) : null}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                      {p.address ? (
+                        <span className="inline-flex items-center gap-0.5">
+                          <MapPin className="h-3 w-3" />
+                          <span className="line-clamp-1 max-w-[12rem]">
+                            {p.address}
+                          </span>
+                        </span>
+                      ) : null}
+                      {p.phone ? (
+                        <span className="inline-flex items-center gap-0.5">
+                          <Phone className="h-3 w-3" />
+                          {p.phone}
+                        </span>
+                      ) : null}
+                      {p.store_url ? (
+                        <a
+                          href={p.store_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-0.5 text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          详情
+                        </a>
+                      ) : null}
+                    </div>
+                    {p.signature_dishes.length > 0 ? (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                        <Utensils className="h-3 w-3 text-muted-foreground" />
+                        {p.signature_dishes.slice(0, 4).map((d) => (
+                          <span
+                            key={d}
+                            className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                          >
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {aiEnabled ? (
+                      <button
+                        type="button"
+                        onClick={() => handleEnrichOne(p.id, !needEnrich)}
+                        disabled={enriching || batchRunning}
+                        aria-label="联网搜索补齐"
+                        title={
+                          needEnrich
+                            ? "联网搜索补齐信息"
+                            : "重新联网搜索（覆盖现有信息）"
+                        }
+                        className="rounded-full p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 disabled:opacity-50"
+                      >
+                        {enriching ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Globe className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(p.id)}
+                      disabled={removingId === p.id}
+                      aria-label="删除"
+                      className="rounded-full p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 disabled:opacity-50"
+                    >
+                      {removingId === p.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

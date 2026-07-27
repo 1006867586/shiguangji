@@ -25,6 +25,8 @@ interface UseFavoritePlacesReturn {
     duplicated: number;
   }>;
   remove: (id: string) => Promise<void>;
+  /** 局部更新单条店铺（用于联网搜索补齐后回填 UI，避免整表重新拉取） */
+  patchPlace: (id: string, patch: Partial<FavoritePlace>) => void;
 }
 
 export function useFavoritePlaces(): UseFavoritePlacesReturn {
@@ -74,6 +76,20 @@ export function useFavoritePlaces(): UseFavoritePlacesReturn {
     [data, mutate]
   );
 
+  const patchPlace = useCallback(
+    (id: string, patch: Partial<FavoritePlace>) => {
+      const prev = data?.data;
+      if (!prev) return;
+      mutate(
+        {
+          data: prev.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+        },
+        { revalidate: false }
+      );
+    },
+    [data, mutate]
+  );
+
   return {
     places: data?.data ?? [],
     loading: isLoading,
@@ -85,6 +101,7 @@ export function useFavoritePlaces(): UseFavoritePlacesReturn {
     reload,
     addMany,
     remove,
+    patchPlace,
   };
 }
 
@@ -133,4 +150,120 @@ export function useAiParseFavorites(): UseAiParseFavoritesReturn {
   );
 
   return { parse, loading, error };
+}
+
+// ============================================================
+// useEnrichPlace — 联网搜索补齐单条店铺信息
+// ============================================================
+
+export interface EnrichedInfo {
+  coverImageUrl: string | null;
+  storeUrl: string | null;
+  phone: string | null;
+  address: string | null;
+}
+
+interface EnrichResponse {
+  data: FavoritePlace;
+  enriched: EnrichedInfo;
+  updatedFields?: string[];
+  skipped?: boolean;
+}
+
+interface UseEnrichPlaceReturn {
+  /** 正在补齐的 placeId 集合（用于 UI 单条 loading） */
+  enrichingIds: Set<string>;
+  /** 批量补齐时的整体进度 */
+  batchProgress: { total: number; done: number; success: number; failed: number } | null;
+  /** 补齐单条店铺。force=true 时强制重新搜索覆盖已有值 */
+  enrichOne: (placeId: string, force?: boolean) => Promise<EnrichResponse>;
+  /** 串行批量补齐，避免触发 API 速率限制。force=true 时强制覆盖 */
+  enrichMany: (
+    places: Array<Pick<FavoritePlace, "id">>,
+    force?: boolean,
+    onProgress?: (done: number, total: number) => void
+  ) => Promise<void>;
+  error: string | null;
+}
+
+export function useEnrichPlace(
+  onPlaceUpdated?: (id: string, patch: Partial<FavoritePlace>) => void
+): UseEnrichPlaceReturn {
+  const [enrichingIds, setEnrichingIds] = useState<Set<string>>(new Set());
+  const [batchProgress, setBatchProgress] = useState<
+    UseEnrichPlaceReturn["batchProgress"]
+  >(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const enrichOne = useCallback(
+    async (placeId: string, force = false): Promise<EnrichResponse> => {
+      setEnrichingIds((prev) => new Set(prev).add(placeId));
+      setError(null);
+      try {
+        const res = await fetcher<EnrichResponse>("/api/ai/enrich-place", {
+          method: "POST",
+          body: JSON.stringify({ placeId, force }),
+        });
+        // 局部回填 UI
+        if (onPlaceUpdated && res.data) {
+          onPlaceUpdated(placeId, res.data);
+        }
+        return res;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "联网搜索失败";
+        setError(msg);
+        throw e;
+      } finally {
+        setEnrichingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(placeId);
+          return next;
+        });
+      }
+    },
+    [onPlaceUpdated]
+  );
+
+  const enrichMany = useCallback(
+    async (
+      places: Array<Pick<FavoritePlace, "id">>,
+      force = false,
+      onProgress?: (done: number, total: number) => void
+    ): Promise<void> => {
+      const total = places.length;
+      if (total === 0) return;
+      setBatchProgress({ total, done: 0, success: 0, failed: 0 });
+      setError(null);
+      let done = 0;
+      let success = 0;
+      let failed = 0;
+      // 串行执行，避免并发触发 MiniMax 速率限制
+      for (const p of places) {
+        try {
+          await enrichOne(p.id, force);
+          success += 1;
+        } catch {
+          failed += 1;
+        }
+        done += 1;
+        setBatchProgress({ total, done, success, failed });
+        onProgress?.(done, total);
+        // 单条之间短暂停顿，给 API 一点喘息空间
+        if (done < total) {
+          await new Promise((r) => setTimeout(r, 300));
+        }
+      }
+      // 完成后清空进度（保留 1.5s 让 UI 显示最终状态）
+      setTimeout(() => setBatchProgress(null), 1500);
+    },
+    [enrichOne]
+  );
+
+  return {
+    enrichingIds,
+    batchProgress,
+    enrichOne,
+    enrichMany,
+    error,
+  };
 }

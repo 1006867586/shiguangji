@@ -442,6 +442,10 @@ export interface FavoritePlace {
   rating: number | null;
   /** 人均消费，如 "￥80" 或 "80元" */
   price: string | null;
+  /** 联网搜索补齐的封面图 URL */
+  cover_image_url: string | null;
+  /** 联网搜索补齐的店铺链接（美团/点评/官网等） */
+  store_url: string | null;
 }
 
 /** 批量创建店铺收藏请求体 */

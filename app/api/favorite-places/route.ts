@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from("favorite_places")
       .select(
-        "id, user_id, title, address, phone, signature_dishes, platform, summary, source_screenshot_url, created_at, category, rating, price"
+        "id, user_id, title, address, phone, signature_dishes, platform, summary, source_screenshot_url, created_at, category, rating, price, cover_image_url, store_url"
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
       .from("favorite_places")
       .insert(toInsert)
       .select(
-        "id, user_id, title, address, phone, signature_dishes, platform, summary, source_screenshot_url, created_at, category, rating, price"
+        "id, user_id, title, address, phone, signature_dishes, platform, summary, source_screenshot_url, created_at, category, rating, price, cover_image_url, store_url"
       );
 
     if (error) {
