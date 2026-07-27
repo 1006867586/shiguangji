@@ -19,6 +19,8 @@ export interface ExternalLink {
   address?: string | null;
   phone?: string | null;
   price?: string | null;
+  /** 餐厅分类，如 火锅/烤肉/烧烤/川菜 */
+  category?: string | null;
 }
 
 /** 用户资料 */
@@ -382,6 +384,8 @@ export interface ParsedScreenshot {
   rating: number | null;
   /** 人均消费，如 "￥80" 或 "80元"；识别不到为 null */
   averagePrice: string | null;
+  /** 餐厅分类，如 火锅/烤肉/烧烤/川菜；识别不到为 null */
+  category: string | null;
 }
 
 /** 账单小票识别结果 */

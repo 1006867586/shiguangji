@@ -104,6 +104,7 @@ export function ActivityForm({
         address: parsed.address || prev?.address || null,
         phone: parsed.phone || prev?.phone || null,
         price: parsed.averagePrice ?? prev?.price ?? null,
+        category: parsed.category ?? prev?.category ?? null,
       }));
       // 4. 招牌菜追加到 content
       if (parsed.signatureDishes && parsed.signatureDishes.length > 0) {
@@ -518,6 +519,13 @@ export function ActivityForm({
                   autoComplete="off"
                 />
               </div>
+              <Input
+                value={externalLink.category ?? ""}
+                onChange={(e) => updateLinkField("category", e.target.value)}
+                placeholder="分类（如 火锅/烤肉/川菜）"
+                aria-label="分类"
+                autoComplete="off"
+              />
               <Input
                 value={externalLink.coverImage ?? ""}
                 onChange={(e) =>

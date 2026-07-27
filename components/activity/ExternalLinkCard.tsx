@@ -52,6 +52,11 @@ export function ExternalLinkCard({ link, compact = false, internalHref }: Extern
           <Badge variant="secondary" className="shrink-0 border-border/60 bg-background px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             {PLATFORM_LABEL[link.platform] ?? "链接"}
           </Badge>
+          {link.category ? (
+            <Badge variant="outline" className="shrink-0 border-border/60 px-1.5 py-0 text-[10px] font-medium text-muted-foreground">
+              {link.category}
+            </Badge>
+          ) : null}
           {link.rating ? (
             <span className="flex items-center gap-0.5 text-xs font-semibold text-warning">
               <Star className="h-3 w-3 fill-current" />

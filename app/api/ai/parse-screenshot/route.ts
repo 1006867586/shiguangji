@@ -153,6 +153,7 @@ function buildPrompt(platformHint?: Platform): string {
     '  "platform": "xiaohongshu | douyin | dianping | unknown",',
     '  "rating": 4.5,',
     '  "averagePrice": "￥80",',
+    '  "category": "火锅",',
     '  "summary": "一句话简介（20字以内）"',
     "}",
     "注意：",
@@ -161,6 +162,7 @@ function buildPrompt(platformHint?: Platform): string {
     "- address/phone 识别不到时必须为 null，而不是空字符串",
     "- rating 是店铺评分（大众点评/美团等平台的星级评分，如 4.5、4.8），只能是数字，识别不到为 null",
     "- averagePrice 是人均消费，保留截图里展示的原样（含货币符号或单位，如 ￥80、80元），识别不到为 null",
+    "- category 是餐厅分类，常见值如：火锅、烤肉、烧烤、川菜、粤菜、湘菜、日料、韩餐、西餐、东南亚菜、快餐、咖啡甜品、饮品、面食、海鲜、自助餐、家常菜、私房菜、其他；以截图实际展示为准，识别不到为 null",
     "- summary 是对这家店的一句话概括，简短有信息量",
   ]
     .filter(Boolean)
@@ -195,6 +197,12 @@ function normalizeScreenshot(raw: Partial<ParsedScreenshot>): ParsedScreenshot {
       ? raw.averagePrice.trim()
       : null;
 
+  // category: 字符串，trim；空字符串视为 null
+  const category =
+    typeof raw.category === "string" && raw.category.trim()
+      ? raw.category.trim()
+      : null;
+
   return {
     title:
       typeof raw.title === "string" && raw.title.trim()
@@ -212,6 +220,7 @@ function normalizeScreenshot(raw: Partial<ParsedScreenshot>): ParsedScreenshot {
     platform,
     rating,
     averagePrice,
+    category,
     summary:
       typeof raw.summary === "string" && raw.summary.trim()
         ? raw.summary.trim()
