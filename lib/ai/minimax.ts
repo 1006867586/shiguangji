@@ -115,8 +115,14 @@ export async function chat(
       const errText = await res.text().catch(() => "");
       // 401 通常是 API Key 无效或与 Base URL 不匹配
       if (res.status === 401) {
+        // 附带 key 长度与前 6 位（不泄露完整 key），便于排查环境变量是否被截断/带引号/占位符
+        const keyLen = cfg.apiKey.length;
+        const keyPrefix = cfg.apiKey.slice(0, 6);
+        const keySuffix = cfg.apiKey.slice(-4);
         throw new MiniMaxError(
-          `MiniMax 鉴权失败 (401): 请检查 MINIMAX_API_KEY 是否有效，当前 baseUrl=${cfg.baseUrl}。原始返回: ${errText.slice(0, 120)}`,
+          `MiniMax 鉴权失败 (401): baseUrl=${cfg.baseUrl}, apiKey长度=${keyLen}, apiKey前后缀=${keyPrefix}***${keySuffix}。` +
+            `若长度异常或前缀不是 sk-cp-，请检查 Vercel 环境变量 MINIMAX_API_KEY 是否完整粘贴（无引号/空格/换行）。` +
+            `原始返回: ${errText.slice(0, 200)}`,
           res.status
         );
       }
