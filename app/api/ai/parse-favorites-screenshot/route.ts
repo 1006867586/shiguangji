@@ -11,6 +11,8 @@ import { checkAiQuota, recordAiGeneration } from "@/lib/ai/quota";
 import type { FavoritePlatform, ParsedFavoritesScreenshot } from "@/types";
 
 export const dynamic = "force-dynamic";
+// 视觉识别耗时较长（MiniMax-M3 通常 15-30s），默认 10s 会触发 Vercel 函数超时导致前端 "failed to fetch"
+export const maxDuration = 60;
 
 const VALID_PLATFORMS: FavoritePlatform[] = [
   "meituan",

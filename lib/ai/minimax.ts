@@ -167,7 +167,8 @@ export async function vision(
       ...opts,
       thinking: opts.thinking ?? "disabled",
       model: cfg.visionModel,
-      timeoutMs: opts.timeoutMs ?? 90_000, // 视觉任务给更多时间
+      // 留 10s 余量给 Vercel 函数返回响应，避免被 maxDuration 硬杀导致前端 "failed to fetch"
+      timeoutMs: opts.timeoutMs ?? 50_000,
     }
   );
 }
