@@ -171,31 +171,72 @@ export async function POST(req: NextRequest) {
     let aiModel = "unknown";
     let aiTokens: number | undefined;
     try {
-      const aiResult = await chat(
+      // 两步式调用：M3 + web_search 在严格 prompt 下会"搜完即止"不生成最终 text，
+      // 因此拆为两步：
+      //   步骤1: 带 web_search 工具搜集搜索结果（不要求模型输出最终 JSON）
+      //   步骤2: 把搜索结果作为上下文，让模型纯文本输出 JSON（不带工具）
+      // 总耗时约 10-30s，在 Vercel 60s 限制内
+      const step1 = await chat(
         [{ role: "user", content: prompt }],
         {
-          system: SYSTEM_PROMPT,
+          system: STEP1_SYSTEM_PROMPT,
           enableWebSearch: true,
-          // 关闭 thinking：联网搜索只需结构化 JSON 输出，
-          // 避免 M3 思考吃满 max_tokens 导致空内容
-          thinking: "disabled",
+          // 允许空文本：步骤1 只关心 searchResults，模型可能不输出 text
+          allowEmptyText: true,
           temperature: 0.3,
-          // 文档推荐 8192，给搜索结果摘要 + JSON 回复留足空间
-          maxTokens: 8192,
-          // 留 10s 余量给 Vercel maxDuration，避免被硬杀导致前端 "failed to fetch"
-          timeoutMs: 50_000,
+          maxTokens: 4096,
+          // 步骤1 留 35s，步骤2 留 15s，共 50s < 60s Vercel 限制
+          timeoutMs: 35_000,
         }
       );
-      aiModel = aiResult.model;
+      aiModel = step1.model;
       aiTokens =
-        aiResult.inputTokens != null && aiResult.outputTokens != null
-          ? aiResult.inputTokens + aiResult.outputTokens
+        step1.inputTokens != null && step1.outputTokens != null
+          ? step1.inputTokens + step1.outputTokens
           : undefined;
 
-      enriched = normalizeEnriched(
-        parseJsonContent<Partial<EnrichedInfo>>(aiResult.content),
-        aiResult.searchResults
-      );
+      // 如果步骤1 已经直接输出了 JSON（部分场景模型会直接给），优先用之
+      let step1Parsed: Partial<EnrichedInfo> | null = null;
+      if (step1.content.trim()) {
+        try {
+          step1Parsed = parseJsonContent<Partial<EnrichedInfo>>(step1.content);
+        } catch {
+          // 步骤1 输出不是 JSON（可能是引导语），走步骤2
+        }
+      }
+
+      let rawEnriched: Partial<EnrichedInfo>;
+      if (step1Parsed && (step1Parsed.storeUrl || step1Parsed.address || step1Parsed.phone || step1Parsed.coverImageUrl)) {
+        // 步骤1 已给出可用 JSON，直接用
+        rawEnriched = step1Parsed;
+      } else {
+        // 步骤2: 基于搜索结果生成 JSON
+        const step2 = await chat(
+          [
+            {
+              role: "user",
+              content: buildStep2Prompt(place as FavoritePlace, step1.searchResults),
+            },
+          ],
+          {
+            system: STEP2_SYSTEM_PROMPT,
+            temperature: 0,
+            maxTokens: 1024,
+            timeoutMs: 20_000,
+          }
+        );
+        aiModel = step2.model;
+        aiTokens =
+          aiTokens != null && step2.inputTokens != null && step2.outputTokens != null
+            ? aiTokens + step2.inputTokens + step2.outputTokens
+            : step2.inputTokens != null && step2.outputTokens != null
+            ? step2.inputTokens + step2.outputTokens
+            : aiTokens;
+
+        rawEnriched = parseJsonContent<Partial<EnrichedInfo>>(step2.content);
+      }
+
+      enriched = normalizeEnriched(rawEnriched, step1.searchResults);
     } catch (aiErr) {
       await recordAiGeneration({
         userId: user.id,
@@ -290,28 +331,29 @@ export async function POST(req: NextRequest) {
   }
 }
 
-const SYSTEM_PROMPT = [
-  "你是一个店铺信息检索助手，只能输出 JSON。",
-  "用户会给你一家餐厅/店铺的名称、地址等已知信息，请你使用 web_search 工具联网搜索，补齐这家店的：",
-  "1. 封面图 URL（coverImageUrl）：店铺首页/详情页的封面图，必须是可直接访问的图片 URL（以 http 开头）",
-  "2. 店铺链接（storeUrl）：必须是大众点评网（dianping.com）的店铺详情页 URL，不要返回美团、小红书、抖音等其他平台链接",
-  "3. 电话（phone）：店铺联系电话",
-  "4. 地址（address）：店铺完整地址",
-  "搜索时强制使用「店名 + 城市/地址 + 大众点评」作为关键词，确保搜索结果来自大众点评网。",
-  "搜索不到的字段返回 null，不要编造。",
+// 步骤1 system prompt：宽松，让模型自由搜索并简要总结
+const STEP1_SYSTEM_PROMPT = [
+  "你是店铺信息检索助手。请使用 web_search 工具联网搜索用户提供的店铺，",
+  "找出大众点评网链接、电话、地址、封面图。",
+  "搜索完成后简要总结找到的信息，不要编造。",
+].join("");
+
+// 步骤2 system prompt：严格，基于搜索结果输出 JSON
+const STEP2_SYSTEM_PROMPT = [
+  "你是店铺信息提取助手。下面会给你一家店铺的搜索结果，请从中提取信息并以 JSON 格式返回。",
+  "JSON 格式：",
+  "{",
+  '  "coverImageUrl": "图片直链 URL 或 null",',
+  '  "storeUrl": "大众点评网店铺详情页 URL 或 null",',
+  '  "phone": "电话号码 或 null",',
+  '  "address": "完整地址 或 null"',
+  "}",
   "",
-  "【输出格式硬性要求】",
-  "- 输出必须是单个合法 JSON 对象，第一个字符必须是 {，最后一个字符必须是 }",
-  "- 不要输出任何引导语、解释、思考过程、markdown 代码块标记",
-  "- 不要说“我来帮你搜索”之类的话，直接输出 JSON",
-  "- 错误示例：‘我来帮你搜索这家店的信息。\\n{...}’",
-  "- 正确示例：‘{...}’",
-  "",
-  "【storeUrl 域名硬性要求】",
-  "- 必须是 dianping.com 或其子域名（如 www.dianping.com、m.dianping.com）",
-  "- 或大众点评短链 dpurl.cn",
-  "- 不要返回 meituan.com、xiaohongshu.com、douyin.com 等其他平台链接",
-  "- 搜索不到大众点评链接时返回 null，不要用其他平台链接替代",
+  "要求：",
+  "- storeUrl 只接受 dianping.com 或 dpurl.cn 域名，其他平台返回 null",
+  "- coverImageUrl 必须是图片直链（以 http 开头，结尾为 .jpg/.png/.webp 等）",
+  "- 搜索结果中没有的字段返回 null，不要编造",
+  "- 只输出 JSON，不要输出任何其他内容",
 ].join("\n");
 
 function buildPrompt(place: {
@@ -331,27 +373,41 @@ function buildPrompt(place: {
     known.push(`来源平台：${place.platform}`);
 
   return [
-    "请联网搜索以下店铺信息，并直接输出 JSON（第一个字符必须是 {）：",
+    "请联网搜索这家店的信息，找出大众点评网链接、电话、地址、封面图。",
     "",
     "已知信息：",
     ...known,
     "",
-    "搜索关键词建议：店名 + 地址所在城市 + “大众点评”",
+    `建议搜索关键词：“${place.title} 大众点评”、“${place.title} 电话 地址”`,
+  ].join("\n");
+}
+
+/** 步骤2 的 user prompt：把搜索结果作为上下文喂给模型 */
+function buildStep2Prompt(
+  place: {
+    title: string;
+    address: string | null;
+    phone: string | null;
+    category: string | null;
+    summary: string;
+    platform: string;
+  },
+  searchResults: Array<{ title: string; url: string; content?: string }>
+): string {
+  // 截断搜索结果内容，避免上下文过长
+  const context = searchResults
+    .slice(0, 30)
+    .map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n内容: ${(r.content ?? "").slice(0, 500)}`)
+    .join("\n\n");
+
+  return [
+    `店铺名称：${place.title}`,
+    ...(place.category ? [`分类：${place.category}`] : []),
     "",
-    "JSON 格式：",
-    "{",
-    '  "coverImageUrl": "https://...jpg 或 null",',
-    '  "storeUrl": "https://www.dianping.com/shop/XXXX 或 null",',
-    '  "phone": "电话号码 或 null",',
-    '  "address": "完整地址 或 null"',
-    "}",
+    "搜索结果：",
+    context,
     "",
-    "字段要求：",
-    "- coverImageUrl 必须是图片直链（以 http 开头，结尾为 .jpg/.png/.webp 等），不能是网页 URL",
-    "- storeUrl 必须是大众点评网（dianping.com 或 dpurl.cn）的店铺详情页 URL，不要美团/小红书/抖音链接",
-    "- 搜索不到的字段必须为 null，不要返回空字符串或编造内容",
-    "",
-    "再次强调：直接输出 JSON，不要说任何话。storeUrl 只接受大众点评网链接。",
+    "请基于以上搜索结果提取信息，只输出 JSON：",
   ].join("\n");
 }
 

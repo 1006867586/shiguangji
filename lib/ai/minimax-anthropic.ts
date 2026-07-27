@@ -52,6 +52,13 @@ export interface AnthropicChatOptions {
   thinking?: "disabled" | "adaptive";
   /** 超时毫秒，默认 90s（联网搜索耗时较长） */
   timeoutMs?: number;
+  /**
+   * 是否允许空文本返回（默认 false）。
+   * web_search 场景下 M3 可能"搜完即止"不生成最终 text，
+   * 此时若设为 true，则不会抛错，调用方可直接读取 searchResults。
+   * 适用于两步式调用的步骤1（只收集搜索结果）。
+   */
+  allowEmptyText?: boolean;
 }
 
 export interface AnthropicChatResult {
@@ -184,13 +191,14 @@ export async function chat(
     }
 
     const content = textParts.join("\n\n");
-    if (!content) {
+    if (!content && !opts.allowEmptyText) {
       // 诊断信息：列出 content 块的类型，便于排查为何没有 text 块
       const blockTypes = contentBlocks.map((b) => String(b?.type ?? "?")).join(", ");
       const stopReason = typeof data?.stop_reason === "string" ? data.stop_reason : "?";
       throw new MiniMaxAnthropicError(
         `MiniMax (Anthropic) 返回空内容 (stop_reason=${stopReason}, blocks=[${blockTypes}])。` +
-          `可能原因：max_tokens 过小被 thinking 占满，或模型未生成最终回复。`,
+          `可能原因：max_tokens 过小被 thinking 占满，或模型未生成最终回复。` +
+          `若仅需搜索结果，可设置 allowEmptyText: true。`,
         500
       );
     }
