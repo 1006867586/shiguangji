@@ -25,19 +25,6 @@ function LoginForm() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const error = searchParams.get("error");
-    if (error) {
-      if (error === "qq_not_configured") {
-        toast.error("QQ 登录未配置，请联系管理员");
-      } else if (error === "qq_state_invalid") {
-        toast.error("QQ 登录状态异常，请重试");
-      } else {
-        toast.error("QQ 登录失败");
-      }
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => {
