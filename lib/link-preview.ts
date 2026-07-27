@@ -48,10 +48,8 @@ export function parseShareText(text: string): ShareTextMeta {
     result.phone = phoneMatch[1].trim();
   }
 
-  // 5. 识别平台（@美团 / @大众点评 / @点评）
-  if (/@美团/.test(text)) {
-    result.platform = "meituan";
-  } else if (/@(大众)?点评/.test(text)) {
+  // 5. 识别平台：业务统一使用大众点评，美团分享文本也归一为 dianping
+  if (/@美团/.test(text) || /@(大众)?点评/.test(text)) {
     result.platform = "dianping";
   }
 

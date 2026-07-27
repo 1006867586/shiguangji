@@ -68,21 +68,19 @@ function isAllowedCoverImage(url: string): boolean {
 }
 
 /**
- * 校验店铺链接是否来自可信平台
+ * 校验店铺链接是否来自大众点评网
+ * 用户要求：店铺详情页链接统一用大众点评，不接受美团等其他平台
  */
 function isAllowedStoreUrl(url: string): boolean {
   try {
     const u = new URL(url);
     if (u.protocol !== "https:" && u.protocol !== "http:") return false;
     const host = u.hostname.toLowerCase();
+    // 仅接受大众点评相关域名（含短链 dpurl.cn）
     return (
-      /(^|\.)meituan\.com$/.test(host) ||
       /(^|\.)dianping\.com$/.test(host) ||
-      /(^|\.)xiaohongshu\.com$/.test(host) ||
-      /(^|\.)douyin\.com$/.test(host) ||
-      /(^|\.)amap\.com$/.test(host) ||
-      /(^|\.)baidu\.com$/.test(host) ||
-      /(^|\.)tencent\.com$/.test(host)
+      host === "dpurl.cn" ||
+      host.endsWith(".dpurl.cn")
     );
   } catch {
     return false;
@@ -296,10 +294,10 @@ const SYSTEM_PROMPT = [
   "你是一个店铺信息检索助手，只能输出 JSON。",
   "用户会给你一家餐厅/店铺的名称、地址等已知信息，请你使用 web_search 工具联网搜索，补齐这家店的：",
   "1. 封面图 URL（coverImageUrl）：店铺首页/详情页的封面图，必须是可直接访问的图片 URL（以 http 开头）",
-  "2. 店铺链接（storeUrl）：美团/大众点评/小红书/抖音/高德等平台上的店铺详情页 URL",
+  "2. 店铺链接（storeUrl）：必须是大众点评网（dianping.com）的店铺详情页 URL，不要返回美团、小红书、抖音等其他平台链接",
   "3. 电话（phone）：店铺联系电话",
   "4. 地址（address）：店铺完整地址",
-  "搜索时优先使用「店名 + 城市/地址 + 美团/点评」等关键词。",
+  "搜索时强制使用「店名 + 城市/地址 + 大众点评」作为关键词，确保搜索结果来自大众点评网。",
   "搜索不到的字段返回 null，不要编造。",
   "",
   "【输出格式硬性要求】",
@@ -308,6 +306,12 @@ const SYSTEM_PROMPT = [
   "- 不要说“我来帮你搜索”之类的话，直接输出 JSON",
   "- 错误示例：‘我来帮你搜索这家店的信息。\\n{...}’",
   "- 正确示例：‘{...}’",
+  "",
+  "【storeUrl 域名硬性要求】",
+  "- 必须是 dianping.com 或其子域名（如 www.dianping.com、m.dianping.com）",
+  "- 或大众点评短链 dpurl.cn",
+  "- 不要返回 meituan.com、xiaohongshu.com、douyin.com 等其他平台链接",
+  "- 搜索不到大众点评链接时返回 null，不要用其他平台链接替代",
 ].join("\n");
 
 function buildPrompt(place: {
@@ -332,20 +336,22 @@ function buildPrompt(place: {
     "已知信息：",
     ...known,
     "",
+    "搜索关键词建议：店名 + 地址所在城市 + “大众点评”",
+    "",
     "JSON 格式：",
     "{",
     '  "coverImageUrl": "https://...jpg 或 null",',
-    '  "storeUrl": "https://www.dianping.com/... 或 null",',
+    '  "storeUrl": "https://www.dianping.com/shop/XXXX 或 null",',
     '  "phone": "电话号码 或 null",',
     '  "address": "完整地址 或 null"',
     "}",
     "",
     "字段要求：",
     "- coverImageUrl 必须是图片直链（以 http 开头，结尾为 .jpg/.png/.webp 等），不能是网页 URL",
-    "- storeUrl 必须是美团/大众点评/小红书/抖音/高德等可信平台的店铺详情页 URL",
+    "- storeUrl 必须是大众点评网（dianping.com 或 dpurl.cn）的店铺详情页 URL，不要美团/小红书/抖音链接",
     "- 搜索不到的字段必须为 null，不要返回空字符串或编造内容",
     "",
-    "再次强调：直接输出 JSON，不要说任何话。",
+    "再次强调：直接输出 JSON，不要说任何话。storeUrl 只接受大众点评网链接。",
   ].join("\n");
 }
 

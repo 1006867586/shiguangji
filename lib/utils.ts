@@ -97,7 +97,11 @@ export function extractUrlFromText(text: string): string | null {
   return m ? m[0] : null;
 }
 
-/** 识别外部链接平台 */
+/**
+ * 识别外部链接平台
+ * 注意：业务上店铺详情页链接统一使用大众点评，美团相关域名也归一为 dianping。
+ * 仍保留 "meituan" 类型仅为兼容历史数据，新数据不会再产生该值。
+ */
 export function detectPlatform(url: string): "dianping" | "meituan" | "other" {
   const host = (() => {
     try {
@@ -107,7 +111,8 @@ export function detectPlatform(url: string): "dianping" | "meituan" | "other" {
     }
   })();
   if (host.includes("dianping") || host.includes("dpurl")) return "dianping";
-  if (host.includes("meituan") || host.includes("meituanwa")) return "meituan";
+  // 美团链接也归一为大众点评（业务统一）
+  if (host.includes("meituan") || host.includes("meituanwa")) return "dianping";
   return "other";
 }
 
