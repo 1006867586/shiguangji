@@ -68,19 +68,23 @@ function isAllowedCoverImage(url: string): boolean {
 }
 
 /**
- * 校验店铺链接是否来自大众点评网
- * 用户要求：店铺详情页链接统一用大众点评，不接受美团等其他平台
+ * 校验店铺链接是否来自可信平台
+ * 包含大众点评、美团、小红书、抖音、高德、百度地图等
  */
 function isAllowedStoreUrl(url: string): boolean {
   try {
     const u = new URL(url);
     if (u.protocol !== "https:" && u.protocol !== "http:") return false;
     const host = u.hostname.toLowerCase();
-    // 仅接受大众点评相关域名（含短链 dpurl.cn）
     return (
       /(^|\.)dianping\.com$/.test(host) ||
       host === "dpurl.cn" ||
-      host.endsWith(".dpurl.cn")
+      host.endsWith(".dpurl.cn") ||
+      /(^|\.)meituan\.com$/.test(host) ||
+      /(^|\.)xiaohongshu\.com$/.test(host) ||
+      /(^|\.)douyin\.com$/.test(host) ||
+      /(^|\.)amap\.com$/.test(host) ||
+      /(^|\.)baidu\.com$/.test(host)
     );
   } catch {
     return false;
@@ -334,7 +338,7 @@ export async function POST(req: NextRequest) {
 // 步骤1 system prompt：宽松，让模型自由搜索并简要总结
 const STEP1_SYSTEM_PROMPT = [
   "你是店铺信息检索助手。请使用 web_search 工具联网搜索用户提供的店铺，",
-  "找出大众点评网链接、电话、地址、封面图。",
+  "找出店铺详情页链接（大众点评/美团/小红书/抖音/高德/百度地图均可）、电话、地址、封面图。",
   "搜索完成后简要总结找到的信息，不要编造。",
 ].join("");
 
@@ -344,13 +348,15 @@ const STEP2_SYSTEM_PROMPT = [
   "JSON 格式：",
   "{",
   '  "coverImageUrl": "图片直链 URL 或 null",',
-  '  "storeUrl": "大众点评网店铺详情页 URL 或 null",',
+  '  "storeUrl": "店铺详情页 URL 或 null",',
   '  "phone": "电话号码 或 null",',
   '  "address": "完整地址 或 null"',
   "}",
   "",
   "要求：",
-  "- storeUrl 只接受 dianping.com 或 dpurl.cn 域名，其他平台返回 null",
+  "- storeUrl 接受大众点评(dianping.com)、美团(meituan.com)、小红书(xiaohongshu.com)、抖音(douyin.com)、高德(amap.com)、百度地图(baidu.com) 等可信平台",
+  "- 优先选大众点评/美团的店铺详情页，其次小红书/抖音，最后地图类",
+  "- 不要返回视频播放页（如 douyin.com/video/xxx），要店铺主页或图文笔记",
   "- coverImageUrl 必须是图片直链（以 http 开头，结尾为 .jpg/.png/.webp 等）",
   "- 搜索结果中没有的字段返回 null，不要编造",
   "- 只输出 JSON，不要输出任何其他内容",
