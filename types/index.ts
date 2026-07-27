@@ -378,6 +378,10 @@ export interface ParsedScreenshot {
   signatureDishes: string[];
   platform: "xiaohongshu" | "douyin" | "dianping" | "unknown";
   summary: string;
+  /** 评分，如 4.5；识别不到为 null */
+  rating: number | null;
+  /** 人均消费，如 "￥80" 或 "80元"；识别不到为 null */
+  averagePrice: string | null;
 }
 
 /** 账单小票识别结果 */

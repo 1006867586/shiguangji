@@ -151,12 +151,16 @@ function buildPrompt(platformHint?: Platform): string {
     '  "phone": "电话，没有则为 null",',
     '  "signatureDishes": ["招牌菜1", "招牌菜2"],',
     '  "platform": "xiaohongshu | douyin | dianping | unknown",',
+    '  "rating": 4.5,',
+    '  "averagePrice": "￥80",',
     '  "summary": "一句话简介（20字以内）"',
     "}",
     "注意：",
     '- platform 取值只能是 xiaohongshu、douyin、dianping、unknown 之一；小红书=xiaohongshu，抖音=douyin，大众点评=dianping，无法判断=unknown',
     "- signatureDishes 如果没有识别到招牌菜，返回空数组 []",
     "- address/phone 识别不到时必须为 null，而不是空字符串",
+    "- rating 是店铺评分（大众点评/美团等平台的星级评分，如 4.5、4.8），只能是数字，识别不到为 null",
+    "- averagePrice 是人均消费，保留截图里展示的原样（含货币符号或单位，如 ￥80、80元），识别不到为 null",
     "- summary 是对这家店的一句话概括，简短有信息量",
   ]
     .filter(Boolean)
@@ -176,6 +180,21 @@ function normalizeScreenshot(raw: Partial<ParsedScreenshot>): ParsedScreenshot {
         .filter(Boolean)
     : [];
 
+  // rating: AI 可能返回数字或字符串，统一转 number；非有限数字或越界视为 null
+  let rating: number | null = null;
+  if (raw.rating != null) {
+    const n = typeof raw.rating === "number" ? raw.rating : parseFloat(String(raw.rating));
+    if (Number.isFinite(n) && n >= 0 && n <= 5) {
+      rating = Math.round(n * 10) / 10; // 保留一位小数
+    }
+  }
+
+  // averagePrice: 字符串，trim；空字符串视为 null
+  const averagePrice =
+    typeof raw.averagePrice === "string" && raw.averagePrice.trim()
+      ? raw.averagePrice.trim()
+      : null;
+
   return {
     title:
       typeof raw.title === "string" && raw.title.trim()
@@ -191,6 +210,8 @@ function normalizeScreenshot(raw: Partial<ParsedScreenshot>): ParsedScreenshot {
         : null,
     signatureDishes: dishes,
     platform,
+    rating,
+    averagePrice,
     summary:
       typeof raw.summary === "string" && raw.summary.trim()
         ? raw.summary.trim()

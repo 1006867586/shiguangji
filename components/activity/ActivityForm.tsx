@@ -100,10 +100,10 @@ export function ActivityForm({
         url: prev?.url ?? "",
         title: parsed.title || prev?.title || "",
         coverImage: prev?.coverImage ?? null,
-        rating: prev?.rating ?? null,
+        rating: parsed.rating ?? prev?.rating ?? null,
         address: parsed.address || prev?.address || null,
         phone: parsed.phone || prev?.phone || null,
-        price: prev?.price ?? null,
+        price: parsed.averagePrice ?? prev?.price ?? null,
       }));
       // 4. 招牌菜追加到 content
       if (parsed.signatureDishes && parsed.signatureDishes.length > 0) {
