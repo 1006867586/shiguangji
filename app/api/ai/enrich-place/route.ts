@@ -16,7 +16,8 @@ import type { FavoritePlace } from "@/types";
 
 export const dynamic = "force-dynamic";
 // 联网搜索 + 模型生成耗时较长（M3 + web_search 通常 20-50s）
-export const maxDuration = 90;
+// Vercel Hobby 套餐上限 60s，与 parse-favorites-screenshot 保持一致
+export const maxDuration = 60;
 
 /** 联网搜索补齐结果（仅非空字段才会写回数据库） */
 interface EnrichedInfo {
@@ -179,8 +180,8 @@ export async function POST(req: NextRequest) {
           enableWebSearch: true,
           temperature: 0.3,
           maxTokens: 2048,
-          // 留 10s 余量给数据库写回，避免被 maxDuration 硬杀导致前端 "failed to fetch"
-          timeoutMs: 80_000,
+          // 留 10s 余量给 Vercel maxDuration，避免被硬杀导致前端 "failed to fetch"
+          timeoutMs: 50_000,
         }
       );
       aiModel = aiResult.model;
@@ -268,12 +269,20 @@ export async function POST(req: NextRequest) {
     if (e instanceof UnauthorizedError) {
       return jsonResponse({ error: "未登录" }, { status: 401 });
     }
-    const fallback =
+    // 调试期：透传错误类型与原始消息，便于前端 Network 面板直接看到原因
+    // 生产稳定后可改回 safeErrorMessage(e, fallback) 的简短提示
+    const errType =
       e instanceof MiniMaxAnthropicError
-        ? "联网搜索失败，请稍后重试"
-        : "服务器错误";
+        ? "MiniMaxAnthropicError"
+        : e instanceof Error
+        ? e.name
+        : "Unknown";
+    const errMsg = e instanceof Error ? e.message : String(e);
     return jsonResponse(
-      { error: safeErrorMessage(e, fallback) },
+      {
+        error: `联网搜索失败 [${errType}]: ${errMsg}`,
+        code: e instanceof MiniMaxAnthropicError ? e.statusCode : undefined,
+      },
       { status: 500 }
     );
   }

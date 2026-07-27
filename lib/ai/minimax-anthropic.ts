@@ -122,8 +122,8 @@ export async function chat(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": cfg.apiKey,
-        // Authorization 优先级高于 x-api-key，同时携带以兼容不同鉴权配置
+        // MiniMax Anthropic 端点兼容 Authorization: Bearer 与 x-api-key 两种鉴权方式，
+        // 二者取一即可（同时携带时 Authorization 优先）。统一用 Bearer 与 OpenAI 接口保持一致。
         Authorization: `Bearer ${cfg.apiKey}`,
         "anthropic-version": ANTHROPIC_VERSION,
       },
@@ -140,7 +140,7 @@ export async function chat(
         );
       }
       throw new MiniMaxAnthropicError(
-        `MiniMax (Anthropic) API 调用失败 (${res.status}): ${errText.slice(0, 200)}`,
+        `MiniMax (Anthropic) API 调用失败 (${res.status}): ${errText.slice(0, 300)}`,
         res.status
       );
     }
