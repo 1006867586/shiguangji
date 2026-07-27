@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Plus, User, Users } from "lucide-react";
+import { Home, Plus, User, Users, UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/", label: "动态", icon: Home },
+  { href: "/meal-roulette", label: "吃什么", icon: UtensilsCrossed },
   { href: "/new", label: "发起", icon: Plus, center: true },
   { href: "/groups", label: "团体", icon: Users },
   { href: "/profile", label: "我", icon: User },

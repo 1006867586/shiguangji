@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Link2, Sparkles, X, Camera, ChevronDown } from "lucide-react";
+import { Loader2, Link2, Sparkles, X, Camera, ChevronDown, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,13 +22,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { GroupSelector } from "@/components/group/GroupSelector";
 import { ExternalLinkCard } from "@/components/activity/ExternalLinkCard";
+import { FavoritePlacePicker } from "@/components/activity/FavoritePlacePicker";
 import { createActivity } from "@/hooks/useActivity";
 import { useAiParseScreenshot, useAiCopywrite } from "@/hooks/useAi";
 import { useUpload } from "@/hooks/useUpload";
 import { useAiEnabled } from "@/hooks/useAiEnabled";
 import { fetchData } from "@/lib/fetcher";
 import { isUrl, detectPlatform, extractUrlFromText } from "@/lib/utils";
-import type { ExternalLink, Group } from "@/types";
+import type { ExternalLink, FavoritePlace, Group } from "@/types";
 
 /** 文案风格选项 */
 const COPY_STYLES = [
@@ -74,6 +75,8 @@ export function ActivityForm({
   const [copyStyle, setCopyStyle] = useState<CopyStyleValue>("casual");
   const [copiesOpen, setCopiesOpen] = useState(false);
   const [dialogCopies, setDialogCopies] = useState<string[]>([]);
+  // 收藏夹选取器
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!groupId && groups[0]) setGroupId(groups[0].id);
@@ -115,6 +118,25 @@ export function ActivityForm({
 
   const triggerScreenshot = () => {
     screenshotInputRef.current?.click();
+  };
+
+  // ---- 从收藏夹选取：选中后回填 externalLink + 招牌菜追加到 content ----
+  const handlePickFavorite = (place: FavoritePlace) => {
+    setExternalLink((prev) => ({
+      platform: prev?.platform ?? "other",
+      url: prev?.url ?? "",
+      title: place.title || prev?.title || "",
+      coverImage: prev?.coverImage ?? null,
+      rating: prev?.rating ?? null,
+      address: place.address || prev?.address || null,
+      phone: place.phone || prev?.phone || null,
+      price: prev?.price ?? null,
+    }));
+    if (place.signature_dishes.length > 0) {
+      const dishesText = `招牌菜：${place.signature_dishes.join("、")}`;
+      setContent((prev) => (prev ? `${prev}\n${dishesText}` : dishesText));
+    }
+    toast.success("已从收藏夹填入");
   };
 
   // ---- AI 文案生成：取店名 → 生成 3 版 → 弹选择器 ----
@@ -380,38 +402,47 @@ export function ActivityForm({
             </Button>
           </div>
 
-          {/* AI 截图识别：上传图片自动回填店名/地址/电话 */}
-          {aiEnabled ? (
-            <div className="flex items-center gap-2">
-              <input
-                ref={screenshotInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleScreenshot}
-                className="hidden"
-                aria-hidden="true"
-                tabIndex={-1}
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={triggerScreenshot}
-                disabled={screenshotBusy}
-                className="gap-1 text-xs text-primary hover:text-primary touch-manipulation active:scale-[0.97]"
-              >
-                {screenshotBusy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Camera className="h-3.5 w-3.5" />
-                )}
-                {screenshotLabel}
-              </Button>
-              <span className="text-[11px] text-muted-foreground">
-                小红书/抖音/点评截图均可
-              </span>
-            </div>
-          ) : null}
+          {/* AI 截图识别 / 从收藏夹选取：自动回填店名/地址/电话 */}
+          <div className="flex flex-wrap items-center gap-2">
+            {aiEnabled ? (
+              <>
+                <input
+                  ref={screenshotInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleScreenshot}
+                  className="hidden"
+                  aria-hidden="true"
+                  tabIndex={-1}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={triggerScreenshot}
+                  disabled={screenshotBusy}
+                  className="gap-1 text-xs text-primary hover:text-primary touch-manipulation active:scale-[0.97]"
+                >
+                  {screenshotBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="h-3.5 w-3.5" />
+                  )}
+                  {screenshotLabel}
+                </Button>
+              </>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setPickerOpen(true)}
+              className="gap-1 text-xs text-primary hover:text-primary touch-manipulation active:scale-[0.97]"
+            >
+              <Bookmark className="h-3.5 w-3.5" />
+              从收藏夹选取
+            </Button>
+          </div>
 
           {externalLink ? (
             <div className="space-y-3 rounded-xl border border-border/70 bg-card p-3 shadow-xs">
@@ -556,6 +587,13 @@ export function ActivityForm({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 从收藏夹选取 */}
+      <FavoritePlacePicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onPick={handlePickFavorite}
+      />
     </div>
   );
 }

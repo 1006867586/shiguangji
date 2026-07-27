@@ -436,3 +436,35 @@ export interface CreateFavoritePlacesBody {
     summary?: string;
   }>;
 }
+
+/** 「今天吃什么」转盘候选项（团体级共享） */
+export interface MealRouletteItem {
+  id: UUID;
+  group_id: UUID;
+  title: string;
+  address: string | null;
+  phone: string | null;
+  signature_dishes: string[];
+  added_by: UUID;
+  created_at: string;
+  /** 关联添加者资料（列表接口附带） */
+  adder?: Pick<Profile, "id" | "nickname" | "avatar_url"> | null;
+}
+
+/** 新增候选项请求体 */
+export interface CreateMealRouletteItemBody {
+  title: string;
+  address?: string | null;
+  phone?: string | null;
+  signatureDishes?: string[];
+}
+
+/** 批量导入候选项请求体（从收藏夹导入） */
+export interface ImportMealRouletteItemsBody {
+  items: Array<{
+    title: string;
+    address?: string | null;
+    phone?: string | null;
+    signatureDishes?: string[];
+  }>;
+}
