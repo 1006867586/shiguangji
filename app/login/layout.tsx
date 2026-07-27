@@ -5,5 +5,9 @@ export default function LoginLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <div className="min-h-dvh bg-[#f5f6f7]">
+      {children}
+    </div>
+  );
 }
