@@ -179,13 +179,13 @@ describe("detectPlatform", () => {
     expect(detectPlatform("https://dpurl.com/abc")).toBe("dianping");
   });
 
-  it("美团链接归一为大众点评", () => {
-    // 业务统一：店铺详情页链接统一使用大众点评，美团也归一为 dianping
-    expect(detectPlatform("https://meituan.com/restaurant/456")).toBe("dianping");
+  it("识别美团链接", () => {
+    // 用户粘贴的美团链接保持原平台标记，不归一化
+    expect(detectPlatform("https://meituan.com/restaurant/456")).toBe("meituan");
   });
 
-  it("识别 meituanwa 域名（归一为 dianping）", () => {
-    expect(detectPlatform("https://meituanwa.com/x")).toBe("dianping");
+  it("识别 meituanwa 域名", () => {
+    expect(detectPlatform("https://meituanwa.com/x")).toBe("meituan");
   });
 
   it("其他链接返回 other", () => {
