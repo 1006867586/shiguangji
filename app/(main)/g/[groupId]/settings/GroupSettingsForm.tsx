@@ -51,7 +51,7 @@ function Toggle({
 }
 
 /**
- * GroupSettingsForm — 团体设置表单。
+ * GroupSettingsForm — 圈子设置表单。
  * 编辑头像/名称/简介/邀请码/设置开关；保存调用 updateGroup。
  */
 export function GroupSettingsForm({ group }: GroupSettingsFormProps) {
@@ -71,7 +71,7 @@ export function GroupSettingsForm({ group }: GroupSettingsFormProps) {
   const handleSave = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      toast.error("团体名称不能为空");
+      toast.error("圈子名称不能为空");
       return;
     }
     try {
@@ -111,7 +111,7 @@ export function GroupSettingsForm({ group }: GroupSettingsFormProps) {
       <section className="rounded-xl border border-border bg-card p-4">
         <AvatarUploader
           value={avatarUrl}
-          nickname={name || "团体"}
+          nickname={name || "圈子"}
           onChange={setAvatarUrl}
           size={80}
         />
@@ -120,26 +120,26 @@ export function GroupSettingsForm({ group }: GroupSettingsFormProps) {
       {/* 基本信息 */}
       <section className="space-y-3 rounded-xl border border-border bg-card p-4">
         <div className="space-y-1.5">
-          <Label htmlFor="group-name">团体名称</Label>
+          <Label htmlFor="group-name">圈子名称</Label>
           <Input
             id="group-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={50}
-            placeholder="输入团体名称"
+            placeholder="输入圈子名称"
           />
           <p className="text-xs text-muted-foreground">
             {name.length}/50
           </p>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="group-desc">团体简介</Label>
+          <Label htmlFor="group-desc">圈子简介</Label>
           <Textarea
             id="group-desc"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={500}
-            placeholder="介绍一下这个团体（选填）"
+            placeholder="介绍一下这个圈子（选填）"
             rows={3}
           />
           <p className="text-xs text-muted-foreground">
@@ -172,7 +172,7 @@ export function GroupSettingsForm({ group }: GroupSettingsFormProps) {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            分享邀请码或链接让朋友加入团体
+            分享邀请码或链接让朋友加入圈子
           </p>
         </div>
       </section>

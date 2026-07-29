@@ -41,7 +41,7 @@ function isActivityRelevant(
 }
 
 /**
- * 订阅某团体的 activities / activity_photos / comments 变更。
+ * 订阅某圈子的 activities / activity_photos / comments 变更。
  * photo/comment/like 表无 group_id 列,通过 getActivityIds() 在客户端过滤,
  * 避免监听全表带来的跨群泄露与噪音。
  * 返回 unsubscribe 函数。

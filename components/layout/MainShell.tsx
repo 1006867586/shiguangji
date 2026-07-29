@@ -7,7 +7,7 @@ interface MainShellProps {
   children: ReactNode;
   /** 顶部标题 */
   title?: string;
-  /** 是否显示团体选择器 */
+  /** 是否显示圈子选择器 */
   showGroupSelector?: boolean;
   currentGroupId?: string;
   /** 右上角操作 */

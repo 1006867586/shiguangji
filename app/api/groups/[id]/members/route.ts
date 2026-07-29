@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/groups/[id]/members — 获取团体成员列表
- * 仅团体成员可调用，按 joined_at 升序返回。
+ * GET /api/groups/[id]/members — 获取圈子成员列表
+ * 仅圈子成员可调用，按 joined_at 升序返回。
  * 返回 { data: GroupMember[] }，每项含 profile: { id, nickname, avatar_url }。
  *
  * 注意：group_members.user_id 指向 auth.users 而非 profiles，
@@ -29,7 +29,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验当前用户为团体成员
+    // 校验当前用户为圈子成员
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")

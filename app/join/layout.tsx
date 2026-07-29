@@ -1,4 +1,4 @@
-export const metadata = { title: "加入团体" };
+export const metadata = { title: "加入圈子" };
 
 export default function JoinLayout({
   children,

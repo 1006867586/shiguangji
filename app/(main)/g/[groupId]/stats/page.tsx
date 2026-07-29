@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     .select("name")
     .eq("id", groupId)
     .maybeSingle();
-  return { title: data?.name ? `${data.name} · 统计` : "团体统计" };
+  return { title: data?.name ? `${data.name} · 统计` : "圈子统计" };
 }
 
 export default async function GroupStatsPage({ params }: Params) {
@@ -30,7 +30,7 @@ export default async function GroupStatsPage({ params }: Params) {
 
   const supabase = await createServerClient();
 
-  // 校验团体存在且当前用户为成员
+  // 校验圈子存在且当前用户为成员
   const { data: membership } = await supabase
     .from("group_members")
     .select("role, group:groups!inner(id, name)")

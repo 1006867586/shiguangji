@@ -5,7 +5,7 @@ import { APP_NAME } from "@/lib/constants";
 
 // OG 图片需要在 edge runtime 运行
 export const runtime = "edge";
-export const alt = `${APP_NAME} - 团体`;
+export const alt = `${APP_NAME} - 圈子`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -15,14 +15,14 @@ export default async function GroupOGImage({ params }: Params) {
   const { groupId } = await params;
 
   // 默认值
-  let groupName = "飨刻团体";
+  let groupName = "飨刻圈子";
   let description = "";
   let memberCount = 0;
 
   try {
     const supabase = createAdminClient();
 
-    // 并行获取团体信息与成员数
+    // 并行获取圈子信息与成员数
     const [groupRes, countRes] = await Promise.all([
       supabase
         .from("groups")
@@ -93,7 +93,7 @@ export default async function GroupOGImage({ params }: Params) {
           </div>
         </div>
 
-        {/* 团体名 */}
+        {/* 圈子名 */}
         <div
           style={{
             display: "flex",
@@ -142,7 +142,7 @@ export default async function GroupOGImage({ params }: Params) {
             {memberCount} 位成员
           </div>
           <div style={{ display: "flex" }}>·</div>
-          <div style={{ display: "flex" }}>邀请你加入团体</div>
+          <div style={{ display: "flex" }}>邀请你加入圈子</div>
         </div>
       </div>
     ),

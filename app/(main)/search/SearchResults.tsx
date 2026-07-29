@@ -83,7 +83,7 @@ export function SearchResults() {
         </div>
         {groupId ? (
           <div className="flex items-center gap-1.5 px-3 pb-1.5 text-xs text-muted-foreground">
-            <span>在当前团体内搜索</span>
+            <span>在当前圈子内搜索</span>
             <button
               type="button"
               onClick={() => router.push("/search")}

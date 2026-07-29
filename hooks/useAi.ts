@@ -117,7 +117,7 @@ export function useAiCopywrite(): UseAiCopywriteReturn {
 }
 
 // ============================================================
-// useAiInviteText — 为分享到其他团体生成邀请文案
+// useAiInviteText — 为分享到其他圈子生成邀请文案
 // ============================================================
 
 interface UseAiInviteTextReturn {

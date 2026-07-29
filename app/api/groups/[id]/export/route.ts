@@ -16,7 +16,7 @@ function formatDateForFilename(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** 将团体名清洗为文件名安全的 ASCII 片段；非 ASCII 用拼音占位或保留 slug */
+/** 将圈子名清洗为文件名安全的 ASCII 片段；非 ASCII 用拼音占位或保留 slug */
 function sanitizeGroupNameForFilename(name: string): string {
   if (!name) return "group";
   // 移除文件名危险字符：路径分隔符、控制字符、引号等
@@ -29,9 +29,9 @@ function sanitizeGroupNameForFilename(name: string): string {
 }
 
 /**
- * GET /api/groups/[id]/export — 导出团体所有活动为 JSON
+ * GET /api/groups/[id]/export — 导出圈子所有活动为 JSON
  * 返回 Content-Disposition: attachment; filename="xiangke-{groupName}-{date}.json"
- * 仅团体成员可调用。包含该团体的所有 activities + photos + comments + tags + ratings + rsvp。
+ * 仅圈子成员可调用。包含该圈子的所有 activities + photos + comments + tags + ratings + rsvp。
  */
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
@@ -43,7 +43,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验团体存在 + 当前用户为成员
+    // 校验圈子存在 + 当前用户为成员
     const { data: group, error: groupErr } = await supabase
       .from("groups")
       .select("id, name, description, avatar_url, invite_code, created_by, created_at, updated_at, settings")
@@ -51,7 +51,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       .maybeSingle();
 
     if (groupErr || !group) {
-      return jsonResponse({ error: "团体不存在" }, { status: 404 });
+      return jsonResponse({ error: "圈子不存在" }, { status: 404 });
     }
 
     const { data: membership } = await supabase
@@ -65,7 +65,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "无权访问" }, { status: 403 });
     }
 
-    // 拉取团体所有活动（含作者 + 转发源摘要）
+    // 拉取圈子所有活动（含作者 + 转发源摘要）
     const { data: activities, error: actErr } = await supabase
       .from("activities")
       .select(

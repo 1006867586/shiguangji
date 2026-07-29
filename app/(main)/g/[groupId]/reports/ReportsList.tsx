@@ -96,7 +96,7 @@ export function ReportsList({ groupId }: ReportsListProps) {
       <EmptyState
         icon={<Flag className="h-10 w-10" />}
         title="暂无举报"
-        description="团体内没有被举报的内容"
+        description="圈子内没有被举报的内容"
       />
     );
   }

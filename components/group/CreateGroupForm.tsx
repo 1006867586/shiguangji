@@ -20,7 +20,7 @@ export function CreateGroupForm() {
 
   const submit = async () => {
     if (!name.trim()) {
-      toast.error("团体名称不能为空");
+      toast.error("圈子名称不能为空");
       return;
     }
     setSubmitting(true);
@@ -33,7 +33,7 @@ export function CreateGroupForm() {
           avatarUrl: avatarUrl.trim() || undefined,
         }),
       });
-      toast.success("团体创建成功");
+      toast.success("圈子创建成功");
       router.push(`/g/${group.id}`);
       router.refresh();
     } catch (e) {
@@ -46,7 +46,7 @@ export function CreateGroupForm() {
   return (
     <div className="space-y-5 p-4">
       <div className="space-y-1.5">
-        <Label htmlFor="name">团体名称 *</Label>
+        <Label htmlFor="name">圈子名称 *</Label>
         <Input
           id="name"
           name="group-name"
@@ -59,13 +59,13 @@ export function CreateGroupForm() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="desc">团体简介（可选）</Label>
+        <Label htmlFor="desc">圈子简介（可选）</Label>
         <Textarea
           id="desc"
           name="group-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="一句话介绍这个团体"
+          placeholder="一句话介绍这个圈子"
           rows={3}
           maxLength={200}
           autoComplete="off"
@@ -73,7 +73,7 @@ export function CreateGroupForm() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="avatar">团体头像 URL（可选）</Label>
+        <Label htmlFor="avatar">圈子头像 URL（可选）</Label>
         <Input
           id="avatar"
           name="group-avatar"
@@ -107,7 +107,7 @@ export function CreateGroupForm() {
           className="shadow-sm touch-manipulation active:scale-[0.97]"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          创建团体
+          创建圈子
         </Button>
       </div>
     </div>

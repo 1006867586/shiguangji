@@ -17,7 +17,7 @@ function formatDateForFilename(d: Date): string {
 
 /**
  * GET /api/activities/[id]/export — 导出单个活动为 JSON
- * 返回 Content-Disposition: attachment，仅团体成员可调用。
+ * 返回 Content-Disposition: attachment，仅圈子成员可调用。
  * 含活动本身 + 所有照片 + 所有评论（含楼中楼） + 标签 + 评分 + RSVP + 分账。
  */
 export async function GET(_request: NextRequest, { params }: Params) {
@@ -44,7 +44,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "活动不存在" }, { status: 404 });
     }
 
-    // 校验当前用户为团体成员
+    // 校验当前用户为圈子成员
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")

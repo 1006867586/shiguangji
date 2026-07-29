@@ -5,7 +5,7 @@ import { CreateGroupForm } from "@/components/group/CreateGroupForm";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "创建团体" };
+export const metadata = { title: "创建圈子" };
 
 export default function NewGroupPage() {
   return (
@@ -17,7 +17,7 @@ export default function NewGroupPage() {
               <ChevronLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <h1 className="font-display text-lg font-semibold tracking-tight">创建团体</h1>
+          <h1 className="font-display text-lg font-semibold tracking-tight">创建圈子</h1>
         </div>
       </header>
       <CreateGroupForm />

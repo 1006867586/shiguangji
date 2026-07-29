@@ -174,9 +174,9 @@ export async function POST(request: NextRequest, { params }: Params) {
       );
     }
 
-    // 解析 @提及并为被提及的同团体成员创建 mention 通知（best-effort，失败不阻塞评论创建）
+    // 解析 @提及并为被提及的同圈子成员创建 mention 通知（best-effort，失败不阻塞评论创建）
     try {
-      // 拉取团体成员 + profile 用于昵称匹配
+      // 拉取圈子成员 + profile 用于昵称匹配
       const { data: members } = await supabase
         .from("group_members")
         .select("user_id")

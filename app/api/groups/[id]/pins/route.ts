@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/groups/[id]/pins — 获取团体置顶活动列表
+ * GET /api/groups/[id]/pins — 获取圈子置顶活动列表
  * 返回 { data: Activity[] }（按 pinned_at 倒序），每条 Activity.is_pinned = true。
  */
 export async function GET(_request: NextRequest, { params }: Params) {
@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验当前用户为团体成员
+    // 校验当前用户为圈子成员
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")
@@ -34,7 +34,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "无权访问" }, { status: 403 });
     }
 
-    // 主查询：activity_pins INNER JOIN activities + author，仅返回本团体的置顶
+    // 主查询：activity_pins INNER JOIN activities + author，仅返回本圈子的置顶
     const { data: pinRows, error: pinErr } = await supabase
       .from("activity_pins")
       .select(

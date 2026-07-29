@@ -1,7 +1,7 @@
 import { createServerClient, getCurrentUser } from "./supabase/server";
 import type { Group } from "@/types";
 
-/** 获取当前用户加入的团体（服务端） */
+/** 获取当前用户加入的圈子（服务端） */
 export async function getServerGroups(): Promise<
   { groups: Group[]; userId: string | null }
 > {
@@ -16,7 +16,7 @@ export async function getServerGroups(): Promise<
     .order("joined_at", { ascending: false });
 
   if (error) {
-    console.error("获取用户团体失败:", error.message);
+    console.error("获取用户圈子失败:", error.message);
     return { groups: [], userId: user.id };
   }
 

@@ -5,7 +5,7 @@ import type { JoinGroupBody } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-/** POST /api/groups/join — 通过邀请码加入团体 */
+/** POST /api/groups/join — 通过邀请码加入圈子 */
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUser();
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     if (joinErr || !group) {
       return jsonResponse(
-        { error: safeErrorMessage(joinErr, "邀请码无效或团体不存在") },
+        { error: safeErrorMessage(joinErr, "邀请码无效或圈子不存在") },
         { status: 404 }
       );
     }

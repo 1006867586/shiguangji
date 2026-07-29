@@ -35,7 +35,7 @@ export default async function ProfilePage() {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-tight">
             <Users className="h-4 w-4 text-primary" />
-            我的团体
+            我的圈子
             <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
               {groups.length}
             </span>
@@ -69,7 +69,7 @@ export default async function ProfilePage() {
           ))}
           {groups.length === 0 ? (
             <p className="py-2 text-center text-xs text-muted-foreground">
-              还未加入任何团体
+              还未加入任何圈子
             </p>
           ) : null}
         </div>

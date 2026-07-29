@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { href: "/", label: "动态", icon: Home },
   { href: "/meal-roulette", label: "吃什么", icon: UtensilsCrossed },
   { href: "/new", label: "发起", icon: Plus, center: true },
-  { href: "/groups", label: "团体", icon: Users },
+  { href: "/groups", label: "圈子", icon: Users },
   { href: "/profile", label: "我", icon: User },
 ];
 

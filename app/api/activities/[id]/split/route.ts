@@ -66,7 +66,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验活动存在 + 当前用户为团体成员
+    // 校验活动存在 + 当前用户为圈子成员
     const { data: activity } = await supabase
       .from("activities")
       .select("id, group_id")
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参与者 ID 不合法" }, { status: 400 });
     }
 
-    // 一次性校验：创建者自身 + 所有参与者均为团体成员
+    // 一次性校验：创建者自身 + 所有参与者均为圈子成员
     const allUserIds = Array.from(new Set([user.id, ...participantIds]));
     const { data: members } = await supabase
       .from("group_members")
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     const nonMembers = participantIds.filter((uid) => !memberSet.has(uid));
     if (nonMembers.length > 0) {
       return jsonResponse(
-        { error: "参与者必须都是团体成员" },
+        { error: "参与者必须都是圈子成员" },
         { status: 403 }
       );
     }

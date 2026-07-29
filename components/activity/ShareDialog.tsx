@@ -53,7 +53,7 @@ export function ShareDialog({
   // ---- AI 邀请文案：调 AI 生成 2-3 版 → 弹选择器 ----
   const handleGenerateInvite = async () => {
     if (!targetId || !targetGroupName) {
-      toast.info("请先选择要分享到的团体");
+      toast.info("请先选择要分享到的圈子");
       return;
     }
     try {
@@ -78,7 +78,7 @@ export function ShareDialog({
     toast.success("已填入邀请文案");
   };
 
-  // 打开时拉取用户已加入的团体，并排除原活动所在团体
+  // 打开时拉取用户已加入的圈子，并排除原活动所在圈子
   useEffect(() => {
     if (!open) return;
     setLoading(true);
@@ -91,7 +91,7 @@ export function ShareDialog({
         setTargetId(filtered[0]?.id ?? "");
       })
       .catch((e) => {
-        toast.error(e instanceof Error ? e.message : "获取团体列表失败");
+        toast.error(e instanceof Error ? e.message : "获取圈子列表失败");
         setGroups([]);
       })
       .finally(() => setLoading(false));
@@ -99,7 +99,7 @@ export function ShareDialog({
 
   const handleShare = async () => {
     if (!targetId) {
-      toast.error("请选择要分享到的团体");
+      toast.error("请选择要分享到的圈子");
       return;
     }
     setSubmitting(true);
@@ -109,7 +109,7 @@ export function ShareDialog({
         comment: comment.trim() || undefined,
       });
       const target = groups.find((g) => g.id === targetId);
-      toast.success(`已分享到「${target?.name ?? "团体"}」`);
+      toast.success(`已分享到「${target?.name ?? "圈子"}」`);
       onShared?.();
       onOpenChange(false);
     } catch (e) {
@@ -124,7 +124,7 @@ export function ShareDialog({
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Share2 className="h-5 w-5" /> 分享到团体
+            <Share2 className="h-5 w-5" /> 分享到圈子
           </DialogTitle>
         </DialogHeader>
 
@@ -142,7 +142,7 @@ export function ShareDialog({
             ) : null}
           </div>
 
-          {/* 目标团体选择 */}
+          {/* 目标圈子选择 */}
           <div className="space-y-1.5">
             <Label htmlFor="share-target">分享到</Label>
             {loading ? (
@@ -152,13 +152,13 @@ export function ShareDialog({
             ) : groups.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
                 <Users className="mx-auto mb-2 h-6 w-6" />
-                你还没有其他可分享的团体
+                你还没有其他可分享的圈子
                 <p className="mt-1 text-xs">
-                  请先加入或创建另一个团体
+                  请先加入或创建另一个圈子
                 </p>
               </div>
             ) : (
-              <div className="space-y-1.5" id="share-target" role="radiogroup" aria-label="选择分享到的团体">
+              <div className="space-y-1.5" id="share-target" role="radiogroup" aria-label="选择分享到的圈子">
                 {groups.map((g) => (
                   <button
                     key={g.id}

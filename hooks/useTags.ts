@@ -6,7 +6,7 @@ import { fetchData, fetcher } from "@/lib/fetcher";
 import type { Tag } from "@/types";
 
 /**
- * useGroupTags — 获取团体标签列表（SWR 自动去重/竞态抑制/缓存）
+ * useGroupTags — 获取圈子标签列表（SWR 自动去重/竞态抑制/缓存）
  */
 export function useGroupTags(groupId: string | null) {
   const { data, error, mutate, isLoading } = useSWR<Tag[]>(

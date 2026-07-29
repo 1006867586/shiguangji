@@ -36,7 +36,7 @@ export async function generateMetadata({
     .select("name")
     .eq("id", groupId)
     .maybeSingle();
-  return { title: data?.name ?? "团体" };
+  return { title: data?.name ?? "圈子" };
 }
 
 export default async function GroupFeedPage({ params }: Params) {
@@ -48,7 +48,7 @@ export default async function GroupFeedPage({ params }: Params) {
 
   const supabase = await createServerClient();
 
-  // 校验团体存在且用户是成员；与 getServerGroups 无依赖，并行执行
+  // 校验圈子存在且用户是成员；与 getServerGroups 无依赖，并行执行
   const [membershipRes, { groups }] = await Promise.all([
     supabase
       .from("group_members")
@@ -97,7 +97,7 @@ export default async function GroupFeedPage({ params }: Params) {
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9"
-                  aria-label="团体管理"
+                  aria-label="圈子管理"
                 >
                   <SettingsIcon className="h-5 w-5" />
                 </Button>
@@ -105,7 +105,7 @@ export default async function GroupFeedPage({ params }: Params) {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
                   <Link href={`/g/${groupId}/stats`}>
-                    <BarChart3 className="h-4 w-4" /> 团体统计
+                    <BarChart3 className="h-4 w-4" /> 圈子统计
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -116,7 +116,7 @@ export default async function GroupFeedPage({ params }: Params) {
                 {isAdmin ? (
                   <DropdownMenuItem asChild>
                     <Link href={`/g/${groupId}/settings`}>
-                      <SettingsIcon className="h-4 w-4" /> 团体设置
+                      <SettingsIcon className="h-4 w-4" /> 圈子设置
                     </Link>
                   </DropdownMenuItem>
                 ) : null}

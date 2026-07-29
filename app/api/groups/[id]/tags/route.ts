@@ -14,7 +14,7 @@ type Params = { params: Promise<{ id: string }> };
 /** 标签名称最大长度 */
 const MAX_TAG_NAME_LENGTH = 20;
 
-/** GET /api/groups/[id]/tags — 获取团体所有标签（按 name 排序） */
+/** GET /api/groups/[id]/tags — 获取圈子所有标签（按 name 排序） */
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
     const user = await requireUser();
@@ -25,7 +25,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验当前用户为团体成员
+    // 校验当前用户为圈子成员
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验当前用户为团体成员
+    // 校验当前用户为圈子成员
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       );
     }
 
-    // 先查现有（团体内 name 唯一），存在则直接返回，避免触发唯一约束错误
+    // 先查现有（圈子内 name 唯一），存在则直接返回，避免触发唯一约束错误
     const { data: existing } = await supabase
       .from("tags")
       .select("id, group_id, name, created_by, created_at")

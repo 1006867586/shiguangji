@@ -31,8 +31,8 @@ export default async function MealRoulettePage() {
       <div className="p-4">
         {groups.length === 0 ? (
           <EmptyState
-            title="请先加入或创建团体"
-            description="「今天吃什么」是团体共享的转盘候选池，需要先有一个团体"
+            title="请先加入或创建圈子"
+            description="「今天吃什么」是圈子共享的转盘候选池，需要先有一个圈子"
           />
         ) : (
           <MealRouletteClient groups={groups} defaultGroupId={groups[0].id} />

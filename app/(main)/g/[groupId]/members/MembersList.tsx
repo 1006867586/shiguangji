@@ -32,7 +32,7 @@ interface MembersListProps {
 
 /**
  * MembersList — 客户端成员管理列表。
- * 展示成员头像/昵称/角色/加入时间；admin 可移除普通成员、转让管理员、退出团体。
+ * 展示成员头像/昵称/角色/加入时间；admin 可移除普通成员、转让管理员、退出圈子。
  */
 export function MembersList({
   groupId,
@@ -82,13 +82,13 @@ export function MembersList({
 
   const handleLeave = async () => {
     if (isAdmin && adminCount <= 1) {
-      toast.error("你是唯一管理员，无法退出。请先转让管理员或解散团体。");
+      toast.error("你是唯一管理员，无法退出。请先转让管理员或解散圈子。");
       return;
     }
-    if (!confirm("确定退出该团体吗？退出后将无法查看团体动态。")) return;
+    if (!confirm("确定退出该圈子吗？退出后将无法查看圈子动态。")) return;
     try {
       await leaveGroup();
-      toast.success("已退出团体");
+      toast.success("已退出圈子");
       router.push("/");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "退出失败");
@@ -211,7 +211,7 @@ export function MembersList({
         onClick={handleLeave}
       >
         <LogOut className="h-4 w-4" />
-        退出团体
+        退出圈子
       </Button>
     </div>
   );

@@ -76,7 +76,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "分账不存在" }, { status: 404 });
     }
 
-    // 校验当前用户为分账所在团体的成员
+    // 校验当前用户为分账所在圈子的成员
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")

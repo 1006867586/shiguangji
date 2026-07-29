@@ -11,14 +11,14 @@ interface GroupFeedLoaderProps {
 }
 
 /**
- * 根据上次访问的团体 ID 加载对应 Feed。
- * 优先读取 localStorage 中的 lastGroupId，回退到第一个团体。
- * 同时监听 GroupSelector 的切换事件，实现团体切换。
+ * 根据上次访问的圈子 ID 加载对应 Feed。
+ * 优先读取 localStorage 中的 lastGroupId，回退到第一个圈子。
+ * 同时监听 GroupSelector 的切换事件，实现圈子切换。
  */
 export function GroupFeedLoader({ groups, userId }: GroupFeedLoaderProps) {
   const [currentGroupId, setCurrentGroupId] = useState<string>(groups[0]?.id);
 
-  // 读取上次访问的团体
+  // 读取上次访问的圈子
   useEffect(() => {
     const last = localStorage.getItem(STORAGE_KEYS.lastGroupId);
     if (last && groups.some((g) => g.id === last)) {
@@ -26,7 +26,7 @@ export function GroupFeedLoader({ groups, userId }: GroupFeedLoaderProps) {
     }
   }, [groups]);
 
-  // 监听团体切换事件（来自 GroupSelector）
+  // 监听圈子切换事件（来自 GroupSelector）
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ groupId: string }>).detail;
@@ -39,7 +39,7 @@ export function GroupFeedLoader({ groups, userId }: GroupFeedLoaderProps) {
     return () => window.removeEventListener("group-change", handler);
   }, []);
 
-  // 持久化当前团体
+  // 持久化当前圈子
   useEffect(() => {
     if (currentGroupId) {
       localStorage.setItem(STORAGE_KEYS.lastGroupId, currentGroupId);

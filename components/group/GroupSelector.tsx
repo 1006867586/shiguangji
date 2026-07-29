@@ -18,11 +18,11 @@ import { STORAGE_KEYS } from "@/lib/constants";
 import type { Group } from "@/types";
 
 interface GroupSelectorProps {
-  /** 服务端预取的团体列表（可选） */
+  /** 服务端预取的圈子列表（可选） */
   initialGroups?: Group[];
-  /** 受控当前团体 ID */
+  /** 受控当前圈子 ID */
   currentGroupId?: string;
-  /** 选中团体回调 */
+  /** 选中圈子回调 */
   onSelect?: (group: Group) => void;
   /** 是否持久化到 localStorage（用于首页 lastGroupId） */
   storageKey?: "lastGroupId";
@@ -51,7 +51,7 @@ export function GroupSelector({
       .then((data) => setGroups(data))
       .catch((e) => {
         setGroups([]);
-        setError(e instanceof Error ? e.message : "加载团体列表失败");
+        setError(e instanceof Error ? e.message : "加载圈子列表失败");
       })
       .finally(() => setLoading(false));
   }, []);
@@ -61,7 +61,7 @@ export function GroupSelector({
     if (!initialGroups) load();
   }, [initialGroups, load]);
 
-  // 读取 localStorage 中上次访问的团体
+  // 读取 localStorage 中上次访问的圈子
   useEffect(() => {
     if (storageKey && groups.length > 0) {
       const last = localStorage.getItem(STORAGE_KEYS.lastGroupId);
@@ -83,7 +83,7 @@ export function GroupSelector({
         new CustomEvent("group-change", { detail: { groupId: g.id } })
       );
     } else {
-      // 非首页：跳转到该团体 Feed 页
+      // 非首页：跳转到该圈子 Feed 页
       router.push(`/g/${g.id}`);
     }
   };
@@ -117,19 +117,19 @@ export function GroupSelector({
         >
           <Users className="h-4 w-4 text-primary/70" strokeWidth={2} />
           <span className="max-w-[140px] truncate">
-            {current?.name ?? (loading ? "加载中…" : "选择团体")}
+            {current?.name ?? (loading ? "加载中…" : "选择圈子")}
           </span>
           <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
         <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground">
-          我的团体
+          我的圈子
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {groups.length === 0 ? (
           <div className="px-2 py-3 text-sm text-muted-foreground">
-            还未加入任何团体
+            还未加入任何圈子
           </div>
         ) : (
           groups.map((g) => (
@@ -148,7 +148,7 @@ export function GroupSelector({
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link href="/groups/new" className="cursor-pointer">
-            <Plus className="h-4 w-4" /> 创建新团体
+            <Plus className="h-4 w-4" /> 创建新圈子
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

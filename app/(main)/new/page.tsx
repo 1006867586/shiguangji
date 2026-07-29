@@ -28,8 +28,8 @@ export default async function NewActivityPage() {
       <div className="p-4">
         {groups.length === 0 ? (
           <EmptyState
-            title="请先加入或创建团体"
-            description="发起聚餐需要先有一个团体"
+            title="请先加入或创建圈子"
+            description="发起聚餐需要先有一个圈子"
           />
         ) : (
           <ActivityForm groups={groups} />

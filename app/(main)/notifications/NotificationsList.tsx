@@ -40,7 +40,7 @@ function describeNotification(
     case "split":
       return `${actorName} 创建了账单分摊`;
     case "group_invite":
-      return `${actorName} 邀请你加入团体`;
+      return `${actorName} 邀请你加入圈子`;
     case "report_resolved":
       return "你的举报已处理";
     case "system":

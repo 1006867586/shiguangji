@@ -30,7 +30,7 @@ export default async function GroupMembersPage({ params }: Params) {
 
   const supabase = await createServerClient();
 
-  // 校验团体存在且当前用户为成员，同时取得当前用户角色
+  // 校验圈子存在且当前用户为成员，同时取得当前用户角色
   const { data: membership } = await supabase
     .from("group_members")
     .select("role, group:groups!inner(id, name)")

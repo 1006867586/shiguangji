@@ -19,8 +19,8 @@ type Params = { params: Promise<{ id: string }> };
 const VALID_STATUSES: ReportStatus[] = ["pending", "resolved", "dismissed"];
 
 /**
- * GET /api/groups/[id]/reports — 获取团体所有举报
- * 仅团体 admin 可访问。支持 ?status=pending 过滤与分页。
+ * GET /api/groups/[id]/reports — 获取圈子所有举报
+ * 仅圈子 admin 可访问。支持 ?status=pending 过滤与分页。
  * 返回 { data: ContentReport[], hasMore: boolean }。
  */
 export async function GET(request: NextRequest, { params }: Params) {
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验当前用户为团体 admin
+    // 校验当前用户为圈子 admin
     const { data: membership } = await supabase
       .from("group_members")
       .select("role")

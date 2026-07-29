@@ -3,7 +3,7 @@
 // 用于活动 / 评论正文中识别 @昵称 并触发通知。
 // ============================================================
 
-/** 团体成员的最小结构，用于昵称匹配 */
+/** 圈子成员的最小结构，用于昵称匹配 */
 export interface MentionMember {
   user_id: string;
   profile?: {
@@ -46,7 +46,7 @@ export function parseMentions(content: string): string[] {
 }
 
 /**
- * 根据解析出的昵称匹配团体成员的 user_id。
+ * 根据解析出的昵称匹配圈子成员的 user_id。
  *
  * 匹配规则：
  *  - 大小写不敏感

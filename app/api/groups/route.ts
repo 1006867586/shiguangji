@@ -5,7 +5,7 @@ import type { CreateGroupBody, Group } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/groups — 当前用户加入的团体列表 */
+/** GET /api/groups — 当前用户加入的圈子列表 */
 export async function GET() {
   try {
     const user = await requireUser();
@@ -21,7 +21,7 @@ export async function GET() {
 
     if (error) {
       return jsonResponse(
-        { error: safeErrorMessage(error, "获取团体列表失败") },
+        { error: safeErrorMessage(error, "获取圈子列表失败") },
         { status: 500 }
       );
     }
@@ -43,7 +43,7 @@ export async function GET() {
   }
 }
 
-/** POST /api/groups — 创建新团体 */
+/** POST /api/groups — 创建新圈子 */
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUser();
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as CreateGroupBody;
     if (!body.name?.trim()) {
-      return jsonResponse({ error: "团体名称不能为空" }, { status: 400 });
+      return jsonResponse({ error: "圈子名称不能为空" }, { status: 400 });
     }
 
     // 头像 URL 域名校验（允许为空）
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     if (error || !group) {
       return jsonResponse(
-        { error: safeErrorMessage(error, "创建团体失败") },
+        { error: safeErrorMessage(error, "创建圈子失败") },
         { status: 500 }
       );
     }

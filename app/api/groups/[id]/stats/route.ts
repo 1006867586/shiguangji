@@ -34,8 +34,8 @@ interface ContributorStat {
 }
 
 /**
- * GET /api/groups/[id]/stats — 获取团体聚餐统计
- * 仅团体成员可调用。
+ * GET /api/groups/[id]/stats — 获取圈子聚餐统计
+ * 仅圈子成员可调用。
  * 返回：total_activities / total_photos / total_comments / top_restaurants
  *      / monthly_counts（近 12 个月）/ top_contributors（前 5）/ avg_rating / total_spent
  */
@@ -49,7 +49,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验团体存在 + 当前用户为成员
+    // 校验圈子存在 + 当前用户为成员
     const { data: group } = await supabase
       .from("groups")
       .select("id, name")
@@ -57,7 +57,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       .maybeSingle();
 
     if (!group) {
-      return jsonResponse({ error: "团体不存在" }, { status: 404 });
+      return jsonResponse({ error: "圈子不存在" }, { status: 404 });
     }
 
     const { data: membership } = await supabase
@@ -71,7 +71,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "无权访问" }, { status: 403 });
     }
 
-    // 拉取团体所有活动（仅必要字段）
+    // 拉取圈子所有活动（仅必要字段）
     const { data: activities, error: actErr } = await supabase
       .from("activities")
       .select("id, author_id, external_link, created_at")

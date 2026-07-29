@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 type SupabaseClient = Awaited<ReturnType<typeof createServerClient>>;
 
 /**
- * 为活动内容中被 @提及的同团体成员创建 mention 通知。
+ * 为活动内容中被 @提及的同圈子成员创建 mention 通知。
  * best-effort：失败仅记录日志，不阻塞活动创建。
  */
 async function createMentionNotifications(
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验是否为团体成员
+    // 校验是否为圈子成员
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     if (!membership) {
       return jsonResponse(
-        { error: "你不是该团体成员，无权发布" },
+        { error: "你不是该圈子成员，无权发布" },
         { status: 403 }
       );
     }
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         return jsonResponse({ error: "原活动不存在" }, { status: 404 });
       }
 
-      // IDOR 防护：必须是原活动所在团体的成员才能转发
+      // IDOR 防护：必须是原活动所在圈子的成员才能转发
       const { data: origMembership } = await supabase
         .from("group_members")
         .select("id")

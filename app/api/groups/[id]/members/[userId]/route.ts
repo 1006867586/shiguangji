@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string; userId: string }> };
 
 /**
- * DELETE /api/groups/[id]/members/[userId] — 移除团体成员
- * 仅团体 admin 可调用，且不能移除自己（需使用退出团体接口）。
+ * DELETE /api/groups/[id]/members/[userId] — 移除圈子成员
+ * 仅圈子 admin 可调用，且不能移除自己（需使用退出圈子接口）。
  * 调用 RPC remove_group_member（security definer，内部已校验权限与目标身份）。
  */
 export async function DELETE(
@@ -31,12 +31,12 @@ export async function DELETE(
     // 不能移除自己：交给 RPC 抛错也可，但提前拦截给出更友好的错误
     if (userId === user.id) {
       return jsonResponse(
-        { error: "不能移除自己，请使用退出团体" },
+        { error: "不能移除自己，请使用退出圈子" },
         { status: 400 }
       );
     }
 
-    // 校验当前用户为团体 admin（双重保险，RPC 内部也会校验）
+    // 校验当前用户为圈子 admin（双重保险，RPC 内部也会校验）
     const { data: membership } = await supabase
       .from("group_members")
       .select("role")

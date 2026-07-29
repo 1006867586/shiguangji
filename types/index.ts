@@ -31,7 +31,7 @@ export interface Profile {
   created_at: string;
 }
 
-/** 团体 */
+/** 圈子 */
 export interface Group {
   id: UUID;
   name: string;
@@ -47,14 +47,14 @@ export interface Group {
   role?: MemberRole;
 }
 
-/** 团体设置 */
+/** 圈子设置 */
 export interface GroupSettings {
   join_approval?: boolean;
   allow_member_pin?: boolean;
   allow_video?: boolean;
 }
 
-/** 团体成员 */
+/** 圈子成员 */
 export interface GroupMember {
   id: UUID;
   group_id: UUID;
@@ -464,7 +464,7 @@ export interface CreateFavoritePlacesBody {
   }>;
 }
 
-/** 「今天吃什么」转盘候选项（团体级共享） */
+/** 「今天吃什么」转盘候选项（圈子级共享） */
 export interface MealRouletteItem {
   id: UUID;
   group_id: UUID;

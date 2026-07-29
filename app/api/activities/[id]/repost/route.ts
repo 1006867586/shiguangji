@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** POST /api/activities/[id]/repost — 分享活动到另一个团体（带附言） */
+/** POST /api/activities/[id]/repost — 分享活动到另一个圈子（带附言） */
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const user = await requireUser();
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "原活动不存在" }, { status: 404 });
     }
 
-    // IDOR 防护：必须是原活动所在团体的成员才能分享
+    // IDOR 防护：必须是原活动所在圈子的成员才能分享
     const { data: origMembership } = await supabase
       .from("group_members")
       .select("id")
@@ -47,16 +47,16 @@ export async function POST(request: NextRequest, { params }: Params) {
       content?: string;
     };
 
-    // 站内分享必须指定目标团体，且不能是原活动所在团体
+    // 站内分享必须指定目标圈子，且不能是原活动所在圈子
     if (!body.groupId || !isUuid(body.groupId)) {
       return jsonResponse(
-        { error: "请选择要分享到的团体" },
+        { error: "请选择要分享到的圈子" },
         { status: 400 }
       );
     }
     if (body.groupId === orig.group_id) {
       return jsonResponse(
-        { error: "不能分享到原活动所在的团体，请选择其他团体" },
+        { error: "不能分享到原活动所在的圈子，请选择其他圈子" },
         { status: 400 }
       );
     }
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     if (!membership) {
       return jsonResponse(
-        { error: "你不是目标团体成员，无法分享" },
+        { error: "你不是目标圈子成员，无法分享" },
         { status: 403 }
       );
     }

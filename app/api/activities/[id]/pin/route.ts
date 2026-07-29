@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** 校验当前用户是否为活动所在团体的管理员；返回活动的 group_id 或 null */
+/** 校验当前用户是否为活动所在圈子的管理员；返回活动的 group_id 或 null */
 async function getActivityGroupAsAdmin(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   activityId: string,
@@ -31,7 +31,7 @@ async function getActivityGroupAsAdmin(
 }
 
 /**
- * POST /api/activities/[id]/pin — 置顶 / 取消置顶（toggle），仅团体管理员可用
+ * POST /api/activities/[id]/pin — 置顶 / 取消置顶（toggle），仅圈子管理员可用
  * 返回 { pinned: boolean }
  */
 export async function POST(_request: NextRequest, { params }: Params) {
@@ -44,7 +44,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验活动存在 + 当前用户为该活动所在团体的 admin
+    // 校验活动存在 + 当前用户为该活动所在圈子的 admin
     const { data: activity } = await supabase
       .from("activities")
       .select("id, group_id")
@@ -65,7 +65,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
 
     if (!admin) {
       return jsonResponse(
-        { error: "仅团体管理员可置顶活动" },
+        { error: "仅圈子管理员可置顶活动" },
         { status: 403 }
       );
     }
@@ -115,7 +115,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
   }
 }
 
-/** DELETE /api/activities/[id]/pin — 取消置顶，仅团体管理员可用，返回 { success: true } */
+/** DELETE /api/activities/[id]/pin — 取消置顶，仅圈子管理员可用，返回 { success: true } */
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
     const user = await requireUser();
@@ -138,7 +138,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
         return jsonResponse({ error: "活动不存在" }, { status: 404 });
       }
       return jsonResponse(
-        { error: "仅团体管理员可取消置顶" },
+        { error: "仅圈子管理员可取消置顶" },
         { status: 403 }
       );
     }

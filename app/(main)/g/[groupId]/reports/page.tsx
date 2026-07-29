@@ -31,7 +31,7 @@ export default async function GroupReportsPage({ params }: Params) {
 
   const supabase = await createServerClient();
 
-  // 校验团体存在且当前用户为成员，并取得角色
+  // 校验圈子存在且当前用户为成员，并取得角色
   const { data: membership } = await supabase
     .from("group_members")
     .select("role, group:groups!inner(id, name)")
@@ -67,10 +67,10 @@ export default async function GroupReportsPage({ params }: Params) {
       ) : (
         <EmptyState
           title="仅管理员可访问"
-          description="你不是该团体的管理员，无法查看举报"
+          description="你不是该圈子的管理员，无法查看举报"
           action={
             <Button asChild size="sm">
-              <Link href={`/g/${groupId}`}>返回团体</Link>
+              <Link href={`/g/${groupId}`}>返回圈子</Link>
             </Button>
           }
         />

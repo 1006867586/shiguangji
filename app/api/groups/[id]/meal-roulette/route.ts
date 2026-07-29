@@ -17,7 +17,7 @@ type Params = { params: Promise<{ id: string }> };
 
 const MAX_IMPORT = 50;
 
-/** 校验当前用户是否为团体成员，是则返回 true */
+/** 校验当前用户是否为圈子成员，是则返回 true */
 async function ensureMember(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   groupId: string,
@@ -34,7 +34,7 @@ async function ensureMember(
 
 /**
  * GET /api/groups/[id]/meal-roulette
- * 返回该团体的转盘候选项列表（按 created_at 倒序），附带添加者资料。
+ * 返回该圈子的转盘候选项列表（按 created_at 倒序），附带添加者资料。
  */
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       return jsonResponse({ error: "没有有效的条目" }, { status: 400 });
     }
 
-    // 应用层去重：先取团体已有项的归一化 key
+    // 应用层去重：先取圈子已有项的归一化 key
     const { data: existing, error: selectErr } = await supabase
       .from("meal_roulette_items")
       .select("title, address")
@@ -247,7 +247,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
 /**
  * DELETE /api/groups/[id]/meal-roulette?itemId=xxx
- * 删除该团体下的一条候选项（成员即可删，RLS 校验 is_group_member）。
+ * 删除该圈子下的一条候选项（成员即可删，RLS 校验 is_group_member）。
  */
 export async function DELETE(req: NextRequest, { params }: Params) {
   try {

@@ -13,9 +13,9 @@ import { checkAiQuota, recordAiGeneration } from "@/lib/ai/quota";
 export const dynamic = "force-dynamic";
 
 const SYSTEM_PROMPT =
-  "你是飨刻 app 的文案助手，帮用户把已发布的活动分享到其他团体，生成 2-3 版邀请文案，语气自然、有吸引力，让人想参与。";
+  "你是飨刻 app 的文案助手，帮用户把已发布的活动分享到其他圈子，生成 2-3 版邀请文案，语气自然、有吸引力，让人想参与。";
 
-/** POST /api/ai/invite-text — 为分享到其他团体生成邀请文案 */
+/** POST /api/ai/invite-text — 为分享到其他圈子生成邀请文案 */
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
@@ -158,9 +158,9 @@ function buildUserPrompt(
   targetGroupName: string
 ): string {
   const lines = [
-    "请基于以下已发布的活动，生成 2-3 版适合分享到其他团体的邀请文案：",
+    "请基于以下已发布的活动，生成 2-3 版适合分享到其他圈子的邀请文案：",
     "",
-    `目标团体名称：${targetGroupName}`,
+    `目标圈子名称：${targetGroupName}`,
   ];
 
   const authorName = activity.author?.nickname || "好友";
@@ -181,8 +181,8 @@ function buildUserPrompt(
     "",
     "要求：",
     "- 每版文案 50-150 字",
-    "- 语气自然，像在邀请别的团体的朋友一起参加/关注这个活动",
-    `- 可以自然地提到目标团体「${targetGroupName}」`,
+    "- 语气自然，像在邀请别的圈子的朋友一起参加/关注这个活动",
+    `- 可以自然地提到目标圈子「${targetGroupName}」`,
     "- 简短有吸引力，不要堆砌信息",
     "- 不要包含 emoji 以外的特殊符号",
     "",

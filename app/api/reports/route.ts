@@ -19,7 +19,7 @@ const VALID_TARGET_TYPES: ReportTargetType[] = ["activity", "comment", "photo"];
 const VALID_REASONS: ReportReason[] = ["spam", "abuse", "porn", "illegal", "other"];
 const VALID_STATUSES: ReportStatus[] = ["pending", "resolved", "dismissed"];
 
-/** 获取当前用户在指定团体中是否为 admin */
+/** 获取当前用户在指定圈子中是否为 admin */
 async function isGroupAdmin(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   groupId: string,
@@ -34,7 +34,7 @@ async function isGroupAdmin(
   return data?.role === "admin";
 }
 
-/** 获取当前用户是否为指定团体成员 */
+/** 获取当前用户是否为指定圈子成员 */
 async function isGroupMember(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   groupId: string,
@@ -51,7 +51,7 @@ async function isGroupMember(
 
 /**
  * GET /api/reports — 获取举报列表
- * 仅团体 admin 可见本团体的举报。支持 ?groupId=xxx&status=pending 过滤，分页。
+ * 仅圈子 admin 可见本圈子的举报。支持 ?groupId=xxx&status=pending 过滤，分页。
  * 返回 { data: ContentReport[], hasMore: boolean }。
  */
 export async function GET(request: NextRequest) {
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 没有 groupId 时，聚合当前用户作为 admin 的所有团体举报
+    // 没有 groupId 时，聚合当前用户作为 admin 的所有圈子举报
     if (!groupId) {
       const { data: adminGroups, error: agErr } = await supabase
         .from("group_members")
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/reports — 创建举报
  * body: { targetType, targetId, groupId, reason, detail? }
- * 校验 reporter 是团体成员。
+ * 校验 reporter 是圈子成员。
  */
 export async function POST(request: NextRequest) {
   try {
@@ -196,11 +196,11 @@ export async function POST(request: NextRequest) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验 reporter 是团体成员
+    // 校验 reporter 是圈子成员
     const member = await isGroupMember(supabase, body.groupId, user.id);
     if (!member) {
       return jsonResponse(
-        { error: "你不是该团体成员，无权举报" },
+        { error: "你不是该圈子成员，无权举报" },
         { status: 403 }
       );
     }

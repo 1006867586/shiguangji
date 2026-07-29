@@ -194,9 +194,9 @@ export function MealRouletteClient({
 
   return (
     <div className="space-y-5">
-      {/* 团体选择 */}
+      {/* 圈子选择 */}
       <div className="flex items-center gap-2">
-        <Label className="text-xs text-muted-foreground">团体</Label>
+        <Label className="text-xs text-muted-foreground">圈子</Label>
         <select
           value={groupId}
           onChange={(e) => setGroupId(e.target.value)}
@@ -383,7 +383,7 @@ export function MealRouletteClient({
           <DialogHeader>
             <DialogTitle>添加候选店</DialogTitle>
             <DialogDescription>
-              添加到「{groups.find((g) => g.id === groupId)?.name}」的候选池，团体成员都会看到
+              添加到「{groups.find((g) => g.id === groupId)?.name}」的候选池，圈子成员都会看到
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

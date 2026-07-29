@@ -64,15 +64,15 @@ export default async function HomePage() {
       {groups.length === 0 ? (
         <EmptyState
           icon={<Users className="h-10 w-10" />}
-          title="还没有加入任何团体"
-          description="创建一个团体，邀请朋友一起记录聚餐时光"
+          title="还没有加入任何圈子"
+          description="创建一个圈子，邀请朋友一起记录聚餐时光"
           action={
             <div className="flex gap-2">
               <Button asChild size="sm">
-                <Link href="/groups/new">创建团体</Link>
+                <Link href="/groups/new">创建圈子</Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link href="/join">加入团体</Link>
+                <Link href="/join">加入圈子</Link>
               </Button>
             </div>
           }

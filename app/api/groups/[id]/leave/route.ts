@@ -11,10 +11,10 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * POST /api/groups/[id]/leave — 退出团体
+ * POST /api/groups/[id]/leave — 退出圈子
  * 删除自己的 group_members 记录。
  * 校验：如果是最后一个 admin，不允许退出（需先转让管理员）。
- * 若团体只剩一人，退出后团体由 Supabase 级联策略处理。
+ * 若圈子只剩一人，退出后圈子由 Supabase 级联策略处理。
  */
 export async function POST(_request: NextRequest, { params }: Params) {
   try {
@@ -36,18 +36,18 @@ export async function POST(_request: NextRequest, { params }: Params) {
 
     if (mErr) {
       return jsonResponse(
-        { error: safeErrorMessage(mErr, "退出团体失败") },
+        { error: safeErrorMessage(mErr, "退出圈子失败") },
         { status: 500 }
       );
     }
     if (!membership) {
       return jsonResponse(
-        { error: "你不是该团体成员" },
+        { error: "你不是该圈子成员" },
         { status: 404 }
       );
     }
 
-    // 如果是 admin，需校验还有其他 admin（不能让团体没有管理员）
+    // 如果是 admin，需校验还有其他 admin（不能让圈子没有管理员）
     if (membership.role === "admin") {
       const { count, error: countErr } = await supabase
         .from("group_members")
@@ -57,7 +57,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
 
       if (countErr) {
         return jsonResponse(
-          { error: safeErrorMessage(countErr, "退出团体失败") },
+          { error: safeErrorMessage(countErr, "退出圈子失败") },
           { status: 500 }
         );
       }
@@ -80,7 +80,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
 
     if (delErr) {
       return jsonResponse(
-        { error: safeErrorMessage(delErr, "退出团体失败") },
+        { error: safeErrorMessage(delErr, "退出圈子失败") },
         { status: 500 }
       );
     }

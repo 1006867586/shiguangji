@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
 
 /**
  * POST /api/groups/[id]/reset-invite-code — 重置邀请码
- * 仅团体 admin 可调用，调用 RPC reset_invite_code（security definer）。
+ * 仅圈子 admin 可调用，调用 RPC reset_invite_code（security definer）。
  * 返回 { data: { inviteCode: string } }。
  */
 export async function POST(_request: NextRequest, { params }: Params) {
@@ -25,7 +25,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验当前用户为团体 admin（RPC 内部也会校验）
+    // 校验当前用户为圈子 admin（RPC 内部也会校验）
     const { data: membership } = await supabase
       .from("group_members")
       .select("role")

@@ -18,8 +18,8 @@ interface ReportsListResponse {
 
 /**
  * useReports — SWR 拉取举报列表。
- * - 传入 groupId 时拉取指定团体的举报（需 admin 权限）；
- * - 不传 groupId 时拉取当前用户作为 admin 的所有团体举报。
+ * - 传入 groupId 时拉取指定圈子的举报（需 admin 权限）；
+ * - 不传 groupId 时拉取当前用户作为 admin 的所有圈子举报。
  * - status 可过滤状态（pending/resolved/dismissed）。
  */
 export function useReports(
@@ -54,7 +54,7 @@ export function useReports(
   };
 }
 
-/** useReport — SWR 拉取单个举报详情（举报者本人或团体 admin） */
+/** useReport — SWR 拉取单个举报详情（举报者本人或圈子 admin） */
 export function useReport(reportId: string | null) {
   const { data, error, mutate, isLoading } = useSWR<ContentReport>(
     reportId ? `/api/reports/${reportId}` : null,

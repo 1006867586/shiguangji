@@ -34,7 +34,7 @@ function sanitizeSettings(
 }
 
 /**
- * PATCH /api/groups/[id] — 更新团体信息
+ * PATCH /api/groups/[id] — 更新圈子信息
  * body: { name?, description?, avatarUrl?, settings? }
  * 仅 admin 可调用。
  * - name 非空且 ≤50 字符
@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验当前用户为团体 admin
+    // 校验当前用户为圈子 admin
     const { data: membership } = await supabase
       .from("group_members")
       .select("role")
@@ -65,7 +65,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
     if (membership.role !== "admin") {
       return jsonResponse(
-        { error: "仅管理员可修改团体信息" },
+        { error: "仅管理员可修改圈子信息" },
         { status: 403 }
       );
     }
@@ -77,11 +77,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (typeof body.name === "string") {
       const name = body.name.trim();
       if (!name) {
-        return jsonResponse({ error: "团体名称不能为空" }, { status: 400 });
+        return jsonResponse({ error: "圈子名称不能为空" }, { status: 400 });
       }
       if (name.length > 50) {
         return jsonResponse(
-          { error: "团体名称不能超过 50 个字符" },
+          { error: "圈子名称不能超过 50 个字符" },
           { status: 400 }
         );
       }
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       const desc = body.description.trim();
       if (desc.length > 500) {
         return jsonResponse(
-          { error: "团体描述不能超过 500 个字符" },
+          { error: "圈子描述不能超过 500 个字符" },
           { status: 400 }
         );
       }

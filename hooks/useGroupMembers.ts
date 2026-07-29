@@ -14,14 +14,14 @@ interface UseGroupMembersReturn {
   removeMember: (userId: UUID) => Promise<void>;
   /** 转让管理员（仅当前 admin） */
   transferAdmin: (newAdminId: UUID) => Promise<void>;
-  /** 退出团体 */
+  /** 退出圈子 */
   leaveGroup: () => Promise<void>;
   /** 重新拉取成员列表 */
   reload: () => Promise<void>;
 }
 
 /**
- * useGroupMembers — SWR 拉取团体成员列表，并提供移除/转让/退出操作。
+ * useGroupMembers — SWR 拉取圈子成员列表，并提供移除/转让/退出操作。
  * 操作成功后自动重新拉取以同步服务端状态。
  */
 export function useGroupMembers(

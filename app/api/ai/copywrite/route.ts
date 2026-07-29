@@ -152,14 +152,14 @@ function buildUserPrompt(
     `文案风格：${style}（${STYLE_DESC[style]}）`,
   ];
   if (groupName) {
-    lines.push(`发布到的团体：${groupName}`);
+    lines.push(`发布到的圈子：${groupName}`);
   }
   lines.push(
     "",
     "要求：",
     "- 每个文案 50-150 字",
     `- 风格必须符合「${STYLE_DESC[style]}」`,
-    "- 简短有感染力，适合在飨刻 app 的团体 feed 中发布",
+    "- 简短有感染力，适合在飨刻 app 的圈子 feed 中发布",
     "- 不要包含 emoji 以外的特殊符号",
     "",
     "请严格按以下 JSON 格式返回，不要包含任何额外文本或 markdown 代码块：",

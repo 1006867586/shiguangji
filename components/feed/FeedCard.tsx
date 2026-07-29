@@ -82,7 +82,7 @@ interface FeedCardProps {
   groupId?: string;
   /** 是否将活动正文与链接卡片点击跳转到详情页（动态页默认 true，详情页应传 false 以保留链接外部跳转） */
   linkToDetail?: boolean;
-  /** 当前用户是否团体管理员，用于显示置顶菜单项 */
+  /** 当前用户是否圈子管理员，用于显示置顶菜单项 */
   isAdmin?: boolean;
   /** 是否显示高级功能（RSVP / 分账 / 标签编辑），详情页传 true */
   showAdvanced?: boolean;

@@ -10,7 +10,7 @@ import type {
   MealRouletteItem,
 } from "@/types";
 
-/** SWR key 工厂：隔离不同团体的候选池缓存 */
+/** SWR key 工厂：隔离不同圈子的候选池缓存 */
 const keyOf = (groupId: string) =>
   `/api/groups/${groupId}/meal-roulette` as const;
 
@@ -30,7 +30,7 @@ interface UseMealRouletteReturn {
 }
 
 /**
- * useMealRoulette — 团体级「今天吃什么」候选池。
+ * useMealRoulette — 圈子级「今天吃什么」候选池。
  * SWR 拉取 + Supabase Realtime 订阅（成员增添/删除实时同步）。
  */
 export function useMealRoulette(
@@ -44,7 +44,7 @@ export function useMealRoulette(
     { revalidateOnFocus: false }
   );
 
-  // Realtime:监听本团体候选池变更，变更后直接重拉（数据量小，简单可靠）
+  // Realtime:监听本圈子候选池变更，变更后直接重拉（数据量小，简单可靠）
   useEffect(() => {
     if (!groupId) return;
     const supabase = createClient();

@@ -18,7 +18,7 @@ interface ActivityDetailViewProps {
   activityId: string;
   currentUserId?: string;
   initialActivity?: Activity | null;
-  /** 当前用户是否团体管理员（由服务端传入），用于 FeedCard 显示置顶菜单 */
+  /** 当前用户是否圈子管理员（由服务端传入），用于 FeedCard 显示置顶菜单 */
   isAdmin?: boolean;
 }
 

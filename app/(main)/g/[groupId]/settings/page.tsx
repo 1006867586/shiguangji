@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     .select("name")
     .eq("id", groupId)
     .maybeSingle();
-  return { title: data?.name ? `${data.name} · 设置` : "团体设置" };
+  return { title: data?.name ? `${data.name} · 设置` : "圈子设置" };
 }
 
 export default async function GroupSettingsPage({ params }: Params) {
@@ -32,7 +32,7 @@ export default async function GroupSettingsPage({ params }: Params) {
 
   const supabase = await createServerClient();
 
-  // 校验团体存在且当前用户为成员，同时取得角色与完整团体信息
+  // 校验圈子存在且当前用户为成员，同时取得角色与完整圈子信息
   const { data: membership } = await supabase
     .from("group_members")
     .select("role, group:groups!inner(*)")
@@ -56,7 +56,7 @@ export default async function GroupSettingsPage({ params }: Params) {
               <ChevronLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <h1 className="text-base font-semibold">团体设置</h1>
+          <h1 className="text-base font-semibold">圈子设置</h1>
         </div>
       </header>
 
@@ -65,10 +65,10 @@ export default async function GroupSettingsPage({ params }: Params) {
       ) : (
         <EmptyState
           title="仅管理员可访问"
-          description="你不是该团体的管理员，无法修改团体设置"
+          description="你不是该圈子的管理员，无法修改圈子设置"
           action={
             <Button asChild size="sm">
-              <Link href={`/g/${groupId}`}>返回团体</Link>
+              <Link href={`/g/${groupId}`}>返回圈子</Link>
             </Button>
           }
         />

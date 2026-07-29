@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** 获取当前用户在指定团体中是否为 admin */
+/** 获取当前用户在指定圈子中是否为 admin */
 async function isGroupAdmin(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   groupId: string,
@@ -28,7 +28,7 @@ async function isGroupAdmin(
 
 /**
  * GET /api/reports/[id] — 获取单个举报详情
- * 仅举报者本人或团体 admin 可访问。
+ * 仅举报者本人或圈子 admin 可访问。
  */
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
@@ -56,7 +56,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const r = report as unknown as ContentReport;
 
-    // 权限：举报者本人 或 团体 admin
+    // 权限：举报者本人 或 圈子 admin
     if (r.reporter_id !== user.id) {
       const admin = await isGroupAdmin(supabase, r.group_id, user.id);
       if (!admin) {
@@ -79,7 +79,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 /**
  * PATCH /api/reports/[id] — 处理举报
  * body: { status: 'resolved' | 'dismissed' }
- * 仅团体 admin 可调用，更新 resolved_by 与 resolved_at。
+ * 仅圈子 admin 可调用，更新 resolved_by 与 resolved_at。
  */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {

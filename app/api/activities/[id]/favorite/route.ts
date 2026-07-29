@@ -28,7 +28,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "活动不存在" }, { status: 404 });
     }
 
-    // 仅团体成员可收藏（与 RLS 策略一致）
+    // 仅圈子成员可收藏（与 RLS 策略一致）
     const { data: membership } = await supabase
       .from("group_members")
       .select("id")

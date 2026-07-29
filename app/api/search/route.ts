@@ -19,8 +19,8 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/search?q=<keyword>&groupId?=&tag?=&cursor?=&limit?
  * 搜索活动，在 activities.content 和 external_link->>title 上做 ILIKE 模糊匹配。
- * - 若提供 groupId，必须是该团体成员
- * - 若无 groupId，搜索用户加入的所有团体
+ * - 若提供 groupId，必须是该圈子成员
+ * - 若无 groupId，搜索用户加入的所有圈子
  * - 返回完整 Activity 对象数组 + next_cursor
  */
 export async function GET(request: NextRequest) {
@@ -40,13 +40,13 @@ export async function GET(request: NextRequest) {
       return jsonResponse({ data: [], next_cursor: null });
     }
 
-    // 解析可搜索的团体范围
+    // 解析可搜索的圈子范围
     let groupIds: string[];
     if (groupId) {
       if (!isUuid(groupId)) {
         return jsonResponse({ error: "参数错误" }, { status: 400 });
       }
-      // 校验是该团体成员
+      // 校验是该圈子成员
       const { data: membership } = await supabase
         .from("group_members")
         .select("id")
@@ -55,11 +55,11 @@ export async function GET(request: NextRequest) {
         .maybeSingle();
 
       if (!membership) {
-        return jsonResponse({ error: "无权搜索该团体" }, { status: 403 });
+        return jsonResponse({ error: "无权搜索该圈子" }, { status: 403 });
       }
       groupIds = [groupId];
     } else {
-      // 搜索用户加入的所有团体
+      // 搜索用户加入的所有圈子
       const { data: memberships, error: mbErr } = await supabase
         .from("group_members")
         .select("group_id")
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 
       if (mbErr) {
         return jsonResponse(
-          { error: safeErrorMessage(mbErr, "获取团体列表失败") },
+          { error: safeErrorMessage(mbErr, "获取圈子列表失败") },
           { status: 500 }
         );
       }

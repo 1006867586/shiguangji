@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * POST /api/groups/[id]/transfer-admin — 转让团体管理员
+ * POST /api/groups/[id]/transfer-admin — 转让圈子管理员
  * body: { newAdminId: UUID }
  * 仅当前 admin 可调用，调用 RPC transfer_group_admin（security definer）。
  */
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       );
     }
 
-    // 校验当前用户为团体 admin（RPC 内部也会校验）
+    // 校验当前用户为圈子 admin（RPC 内部也会校验）
     const { data: membership } = await supabase
       .from("group_members")
       .select("role")

@@ -43,7 +43,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
     }
 
-    // 校验活动存在 + 当前用户为团体成员（与 RLS 策略一致）
+    // 校验活动存在 + 当前用户为圈子成员（与 RLS 策略一致）
     const { data: activity } = await supabase
       .from("activities")
       .select("id, group_id")
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       );
     }
 
-    // 校验活动存在 + 当前用户为团体成员
+    // 校验活动存在 + 当前用户为圈子成员
     const { data: activity } = await supabase
       .from("activities")
       .select("id, group_id")

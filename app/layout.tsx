@@ -25,10 +25,10 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
   ),
   title: {
-    default: `${APP_NAME} · 团体聚餐记录`,
+    default: `${APP_NAME} · 圈子聚餐记录`,
     template: `%s · ${APP_NAME}`,
   },
-  description: "记录每一次与朋友的飨聚时刻——团体聚餐分享应用",
+  description: "记录每一次与朋友的飨聚时刻——圈子聚餐分享应用",
   applicationName: APP_NAME,
   manifest: "/manifest.json",
   appleWebApp: {

@@ -14,7 +14,7 @@ interface UsePinnedActivitiesReturn {
 }
 
 /**
- * usePinnedActivities — SWR 拉取团体置顶活动列表。
+ * usePinnedActivities — SWR 拉取圈子置顶活动列表。
  * 调用方传入 groupId；groupId 为空时不发请求。
  */
 export function usePinnedActivities(

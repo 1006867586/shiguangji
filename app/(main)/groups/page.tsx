@@ -12,7 +12,7 @@ import { getServerGroups } from "@/lib/server-data";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "我的团体" };
+export const metadata = { title: "我的圈子" };
 
 export default async function GroupsPage() {
   const { groups } = await getServerGroups();
@@ -27,7 +27,7 @@ export default async function GroupsPage() {
                 <ChevronLeft className="h-5 w-5" />
               </Link>
             </Button>
-            <h1 className="font-display text-lg font-semibold tracking-tight">我的团体</h1>
+            <h1 className="font-display text-lg font-semibold tracking-tight">我的圈子</h1>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -38,12 +38,12 @@ export default async function GroupsPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
                 <Link href="/groups/new">
-                  <Plus className="h-4 w-4" /> 创建团体
+                  <Plus className="h-4 w-4" /> 创建圈子
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/join">
-                  <LogIn className="h-4 w-4" /> 加入团体
+                  <LogIn className="h-4 w-4" /> 加入圈子
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -54,15 +54,15 @@ export default async function GroupsPage() {
       {groups.length === 0 ? (
         <EmptyState
           icon={<Users className="h-10 w-10" />}
-          title="还没有加入任何团体"
-          description="创建一个团体或通过邀请码加入"
+          title="还没有加入任何圈子"
+          description="创建一个圈子或通过邀请码加入"
           action={
             <div className="flex gap-2">
               <Button asChild size="sm" className="shadow-sm">
-                <Link href="/groups/new">创建团体</Link>
+                <Link href="/groups/new">创建圈子</Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link href="/join">加入团体</Link>
+                <Link href="/join">加入圈子</Link>
               </Button>
             </div>
           }

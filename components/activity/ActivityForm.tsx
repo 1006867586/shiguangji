@@ -236,7 +236,7 @@ export function ActivityForm({
 
   const submit = async () => {
     if (!groupId) {
-      toast.error("请选择团体");
+      toast.error("请选择圈子");
       return;
     }
     if (!content.trim() && !externalLink && !repostOfId) {
@@ -264,18 +264,18 @@ export function ActivityForm({
 
   return (
     <div className="space-y-5">
-      {/* 团体选择 */}
+      {/* 圈子选择 */}
       <div className="space-y-1.5">
         <Label htmlFor="group-select">发布到</Label>
         {groups.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            你还未加入任何团体，请先{" "}
+            你还未加入任何圈子，请先{" "}
             <a href="/groups/new" className="text-primary hover:underline">
-              创建团体
+              创建圈子
             </a>{" "}
             或{" "}
             <a href="/join" className="text-primary hover:underline">
-              加入团体
+              加入圈子
             </a>
           </p>
         ) : (

@@ -60,9 +60,9 @@ function JoinContent() {
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/10">
           <Ticket className="h-10 w-10" strokeWidth={1.8} />
         </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">加入团体</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">加入圈子</h1>
         <p className="max-w-xs text-sm text-muted-foreground">
-          请先登录后再使用邀请码加入团体
+          请先登录后再使用邀请码加入圈子
         </p>
         <Button asChild className="shadow-sm">
           <a href={`/login?redirect=${encodeURIComponent("/join")}`}>
@@ -76,7 +76,7 @@ function JoinContent() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background">
       <header className="flex h-14 items-center justify-center border-b border-border/60 bg-background/80 backdrop-blur-xl pt-safe-t">
-        <h1 className="font-display text-lg font-semibold tracking-tight">加入团体</h1>
+        <h1 className="font-display text-lg font-semibold tracking-tight">加入圈子</h1>
       </header>
 
       <div className="flex flex-1 flex-col justify-center gap-7 p-6">
@@ -86,7 +86,7 @@ function JoinContent() {
           </div>
           <h2 className="font-display text-xl font-semibold tracking-tight">输入邀请码</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            向团体创建者索取 6 位邀请码
+            向圈子创建者索取 6 位邀请码
           </p>
         </div>
 
