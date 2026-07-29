@@ -21,7 +21,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     // 查询照片及对应活动的发起者
     const { data: photo, error } = await supabase
       .from("activity_photos")
-      .select("id, uploaded_by, activity:activities(created_by)")
+      .select("id, uploaded_by, activity:activities(author_id)")
       .eq("id", photoId)
       .maybeSingle();
 
@@ -30,7 +30,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     }
 
     const activityUserId =
-      Array.isArray(photo.activity) ? photo.activity[0]?.created_by : (photo.activity as { created_by: string } | null)?.created_by;
+      Array.isArray(photo.activity) ? photo.activity[0]?.author_id : (photo.activity as { author_id: string } | null)?.author_id;
 
     const isActivityOwner = activityUserId === user.id;
     const isPhotoUploader = photo.uploaded_by === user.id;
