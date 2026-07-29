@@ -1,3 +1,5 @@
+import { MainNav } from "@/components/layout/MainNav";
+
 export const metadata = { title: "加入圈子" };
 
 export default function JoinLayout({
@@ -5,5 +7,10 @@ export default function JoinLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      {children}
+      <MainNav />
+    </>
+  );
 }

@@ -74,12 +74,12 @@ function JoinContent() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background">
+    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col bg-background pb-20">
       <header className="flex h-14 items-center justify-center border-b border-border/60 bg-background/80 backdrop-blur-xl pt-safe-t">
         <h1 className="font-display text-lg font-semibold tracking-tight">加入圈子</h1>
       </header>
 
-      <div className="flex flex-1 flex-col justify-center gap-7 p-6">
+      <div className="flex flex-1 flex-col justify-center gap-7 p-6 max-w-md mx-auto w-full">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/10">
             <Ticket className="h-8 w-8" strokeWidth={1.8} />
