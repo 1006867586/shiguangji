@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string; photoId: string }> };
 
-/** DELETE /api/activities/[id]/photos/[photoId] — 删除照片（仅活动发起者） */
+/** DELETE /api/activities/[id]/photos/[photoId] — 删除照片（活动发起者可删所有，其他人只能删自己上传的） */
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
     const user = await requireUser();
@@ -21,7 +21,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     // 查询照片及对应活动的发起者
     const { data: photo, error } = await supabase
       .from("activity_photos")
-      .select("id, activity:activities(user_id)")
+      .select("id, uploaded_by, activity:activities(user_id)")
       .eq("id", photoId)
       .maybeSingle();
 
@@ -32,8 +32,11 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     const activityUserId =
       Array.isArray(photo.activity) ? photo.activity[0]?.user_id : (photo.activity as { user_id: string } | null)?.user_id;
 
-    if (activityUserId !== user.id) {
-      return jsonResponse({ error: "仅活动发起者可删除" }, { status: 403 });
+    const isActivityOwner = activityUserId === user.id;
+    const isPhotoUploader = photo.uploaded_by === user.id;
+
+    if (!isActivityOwner && !isPhotoUploader) {
+      return jsonResponse({ error: "无权删除此照片" }, { status: 403 });
     }
 
     const { error: delErr } = await supabase

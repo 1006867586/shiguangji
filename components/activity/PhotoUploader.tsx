@@ -12,7 +12,8 @@ import type { ActivityPhoto } from "@/types";
 interface PhotoUploaderProps {
   activityId: string;
   existingPhotos?: ActivityPhoto[];
-  canDelete?: boolean;
+  /** 当前用户是否可删除某张照片（发起者可删所有，非发起者只能删自己的） */
+  canDeletePhoto?: (photo: ActivityPhoto) => boolean;
   onUploaded?: (photo: ActivityPhoto) => void;
   onDeleted?: (photoId: string) => void;
 }
@@ -22,7 +23,7 @@ const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/heic";
 export function PhotoUploader({
   activityId,
   existingPhotos = [],
-  canDelete = false,
+  canDeletePhoto,
   onUploaded,
   onDeleted,
 }: PhotoUploaderProps) {
@@ -83,7 +84,7 @@ export function PhotoUploader({
               className="object-cover"
               unoptimized
             />
-            {canDelete ? (
+            {canDeletePhoto?.(p) ? (
               <button
                 type="button"
                 onClick={() => handleDelete(p.id)}
