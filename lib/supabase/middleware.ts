@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { CookiesToSet } from "./cookies";
 
 /** 公开路径白名单：已登录或未登录均可访问 */
-const PUBLIC_PATHS = new Set<string>(["/login", "/join"]);
+const PUBLIC_PATHS = new Set<string>(["/login", "/join", "/groups/new"]);
 const PUBLIC_PREFIXES = ["/api/auth/", "/_next/"];
 const PUBLIC_FILES = new Set<string>(["/icon.svg", "/favicon.ico"]);
 
@@ -16,7 +16,7 @@ function isPublicPath(pathname: string): boolean {
 /**
  * 刷新 Supabase Auth 会话 Cookie，并执行路由保护。
  * - 公开路径（/login、/join、/api/auth/* 等）放行
- * - 已登录访问 /login、/join -> 重定向到 /
+ * - 已登录访问 /login -> 重定向到 /
  * - 未登录访问受保护路径 -> 重定向到 /login?redirect=...
  */
 export async function updateSession(request: NextRequest) {
@@ -61,8 +61,8 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // 已登录访问 /login、/join -> 重定向到 /
-  if (user && (pathname === "/login" || pathname === "/join")) {
+  // 已登录访问 /login -> 重定向到 /
+  if (user && pathname === "/login") {
     const redirect = NextResponse.redirect(new URL("/", request.url));
     // 保留 cookie 刷新，避免重定向后丢失刚刷新的会话
     for (const c of supabaseResponse.headers.getSetCookie()) {
