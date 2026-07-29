@@ -20,14 +20,12 @@ function isPublicPath(pathname: string): boolean {
  * - 未登录访问受保护路径 -> 重定向到 /login?redirect=...
  */
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  let supabaseResponse = NextResponse.next({ request });
+  const pendingCookies: CookiesToSet = [];
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // 未配置环境变量时：开发环境放行，生产环境抛错（避免静默放过鉴权）
   if (!url || !anonKey) {
     if (process.env.NODE_ENV === "production") {
       throw new Error("Missing Supabase env");
@@ -41,33 +39,35 @@ export async function updateSession(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet: CookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
-        supabaseResponse = NextResponse.next({
-          request,
-        });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
-        );
+        for (const c of cookiesToSet) pendingCookies.push(c);
       },
     },
   });
 
-  // getUser() 会按需刷新会话 cookie（写入 supabaseResponse）
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // 将刷新后的 cookie 写入响应
+  const isProd = process.env.NODE_ENV === "production";
+  const applyPendingCookies = (res: NextResponse) => {
+    for (const { name, value, options } of pendingCookies) {
+      res.cookies.set(name, value, {
+        ...options,
+        httpOnly: options.httpOnly ?? true,
+        sameSite: options.sameSite ?? "lax",
+        secure: options.secure ?? isProd,
+        path: options.path ?? "/",
+      });
+    }
+  };
 
   const pathname = request.nextUrl.pathname;
 
   // 已登录访问 /login -> 重定向到 /
   if (user && pathname === "/login") {
     const redirect = NextResponse.redirect(new URL("/", request.url));
-    // 保留 cookie 刷新，避免重定向后丢失刚刷新的会话
-    for (const c of supabaseResponse.headers.getSetCookie()) {
-      redirect.headers.append("set-cookie", c);
-    }
+    applyPendingCookies(redirect);
     return redirect;
   }
 
@@ -76,11 +76,11 @@ export async function updateSession(request: NextRequest) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirect", pathname);
     const redirect = NextResponse.redirect(redirectUrl);
-    for (const c of supabaseResponse.headers.getSetCookie()) {
-      redirect.headers.append("set-cookie", c);
-    }
+    applyPendingCookies(redirect);
     return redirect;
   }
 
+  // 正常放行时，把 cookie 写入 supabaseResponse
+  applyPendingCookies(supabaseResponse);
   return supabaseResponse;
 }

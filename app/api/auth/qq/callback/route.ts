@@ -143,16 +143,18 @@ export async function GET(request: NextRequest) {
       avatar_url: avatar ?? null,
     });
 
-    // 5. 用 anon-key server client 消费 token 建立会话
+    // 5. 用 anon-key server client 消费 token 建立会话,
+    //    直接在重定向响应中设置 session cookie
+    const response = NextResponse.redirect(`${origin}${redirect}`);
+    const sbCookies: CookiesToSet = [];
+
     const supabase = createServerClient(supabaseUrl, anonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: CookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
+          sbCookies.push(...cookiesToSet);
         },
       },
     });
@@ -163,17 +165,16 @@ export async function GET(request: NextRequest) {
     });
     if (verifyErr) return fail("qq_session_failed");
 
-    // 6. 把会话 cookie 同步到重定向响应
-    const response = NextResponse.redirect(`${origin}${redirect}`);
-    for (const c of request.cookies.getAll()) {
-      if (c.name.startsWith("sb-")) {
-        response.cookies.set(c.name, c.value, {
-          httpOnly: true,
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === "production",
-          path: "/",
-        });
-      }
+    // 6. 将捕获的 session cookie 写入重定向响应
+    const isProd = process.env.NODE_ENV === "production";
+    for (const { name, value, options } of sbCookies) {
+      response.cookies.set(name, value, {
+        ...options,
+        httpOnly: options.httpOnly ?? true,
+        sameSite: options.sameSite ?? "lax",
+        secure: options.secure ?? isProd,
+        path: options.path ?? "/",
+      });
     }
     // 清理 state cookie
     response.cookies.delete("qq_oauth_state");
