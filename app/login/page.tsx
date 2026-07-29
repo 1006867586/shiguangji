@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
@@ -15,7 +15,9 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect"));
-  const supabase = createClient();
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  if (!supabaseRef.current) supabaseRef.current = createClient();
+  const supabase = supabaseRef.current;
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -25,13 +27,35 @@ function LoginForm() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        if (session) router.replace(redirect);
-        else setChecking(false);
-      })
-      .catch(() => setChecking(false));
+    let cancelled = false;
+
+    const check = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (session) {
+        router.replace(redirect);
+        return;
+      }
+
+      // 内存无会话时,尝试从 cookies 恢复(QQ 回调跳转后常见)
+      const { data, error } = await supabase.auth.refreshSession();
+      if (cancelled) return;
+
+      if (!error && data.session) {
+        router.replace(redirect);
+      } else {
+        setChecking(false);
+      }
+    };
+
+    check().catch(() => {
+      if (!cancelled) setChecking(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [supabase, router, redirect]);
 
   const submit = async (e: React.FormEvent) => {

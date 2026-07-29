@@ -47,8 +47,6 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
   const signOut = async () => {
     if (!confirm("确定退出登录吗？")) return;
     await signOutAuth();
-    router.push("/login");
-    router.refresh();
   };
 
   return (

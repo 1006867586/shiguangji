@@ -27,10 +27,11 @@ export function AuthProvider({
   profile: Profile | null;
   children: ReactNode;
 }) {
-  // signOut 实现:用模块级 supabase client(惰性动态 import 避免打包膨胀)
   const signOut = async () => {
+    // 硬跳转前先清除会话,确保中间件不会复活会话
     const { createClient } = await import("@/lib/supabase/client");
     await createClient().auth.signOut();
+    window.location.href = "/login";
   };
 
   return (

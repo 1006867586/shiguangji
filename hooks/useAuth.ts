@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types";
@@ -13,35 +13,30 @@ interface UseAuthReturn {
   signOut: () => Promise<void>;
 }
 
-// 模块级单例:避免每次渲染都重建 Supabase client(createBrowserClient 内部会
-// 重新读取 cookies + 注册 auth 监听,反复创建会浪费资源并可能引发监听泄漏)
-let supabaseClient: ReturnType<typeof createClient> | null = null;
-function getSupabase() {
-  if (!supabaseClient) supabaseClient = createClient();
-  return supabaseClient;
-}
-
 export function useAuth(): UseAuthReturn {
-  const supabase = getSupabase();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
   const loadProfile = useCallback(async () => {
+    const supabase = supabaseRef.current;
+    if (!supabase) return;
+
     const {
-      data: { user },
+      data: { user: u },
     } = await supabase.auth.getUser();
-    setUser(user);
-    if (user) {
+    setUser(u);
+    if (u) {
       const { data: p } = await supabase
         .from("profiles")
         .select("id, nickname, avatar_url, created_at")
-        .eq("id", user.id)
+        .eq("id", u.id)
         .maybeSingle();
       setProfile(
         p ?? {
-          id: user.id,
-          nickname: user.email?.split("@")[0] ?? "用户",
+          id: u.id,
+          nickname: u.email?.split("@")[0] ?? "用户",
           avatar_url: null,
           created_at: null,
         }
@@ -50,15 +45,33 @@ export function useAuth(): UseAuthReturn {
       setProfile(null);
     }
     setLoading(false);
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
-    loadProfile();
+    // 每次 mount 创建全新 client,确保从当前 cookies 读取会话
+    // (避免模块级单例在 QQ 登录跳转后持有过期内存状态)
+    const supabase = createClient();
+    supabaseRef.current = supabase;
 
-    // 仅在关键事件触发时重载 profile:
-    //   SIGNED_IN / SIGNED_OUT / USER_UPDATED → 用户身份或资料可能变化,需重载
-    //   TOKEN_REFRESHED → 仅 access_token 续期,身份未变,跳过避免无谓请求与闪烁
-    //   INITIAL_SESSION → 首次加载,loadProfile() 已经覆盖
+    // 强制从 cookies 同步会话:getUser() 会检查并刷新存储的 session
+    supabase.auth.getUser().then(async ({ data: { user: u } }) => {
+      // 若内存中无会话但 cookies 有,尝试 refresh 从存储恢复
+      if (!u) {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (!error && data.session) {
+          // refresh 成功,supabase 内部已同步 session,重新取 user
+          const { data: userData } = await supabase.auth.getUser();
+          setUser(userData.user);
+        } else {
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+      }
+      await loadProfile();
+    });
+
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (
         event === "SIGNED_IN" ||
@@ -71,13 +84,15 @@ export function useAuth(): UseAuthReturn {
     return () => {
       sub.subscription.unsubscribe();
     };
-  }, [loadProfile, supabase]);
+  }, [loadProfile]);
 
-  // signOut 不在此手动 set 状态,避免与 onAuthStateChange(SIGNED_OUT) 触发的
-  // loadProfile 重复写入造成竞态/闪烁;让单一来源 onAuthStateChange 统一清理
   const signOut = useCallback(async () => {
+    const supabase = supabaseRef.current;
+    if (!supabase) return;
     await supabase.auth.signOut();
-  }, [supabase]);
+    // 硬跳转确保中间件能正确识别已登出状态(避免会话被中间件复活)
+    window.location.href = "/login";
+  }, []);
 
   return { user, profile, loading, refresh: loadProfile, signOut };
 }
