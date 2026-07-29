@@ -142,7 +142,7 @@ export function ActivityDetailView({
                 <PhotoUploader
                   activityId={current.id}
                   existingPhotos={current.photos}
-                  canDelete
+                  canDelete={currentUserId === current.user_id}
                   onUploaded={(p) => {
                     setActivity({
                       ...current,
