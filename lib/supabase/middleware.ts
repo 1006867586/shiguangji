@@ -34,7 +34,7 @@ function isPublicPath(pathname: string): boolean {
  * - 未登录访问受保护路径 -> 重定向到 /login?redirect=...
  */
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const supabaseResponse = NextResponse.next({ request });
   const pendingCookies: CookiesToSet = [];
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
