@@ -29,7 +29,7 @@ import { useUpload } from "@/hooks/useUpload";
 import { useAiEnabled } from "@/hooks/useAiEnabled";
 import { fetchData } from "@/lib/fetcher";
 import { isUrl, detectPlatform, extractUrlFromText } from "@/lib/utils";
-import type { ExternalLink, FavoritePlace, Group } from "@/types";
+import type { ExternalLink, ExternalPlatform, FavoritePlace, Group } from "@/types";
 
 /** 文案风格选项 */
 const COPY_STYLES = [
@@ -123,15 +123,22 @@ export function ActivityForm({
 
   // ---- 从收藏夹选取：选中后回填 externalLink + 招牌菜追加到 content ----
   const handlePickFavorite = (place: FavoritePlace) => {
+    // 收藏夹 platform（meituan/dianping/xiaohongshu/douyin/unknown）
+    // 映射到 ExternalLink platform（meituan/dianping/other）
+    const placePlatform: ExternalPlatform =
+      place.platform === "meituan" || place.platform === "dianping"
+        ? place.platform
+        : "other";
     setExternalLink((prev) => ({
-      platform: prev?.platform ?? "other",
-      url: prev?.url ?? "",
+      platform: prev?.platform ?? placePlatform,
+      url: prev?.url || place.store_url || "",
       title: place.title || prev?.title || "",
-      coverImage: prev?.coverImage ?? null,
-      rating: prev?.rating ?? null,
+      coverImage: place.cover_image_url || (prev?.coverImage ?? null),
+      rating: place.rating ?? prev?.rating ?? null,
       address: place.address || prev?.address || null,
       phone: place.phone || prev?.phone || null,
-      price: prev?.price ?? null,
+      price: place.price || (prev?.price ?? null),
+      category: place.category ?? prev?.category ?? null,
     }));
     if (place.signature_dishes.length > 0) {
       const dishesText = `招牌菜：${place.signature_dishes.join("、")}`;
