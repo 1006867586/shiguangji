@@ -5,7 +5,7 @@ import type { CookiesToSet } from "./cookies";
 /** 公开路径白名单：已登录或未登录均可访问 */
 const PUBLIC_PATHS = new Set<string>(["/login", "/join", "/groups/new"]);
 const PUBLIC_PREFIXES = ["/api/auth/", "/_next/"];
-const PUBLIC_FILES = new Set<string>(["/icon.svg", "/favicon.ico"]);
+const PUBLIC_FILES = new Set<string>(["/icon.svg", "/favicon.ico", "/manifest.json"]);
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;

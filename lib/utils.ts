@@ -164,8 +164,14 @@ export function isAllowedImageUrl(url: string): boolean {
       "lh3.googleusercontent.com",
       "avatars.githubusercontent.com",
       "q.qlogo.cn",
+      "thirdqq.qlogo.cn",
     ];
-    return [...allowedHosts, ...cdnHosts].includes(u.hostname);
+    const host = u.hostname.toLowerCase();
+    return (
+      [...allowedHosts, ...cdnHosts].includes(host) ||
+      // 允许 q.qlogo.cn 的所有子域名（thirdqq.qlogo.cn 等 QQ 头像 CDN）
+      host.endsWith(".qlogo.cn")
+    );
   } catch {
     return false;
   }
