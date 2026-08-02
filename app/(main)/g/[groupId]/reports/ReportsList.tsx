@@ -5,6 +5,14 @@ import { Loader2, ShieldCheck, ShieldX, Flag } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -51,16 +59,21 @@ const STATUS_META: Record<
 export function ReportsList({ groupId }: ReportsListProps) {
   const { reports, loading, error, reload } = useReports(groupId);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    report: ContentReport;
+    status: "resolved" | "dismissed";
+  } | null>(null);
 
-  const handleResolve = async (
+  const handleResolve = (
     report: ContentReport,
     status: "resolved" | "dismissed"
   ) => {
-    const msg =
-      status === "resolved"
-        ? "确定通过此举报吗？将标记为已处理。"
-        : "确定驳回此举报吗？";
-    if (!confirm(msg)) return;
+    setConfirmState({ report, status });
+  };
+
+  const executeResolve = async () => {
+    if (!confirmState) return;
+    const { report, status } = confirmState;
     setPendingId(report.id);
     try {
       await resolveReport(report.id, status);
@@ -70,6 +83,7 @@ export function ReportsList({ groupId }: ReportsListProps) {
       toast.error(e instanceof Error ? e.message : "操作失败");
     } finally {
       setPendingId(null);
+      setConfirmState(null);
     }
   };
 
@@ -102,6 +116,7 @@ export function ReportsList({ groupId }: ReportsListProps) {
   }
 
   return (
+    <>
     <ul className="space-y-2 p-3">
       {reports.map((r) => {
         const status = STATUS_META[r.status];
@@ -174,5 +189,39 @@ export function ReportsList({ groupId }: ReportsListProps) {
         );
       })}
     </ul>
+
+      <Dialog
+        open={confirmState !== null}
+        onOpenChange={(v) => {
+          if (!v) setConfirmState(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认操作</DialogTitle>
+            <DialogDescription>
+              {confirmState?.status === "resolved"
+                ? "确定通过此举报吗？将标记为已处理。"
+                : "确定驳回此举报吗？"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmState(null)}
+              disabled={pendingId !== null}
+            >
+              取消
+            </Button>
+            <Button onClick={executeResolve} disabled={pendingId !== null}>
+              {pendingId !== null ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              确认
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

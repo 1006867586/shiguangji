@@ -154,7 +154,7 @@ export function FeedList({
               updateActivity(id, { is_liked: liked, like_count: count })
             }
             onDeleted={removeActivity}
-            onShared={refresh}
+            onReposted={refresh}
           />
         </div>
       ))}

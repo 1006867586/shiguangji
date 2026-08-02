@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   MoreHorizontal,
@@ -7,10 +8,19 @@ import {
   Crown,
   UserMinus,
   UserCog,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import {
@@ -45,54 +55,83 @@ export function MembersList({
   const isAdmin = currentRole === "admin";
   const adminCount = members.filter((m) => m.role === "admin").length;
 
-  const handleRemove = async (m: GroupMember) => {
+  type ConfirmConfig = {
+    title: string;
+    description: string;
+    onConfirm: () => Promise<void>;
+  };
+  const [confirmState, setConfirmState] = useState<ConfirmConfig | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  const handleConfirm = async () => {
+    if (!confirmState) return;
+    setConfirming(true);
+    try {
+      await confirmState.onConfirm();
+      setConfirmState(null);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleRemove = (m: GroupMember) => {
     if (m.role === "admin") {
       toast.error("不能移除管理员，请先转让管理员权限");
       return;
     }
-    if (!confirm(`确定移除「${m.profile?.nickname ?? "该成员"}」吗？`)) return;
-    try {
-      await removeMember(m.user_id);
-      toast.success("已移除成员");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "移除失败");
-    }
+    setConfirmState({
+      title: "移除成员",
+      description: `确定移除「${m.profile?.nickname ?? "该成员"}」吗？`,
+      onConfirm: async () => {
+        try {
+          await removeMember(m.user_id);
+          toast.success("已移除成员");
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "移除失败");
+        }
+      },
+    });
   };
 
-  const handleTransfer = async (m: GroupMember) => {
+  const handleTransfer = (m: GroupMember) => {
     if (m.user_id === currentUserId) {
       toast.error("你已经是管理员");
       return;
     }
-    if (
-      !confirm(
-        `确定将管理员转让给「${m.profile?.nickname ?? "该成员"}」吗？转让后你将成为普通成员。`
-      )
-    )
-      return;
-    try {
-      await transferAdmin(m.user_id);
-      toast.success("已转让管理员");
-      // 当前用户角色已变，刷新服务端数据以同步权限态
-      router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "转让失败");
-    }
+    setConfirmState({
+      title: "转让管理员",
+      description: `确定将管理员转让给「${m.profile?.nickname ?? "该成员"}」吗？转让后你将成为普通成员。`,
+      onConfirm: async () => {
+        try {
+          await transferAdmin(m.user_id);
+          toast.success("已转让管理员");
+          // 当前用户角色已变，刷新服务端数据以同步权限态
+          router.refresh();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "转让失败");
+        }
+      },
+    });
   };
 
-  const handleLeave = async () => {
+  const handleLeave = () => {
     if (isAdmin && adminCount <= 1) {
       toast.error("你是唯一管理员，无法退出。请先转让管理员或解散圈子。");
       return;
     }
-    if (!confirm("确定退出该圈子吗？退出后将无法查看圈子动态。")) return;
-    try {
-      await leaveGroup();
-      toast.success("已退出圈子");
-      router.push("/");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "退出失败");
-    }
+    setConfirmState({
+      title: "退出圈子",
+      description: "确定退出该圈子吗？退出后将无法查看圈子动态。",
+      onConfirm: async () => {
+        try {
+          await leaveGroup();
+          toast.success("已退出圈子");
+          router.push("/");
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "退出失败");
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -114,6 +153,7 @@ export function MembersList({
   }
 
   return (
+    <>
     <div className="p-3">
       <div className="mb-2 px-1 text-xs text-muted-foreground">
         共 {members.length} 位成员
@@ -214,5 +254,33 @@ export function MembersList({
         退出圈子
       </Button>
     </div>
+
+      <Dialog
+        open={confirmState !== null}
+        onOpenChange={(v) => {
+          if (!v) setConfirmState(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmState?.title}</DialogTitle>
+            <DialogDescription>{confirmState?.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmState(null)}
+              disabled={confirming}
+            >
+              取消
+            </Button>
+            <Button onClick={handleConfirm} disabled={confirming}>
+              {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              确认
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

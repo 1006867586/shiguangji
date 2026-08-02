@@ -208,6 +208,10 @@ export function FavoritePlacesSection() {
 
   const busy = uploading || parsing;
   const batchRunning = batchProgress != null;
+  const hasXhsOrDouyin = places.some(
+    (p) => p.platform === "xiaohongshu" || p.platform === "douyin"
+  );
+  const showDegradedHint = !aiEnabled && hasXhsOrDouyin;
 
   return (
     <div className="mt-2 border-t border-border/60 p-4">
@@ -253,6 +257,12 @@ export function FavoritePlacesSection() {
           </Button>
         </div>
       </div>
+
+      {showDegradedHint ? (
+        <p className="mb-2 text-[11px] text-muted-foreground">
+          小红书/抖音店铺信息需 AI 联网补全，未配置 AI 时可能缺少封面与评分。
+        </p>
+      ) : null}
 
       {batchProgress ? (
         <div className="mb-2 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-[11px]">

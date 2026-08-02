@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Loader2, Share2, Users, Sparkles } from "lucide-react";
+import { Loader2, Repeat2, Users, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -22,19 +22,19 @@ import { fetchData } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
 import type { Activity, Group } from "@/types";
 
-interface ShareDialogProps {
+interface RepostDialogProps {
   activity: Activity;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onShared?: () => void;
+  onReposted?: () => void;
 }
 
-export function ShareDialog({
+export function RepostDialog({
   activity,
   open,
   onOpenChange,
-  onShared,
-}: ShareDialogProps) {
+  onReposted,
+}: RepostDialogProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(false);
   const [targetId, setTargetId] = useState<string>("");
@@ -53,7 +53,7 @@ export function ShareDialog({
   // ---- AI 邀请文案：调 AI 生成 2-3 版 → 弹选择器 ----
   const handleGenerateInvite = async () => {
     if (!targetId || !targetGroupName) {
-      toast.info("请先选择要分享到的圈子");
+      toast.info("请先选择要转发到的圈子");
       return;
     }
     try {
@@ -97,9 +97,9 @@ export function ShareDialog({
       .finally(() => setLoading(false));
   }, [open, activity.group_id]);
 
-  const handleShare = async () => {
+  const handleRepost = async () => {
     if (!targetId) {
-      toast.error("请选择要分享到的圈子");
+      toast.error("请选择要转发到的圈子");
       return;
     }
     setSubmitting(true);
@@ -109,11 +109,11 @@ export function ShareDialog({
         comment: comment.trim() || undefined,
       });
       const target = groups.find((g) => g.id === targetId);
-      toast.success(`已分享到「${target?.name ?? "圈子"}」`);
-      onShared?.();
+      toast.success(`已转发到「${target?.name ?? "圈子"}」`);
+      onReposted?.();
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "分享失败");
+      toast.error(e instanceof Error ? e.message : "转发失败");
     } finally {
       setSubmitting(false);
     }
@@ -124,7 +124,7 @@ export function ShareDialog({
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Share2 className="h-5 w-5" /> 分享到圈子
+            <Repeat2 className="h-5 w-5" /> 转发到圈子
           </DialogTitle>
         </DialogHeader>
 
@@ -144,7 +144,7 @@ export function ShareDialog({
 
           {/* 目标圈子选择 */}
           <div className="space-y-1.5">
-            <Label htmlFor="share-target">分享到</Label>
+            <Label htmlFor="repost-target">转发到</Label>
             {loading ? (
               <div className="flex items-center justify-center py-6 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -152,13 +152,13 @@ export function ShareDialog({
             ) : groups.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
                 <Users className="mx-auto mb-2 h-6 w-6" />
-                你还没有其他可分享的圈子
+                你还没有其他可转发的圈子
                 <p className="mt-1 text-xs">
                   请先加入或创建另一个圈子
                 </p>
               </div>
             ) : (
-              <div className="space-y-1.5" id="share-target" role="radiogroup" aria-label="选择分享到的圈子">
+              <div className="space-y-1.5" id="repost-target" role="radiogroup" aria-label="选择转发到的圈子">
                 {groups.map((g) => (
                   <button
                     key={g.id}
@@ -214,7 +214,7 @@ export function ShareDialog({
           {/* 附言 */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="share-comment">附言（可选）</Label>
+              <Label htmlFor="repost-comment">附言（可选）</Label>
               {aiEnabled ? (
                 <Button
                   type="button"
@@ -234,10 +234,10 @@ export function ShareDialog({
               ) : null}
             </div>
             <Textarea
-              id="share-comment"
+              id="repost-comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="说说你想分享的理由…"
+              placeholder="说说你想转发的理由…"
               rows={3}
               maxLength={500}
             />
@@ -257,12 +257,12 @@ export function ShareDialog({
             取消
           </Button>
           <Button
-            onClick={handleShare}
+            onClick={handleRepost}
             disabled={submitting || loading || groups.length === 0}
             className="touch-manipulation active:scale-[0.97]"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            分享
+            转发
           </Button>
         </DialogFooter>
       </DialogContent>

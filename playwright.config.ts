@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 // ============================================================
 // Playwright E2E 配置
-// testDir: ./e2e，默认仅跑 Chromium，CI 环境下重试 2 次
+// testDir: ./e2e，跑 Chromium 桌面 + Mobile Chrome / Mobile Safari，CI 环境下重试 2 次
 // webServer 自动拉起 dev server（非 CI 复用已存在的）
 // ============================================================
 
@@ -22,6 +22,14 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "Mobile Chrome",
+      use: { ...devices["Pixel 7"], isMobile: true, hasTouch: true },
+    },
+    {
+      name: "Mobile Safari",
+      use: { ...devices["iPhone 14"] },
     },
   ],
   webServer: {

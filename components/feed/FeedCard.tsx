@@ -51,7 +51,8 @@ import { TagEditor } from "@/components/activity/TagEditor";
 import { RsvpControl } from "@/components/activity/RsvpControl";
 import { SplitBill } from "@/components/activity/SplitBill";
 import { EditActivityDialog } from "@/components/activity/EditActivityDialog";
-import { ShareDialog } from "@/components/activity/ShareDialog";
+import { RepostDialog } from "@/components/activity/RepostDialog";
+import { ExternalShareSheet } from "@/components/activity/ExternalShareSheet";
 import { useComments, toggleLike, deleteActivity } from "@/hooks/useActivity";
 import { useIsFavorited } from "@/hooks/useFavorites";
 import { useReactions } from "@/hooks/useReactions";
@@ -76,7 +77,7 @@ interface FeedCardProps {
   currentUserId?: string;
   onLiked?: (id: string, liked: boolean, count: number) => void;
   onDeleted?: (id: string) => void;
-  onShared?: () => void;
+  onReposted?: () => void;
   onUpdated?: (activity: Activity) => void;
   defaultExpandComments?: boolean;
   groupId?: string;
@@ -93,7 +94,7 @@ export function FeedCard({
   currentUserId,
   onLiked,
   onDeleted,
-  onShared,
+  onReposted,
   onUpdated,
   defaultExpandComments = false,
   groupId,
@@ -109,7 +110,8 @@ export function FeedCard({
   const [removing, setRemoving] = useState(false);
   const [showComments, setShowComments] = useState(defaultExpandComments);
   const [showEdit, setShowEdit] = useState(false);
-  const [showShare, setShowShare] = useState(false);
+  const [showRepost, setShowRepost] = useState(false);
+  const [showExternalShare, setShowExternalShare] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [pinned, setPinned] = useState(activity.is_pinned ?? false);
@@ -204,8 +206,12 @@ export function FeedCard({
     }
   };
 
-  const handleShare = () => {
-    setShowShare(true);
+  const handleRepost = () => {
+    setShowRepost(true);
+  };
+
+  const handleExternalShare = () => {
+    setShowExternalShare(true);
   };
 
   // 是否展示评分（仅当已有评分数据时）
@@ -243,7 +249,7 @@ export function FeedCard({
             {activity.type === "repost" ? (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Repeat2 className="h-3 w-3" aria-hidden="true" />
-                分享了
+                转发了
               </span>
             ) : null}
           </div>
@@ -276,6 +282,9 @@ export function FeedCard({
               <Link href={`/activity/${activity.id}`}>
                 <ExternalLinkIcon className="h-4 w-4" /> 查看详情
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExternalShare}>
+              <Share2 className="h-4 w-4" /> 站外分享
             </DropdownMenuItem>
             {isMine ? (
               <>
@@ -315,7 +324,7 @@ export function FeedCard({
         </DropdownMenu>
       </div>
 
-      {/* 分享引用 */}
+      {/* 转发引用 */}
       {activity.repost_of ? (
         <div className="mt-3 rounded-xl border-l-2 border-primary/70 bg-muted/50 py-2.5 pl-3 pr-2">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -466,12 +475,12 @@ export function FeedCard({
         </button>
         <button
           type="button"
-          onClick={handleShare}
-          aria-label="分享"
+          onClick={handleRepost}
+          aria-label="转发到圈子"
           className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]"
         >
-          <Share2 className="h-4 w-4" aria-hidden="true" />
-          分享
+          <Repeat2 className="h-4 w-4" aria-hidden="true" />
+          转发
         </button>
         {/* 右侧：收藏 + 照片数 */}
         <div className="ml-auto flex items-center gap-1">
@@ -568,12 +577,19 @@ export function FeedCard({
         onUpdated={handleUpdated}
       />
 
-      {/* 分享弹窗 */}
-      <ShareDialog
+      {/* 转发弹窗（站内转发到其他圈子） */}
+      <RepostDialog
         activity={activity}
-        open={showShare}
-        onOpenChange={setShowShare}
-        onShared={onShared}
+        open={showRepost}
+        onOpenChange={setShowRepost}
+        onReposted={onReposted}
+      />
+
+      {/* 站外分享 */}
+      <ExternalShareSheet
+        activity={activity}
+        open={showExternalShare}
+        onOpenChange={setShowExternalShare}
       />
 
       {/* 举报弹窗 */}

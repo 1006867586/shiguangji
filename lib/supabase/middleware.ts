@@ -3,14 +3,28 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { CookiesToSet } from "./cookies";
 
 /** 公开路径白名单：已登录或未登录均可访问 */
-const PUBLIC_PATHS = new Set<string>(["/login", "/join", "/groups/new"]);
-const PUBLIC_PREFIXES = ["/api/auth/", "/_next/"];
+const PUBLIC_PATHS = new Set<string>(["/login", "/join"]);
+const PUBLIC_PREFIXES = [
+  "/api/auth/",
+  "/api/ai/status",
+  "/_next/",
+];
 const PUBLIC_FILES = new Set<string>(["/icon.svg", "/favicon.ico", "/manifest.json"]);
 
+/**
+ * 判断是否为公开路径。
+ *
+ * 特例说明：
+ * - `/groups/new` 需登录（创建圈子需鉴权），不在此白名单中
+ * - OG 图路由（opengraph-image）需对社交平台爬虫放行，否则分享预览失效
+ */
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
   if (PUBLIC_FILES.has(pathname)) return true;
-  return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return true;
+  // OG 图路由对社交爬虫公开（无会话），否则分享预览会被 307 重定向到 /login
+  if (pathname.endsWith("/opengraph-image")) return true;
+  return false;
 }
 
 /**
