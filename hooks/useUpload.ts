@@ -20,6 +20,16 @@ interface UseUploadReturn {
     caption?: string,
     kind?: MediaKind
   ) => Promise<ActivityPhoto | null>;
+  /**
+   * 上传 Live Photo(静态图 + 动态视频配对)并写入某活动。
+   * 图片走压缩,视频直传;两份都 PUT 成功后再 POST /photos 带 pairedVideoUrl。
+   */
+  uploadLivePhotoToActivity: (
+    activityId: string,
+    imageFile: File,
+    videoFile: File,
+    caption?: string
+  ) => Promise<ActivityPhoto | null>;
 }
 
 const COMPRESSION_OPTIONS: Options = {
@@ -237,7 +247,77 @@ export function useUpload(): UseUploadReturn {
     []
   );
 
-  return { uploading, progress, error, uploadFile, uploadToActivity };
+  const uploadLivePhotoToActivity = useCallback(
+    async (
+      activityId: string,
+      imageFile: File,
+      videoFile: File,
+      caption?: string
+    ): Promise<ActivityPhoto | null> => {
+      setUploading(true);
+      setError(null);
+      setProgress(0);
+
+      // Step 1: 并行上传图片(压缩) + 视频(直传)，进度各占 50%
+      let imageUrl: string;
+      let videoUrl: string;
+      try {
+        // 图片与视频并行 presign+PUT；进度合并为 0-100
+        const onImgProgress = (pct: number) =>
+          setProgress(Math.round(pct * 0.5));
+        const onVidProgress = (pct: number) =>
+          setProgress(Math.round(50 + pct * 0.5));
+
+        // performUpload 内部已处理图片压缩与视频体积校验
+        const [imgRes, vidRes] = await Promise.all([
+          performUpload(imageFile, onImgProgress, "image"),
+          performUpload(videoFile, onVidProgress, "video"),
+        ]);
+        imageUrl = imgRes.url;
+        videoUrl = vidRes.url;
+        setProgress(100);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Live Photo 上传失败");
+        setUploading(false);
+        return null;
+      }
+
+      // Step 2: 写库 POST /photos，携带 pairedVideoUrl
+      try {
+        const body: AddPhotoBody = {
+          url: imageUrl,
+          caption,
+          kind: "image",
+          pairedVideoUrl: videoUrl,
+        };
+        return await fetchData<ActivityPhoto>(
+          `/api/activities/${activityId}/photos`,
+          {
+            method: "POST",
+            body: JSON.stringify(body),
+          }
+        );
+      } catch (e) {
+        console.error(
+          `[useUpload] Live Photo 写库失败: imageUrl=${imageUrl} videoUrl=${videoUrl}`,
+          e
+        );
+        throw e;
+      } finally {
+        setUploading(false);
+      }
+    },
+    []
+  );
+
+  return {
+    uploading,
+    progress,
+    error,
+    uploadFile,
+    uploadToActivity,
+    uploadLivePhotoToActivity,
+  };
 }
 
 /** 删除照片 */

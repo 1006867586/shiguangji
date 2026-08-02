@@ -14,6 +14,11 @@ export type PhotoGridItem = {
   caption?: string | null;
   /** 媒体类型，缺省视为 image */
   kind?: "image" | "video" | null;
+  /**
+   * Live Photo 配对的动态视频 URL。
+   * 有值时该项视为 Live Photo：默认显示静态图(url)，悬停/长按播放视频。
+   */
+  paired_video_url?: string | null;
   /** 上传者 id，可选（用于权限判断等） */
   uploaded_by?: string | null;
 };
@@ -38,6 +43,8 @@ export function PhotoGrid({
 }: PhotoGridProps) {
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [sourceRect, setSourceRect] = useState<DOMRect | null>(null);
+  /** 当前悬停的网格项 index，用于触发 Live Photo 视频预览 */
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const visible = useMemo(() => photos.slice(0, PHOTO_GRID_MAX), [photos]);
   const count = visible.length;
   const overflow = photos.length - count;
@@ -71,12 +78,17 @@ export function PhotoGrid({
       <div className={cn("grid gap-1.5", gridClass, className)}>
         {visible.map((p, i) => {
           const isVideo = p.kind === "video";
+          const isLivePhoto = !isVideo && !!p.paired_video_url;
+          // Live Photo：悬停时播放视频，否则显示静态图
+          const showLiveVideo = isLivePhoto && hoveredIdx === i;
           return (
             <button
               key={p.id}
               type="button"
               onClick={(e) => handleClick(i, e)}
-              aria-label={`查看第 ${i + 1} 张${isVideo ? "视频" : "照片"}`}
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx((cur) => (cur === i ? null : cur))}
+              aria-label={`查看第 ${i + 1} 张${isVideo ? "视频" : isLivePhoto ? "Live Photo" : "照片"}`}
               className={cn(
                 "relative overflow-hidden rounded-lg bg-muted shadow-sm ring-1 ring-border/40 transition-transform hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none",
                 aspect
@@ -88,6 +100,17 @@ export function PhotoGrid({
                   className="h-full w-full object-cover transition-transform duration-300 hover:scale-105 motion-reduce:hover:scale-100"
                   muted
                   playsInline
+                  preload="metadata"
+                />
+              ) : showLiveVideo ? (
+                // Live Photo 悬停态：播放动态视频（静音循环）
+                <video
+                  src={p.paired_video_url as string}
+                  className="h-full w-full object-cover"
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
                   preload="metadata"
                 />
               ) : (
@@ -106,6 +129,12 @@ export function PhotoGrid({
                   <div className="rounded-full bg-black/50 p-1.5 text-white">
                     <Play className="h-3.5 w-3.5 fill-current" />
                   </div>
+                </div>
+              ) : null}
+              {/* Live Photo 角标 */}
+              {isLivePhoto ? (
+                <div className="pointer-events-none absolute left-1 top-1 rounded bg-black/55 px-1 py-0.5 text-[9px] font-semibold tracking-wide text-white">
+                  LIVE
                 </div>
               ) : null}
               {/* caption 指示图标（如有描述） */}
@@ -222,6 +251,7 @@ function Lightbox({
   };
 
   const isVideo = current?.kind === "video";
+  const isLivePhoto = !isVideo && !!current?.paired_video_url;
 
   return (
     <div
@@ -283,6 +313,17 @@ function Lightbox({
             src={current.url}
             className="h-full w-full object-contain"
             controls
+            playsInline
+            autoPlay
+          />
+        ) : isLivePhoto ? (
+          // Live Photo 大图：播放配对动态视频，带控件；fallback 静态图作 poster
+          <video
+            src={current.paired_video_url as string}
+            poster={current.url}
+            className="h-full w-full object-contain"
+            controls
+            loop
             playsInline
             autoPlay
           />

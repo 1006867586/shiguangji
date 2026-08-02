@@ -75,6 +75,13 @@ export interface ActivityPhoto {
   url: string;
   caption: string | null;
   kind: MediaKind;
+  /**
+   * Live Photo 配对的动态视频 URL。
+   * - 普通 image：null
+   * - 普通 video：null（视频本身就是动态的）
+   * - Live Photo：有值（kind 为 image，url 为静态封面图，此字段为 3 秒动态视频）
+   */
+  paired_video_url: string | null;
   created_at: string;
   uploader?: Pick<Profile, "id" | "nickname" | "avatar_url">;
 }
@@ -290,6 +297,8 @@ export interface AddPhotoBody {
   url: string;
   caption?: string;
   kind?: MediaKind;
+  /** Live Photo 配对的动态视频 URL（仅 Live Photo 上传时携带） */
+  pairedVideoUrl?: string;
 }
 
 export interface CreateCommentBody {

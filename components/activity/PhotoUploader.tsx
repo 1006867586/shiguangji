@@ -18,7 +18,75 @@ interface PhotoUploaderProps {
   onDeleted?: (photoId: string) => void;
 }
 
-const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/heic";
+// 包含视频格式：iOS Safari 选 Live Photo 时会同时给出 image + video(MOV) 两个文件
+const ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,image/heic,video/quicktime,video/mp4,video/webm";
+
+/** 从文件名中去除扩展名，用于 Live Photo 图+视频配对识别 */
+function basename(filename: string): string {
+  return filename.replace(/\.[^.]+$/, "");
+}
+
+/** 判断文件是否为视频 */
+function isVideoFile(file: File): boolean {
+  return file.type.startsWith("video/");
+}
+
+/** 判断文件是否为图片 */
+function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/");
+}
+
+/**
+ * 将用户选择的文件列表分组为「上传任务」：
+ * - 同名（去扩展名）的 image + video 配对为 Live Photo
+ * - 未配对的图片按普通图片上传
+ * - 未配对的视频按普通视频上传
+ */
+type UploadTask =
+  | { type: "live"; image: File; video: File }
+  | { type: "image"; file: File }
+  | { type: "video"; file: File };
+
+function groupFiles(files: File[]): UploadTask[] {
+  const images: File[] = [];
+  const videos: File[] = [];
+  for (const f of files) {
+    if (isImageFile(f)) images.push(f);
+    else if (isVideoFile(f)) videos.push(f);
+  }
+
+  const tasks: UploadTask[] = [];
+  const usedVideoIdx = new Set<number>();
+
+  // 第一轮：按同名配对 Live Photo
+  for (const img of images) {
+    const imgBase = basename(img.name).toLowerCase();
+    const matchIdx = videos.findIndex(
+      (v, i) => !usedVideoIdx.has(i) && basename(v.name).toLowerCase() === imgBase
+    );
+    if (matchIdx >= 0) {
+      usedVideoIdx.add(matchIdx);
+      tasks.push({ type: "live", image: img, video: videos[matchIdx] });
+    }
+  }
+
+  // 第二轮：未配对的图片
+  for (const img of images) {
+    const imgBase = basename(img.name).toLowerCase();
+    const paired = tasks.some(
+      (t) => t.type === "live" && basename(t.image.name).toLowerCase() === imgBase
+    );
+    if (!paired) tasks.push({ type: "image", file: img });
+  }
+
+  // 第三轮：未配对的视频
+  videos.forEach((v, i) => {
+    if (!usedVideoIdx.has(i)) tasks.push({ type: "video", file: v });
+  });
+
+  return tasks;
+}
 
 export function PhotoUploader({
   activityId,
@@ -29,15 +97,31 @@ export function PhotoUploader({
 }: PhotoUploaderProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [photos, setPhotos] = useState<ActivityPhoto[]>(existingPhotos);
-  const { uploading, uploadToActivity } = useUpload();
+  const { uploading, uploadToActivity, uploadLivePhotoToActivity } = useUpload();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    // 分组：同名 image+video 配对为 Live Photo，其余按普通图/视频
+    const tasks = groupFiles(Array.from(files));
     let failed = 0;
-    for (const file of Array.from(files)) {
+    for (const task of tasks) {
       try {
-        const photo = await uploadToActivity(activityId, file);
+        let photo: ActivityPhoto | null = null;
+        if (task.type === "live") {
+          photo = await uploadLivePhotoToActivity(
+            activityId,
+            task.image,
+            task.video
+          );
+        } else {
+          photo = await uploadToActivity(
+            activityId,
+            task.file,
+            undefined,
+            task.type === "video" ? "video" : "image"
+          );
+        }
         if (photo) {
           setPhotos((prev) => [...prev, photo]);
           onUploaded?.(photo);
@@ -49,7 +133,7 @@ export function PhotoUploader({
       }
     }
     if (failed > 0) {
-      toast.error(`${failed} 张上传失败`);
+      toast.error(`${failed} 项上传失败`);
     }
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -132,7 +216,7 @@ export function PhotoUploader({
       />
 
       <p className="mt-2 text-xs text-muted-foreground">
-        支持多选，单张自动压缩至 3MB 以内
+        支持多选，图片自动压缩至 3MB；Live Photo 会保留动态效果
       </p>
     </div>
   );
@@ -147,7 +231,7 @@ export function PhotoUploadButton({
   onUploaded?: (photo: ActivityPhoto) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const { uploading, uploadToActivity } = useUpload();
+  const { uploading, uploadToActivity, uploadLivePhotoToActivity } = useUpload();
 
   return (
     <>
@@ -174,9 +258,24 @@ export function PhotoUploadButton({
         onChange={async (e) => {
           const files = e.target.files;
           if (!files) return;
-          for (const file of Array.from(files)) {
+          const tasks = groupFiles(Array.from(files));
+          for (const task of tasks) {
             try {
-              const photo = await uploadToActivity(activityId, file);
+              let photo: ActivityPhoto | null = null;
+              if (task.type === "live") {
+                photo = await uploadLivePhotoToActivity(
+                  activityId,
+                  task.image,
+                  task.video
+                );
+              } else {
+                photo = await uploadToActivity(
+                  activityId,
+                  task.file,
+                  undefined,
+                  task.type === "video" ? "video" : "image"
+                );
+              }
               if (photo) onUploaded?.(photo);
             } catch (err) {
               toast.error(err instanceof Error ? err.message : "上传失败");

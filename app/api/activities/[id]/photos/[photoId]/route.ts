@@ -110,7 +110,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       .update({ caption: nextCaption })
       .eq("id", photoId)
       .select(
-        "id, activity_id, uploaded_by, url, caption, kind, created_at"
+        "id, activity_id, uploaded_by, url, caption, kind, paired_video_url, created_at"
       )
       .single();
 

@@ -135,8 +135,9 @@ export function isUuid(value: string): boolean {
 }
 
 /**
- * 校验图片 URL 是否来自允许的域名。
+ * 校验媒体 URL 是否来自允许的域名。
  * 允许 R2 公开域名、环境变量配置的域名，以及常见第三方图片 CDN（用户头像可能来自第三方）。
+ * 图片与视频共用同一套域名白名单（R2 同桶存储），故导出别名以语义化使用。
  */
 export function isAllowedImageUrl(url: string): boolean {
   try {
@@ -176,6 +177,12 @@ export function isAllowedImageUrl(url: string): boolean {
     return false;
   }
 }
+
+/**
+ * 校验媒体（视频）URL 是否来自允许的域名。
+ * 与 isAllowedImageUrl 共用同一套域名白名单（R2 同桶存储），仅为语义清晰而导出别名。
+ */
+export const isAllowedMediaUrl = isAllowedImageUrl;
 
 /** 安全解析分页 limit 参数：非正数或超限回退到默认值，并限制上限 */
 export function safeParseInt(

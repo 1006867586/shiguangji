@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
-import { jsonResponse, isAllowedImageUrl, isUuid, safeErrorMessage } from "@/lib/utils";
+import { jsonResponse, isAllowedImageUrl, isAllowedMediaUrl, isUuid, safeErrorMessage } from "@/lib/utils";
 import type { AddPhotoBody, MediaKind } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +48,18 @@ export async function POST(request: NextRequest, { params }: Params) {
     // kind 字段：'image' | 'video'，默认 'image' 保持向后兼容
     const kind: MediaKind = body.kind === "video" ? "video" : "image";
 
+    // Live Photo 配对视频 URL（仅 Live Photo 携带，需同样校验域名）
+    const pairedVideoUrl =
+      typeof body.pairedVideoUrl === "string" && body.pairedVideoUrl.trim()
+        ? body.pairedVideoUrl.trim()
+        : null;
+    if (pairedVideoUrl && !isAllowedMediaUrl(pairedVideoUrl)) {
+      return jsonResponse({ error: "配对视频 URL 不合法" }, { status: 400 });
+    }
+    // Live Photo 的主记录 kind 必须为 image（视频本身不需要再配对视频）
+    const finalPairedVideoUrl =
+      pairedVideoUrl && kind === "image" ? pairedVideoUrl : null;
+
     const { data: photo, error } = await supabase
       .from("activity_photos")
       .insert({
@@ -56,9 +68,10 @@ export async function POST(request: NextRequest, { params }: Params) {
         url: body.url,
         caption: body.caption?.trim() || null,
         kind,
+        paired_video_url: finalPairedVideoUrl,
       })
       .select(
-        "id, activity_id, uploaded_by, url, caption, kind, created_at"
+        "id, activity_id, uploaded_by, url, caption, kind, paired_video_url, created_at"
       )
       .single();
 
@@ -116,7 +129,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
     const { data: photos, error } = await supabase
       .from("activity_photos")
       .select(
-        "id, activity_id, uploaded_by, url, caption, kind, created_at, uploader:profiles!activity_photos_uploaded_by_fkey(id, nickname, avatar_url)"
+        "id, activity_id, uploaded_by, url, caption, kind, paired_video_url, created_at, uploader:profiles!activity_photos_uploaded_by_fkey(id, nickname, avatar_url)"
       )
       .eq("activity_id", id)
       .order("created_at", { ascending: true });

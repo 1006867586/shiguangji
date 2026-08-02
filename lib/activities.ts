@@ -74,7 +74,7 @@ export async function fetchFeed(opts: {
     const ids = activities.map((a) => a.id);
     const { data: photos, error: photoErr } = await supabase
       .from("activity_photos")
-      .select("id, activity_id, uploaded_by, url, caption, created_at")
+      .select("id, activity_id, uploaded_by, url, caption, kind, paired_video_url, created_at")
       .in("activity_id", ids)
       .order("created_at", { ascending: true });
 
@@ -137,7 +137,7 @@ export async function fetchActivityDetail(opts: {
     supabase
       .from("activity_photos")
       .select(
-        "id, activity_id, uploaded_by, url, caption, created_at, uploader:profiles!activity_photos_uploaded_by_fkey(id, nickname, avatar_url)"
+        "id, activity_id, uploaded_by, url, caption, kind, paired_video_url, created_at, uploader:profiles!activity_photos_uploaded_by_fkey(id, nickname, avatar_url)"
       )
       .eq("activity_id", opts.activityId)
       .order("created_at", { ascending: true }),

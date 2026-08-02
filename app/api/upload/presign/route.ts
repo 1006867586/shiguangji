@@ -17,10 +17,12 @@ const ALLOWED_IMAGE_CONTENT_TYPES = [
 const ALLOWED_VIDEO_CONTENT_TYPES = [
   "video/mp4",
   "video/webm",
+  // Live Photo 的动态视频部分为 MOV/QuickTime
+  "video/quicktime",
 ];
 
 /** 视频允许的文件扩展名（用于后缀校验） */
-const ALLOWED_VIDEO_EXTENSIONS = ["mp4", "webm"];
+const ALLOWED_VIDEO_EXTENSIONS = ["mp4", "webm", "mov"];
 
 /** 从文件名提取扩展名（小写，不含点） */
 function getExt(filename: string): string {
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
     return jsonResponse(
       {
         error:
-          "不支持的文件格式（图片：jpeg/png/webp/gif/heic；视频：mp4/webm）",
+          "不支持的文件格式（图片：jpeg/png/webp/gif/heic；视频：mp4/webm/mov）",
       },
       { status: 400 }
     );
