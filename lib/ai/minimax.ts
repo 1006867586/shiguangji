@@ -181,10 +181,15 @@ export async function vision(
 
 /**
  * 解析 JSON 输出：很多场景需要 AI 返回结构化数据
- * 容忍模型输出 ```json ... ``` 包裹
+ * 容忍：
+ * - ```json ... ``` 代码块包裹
+ * - <think>...</think> 思考标签（M2.5/M3 即使 thinking:disabled 仍可能输出）
+ * - 首尾多余文本
  */
 export function parseJsonContent<T = unknown>(content: string): T {
   let text = content.trim();
+  // 剥离 <think>...</think> 思考块（未闭合时也剥离，避免 think 里的 { } 干扰提取）
+  text = text.replace(/<think>[\s\S]*?(<\/think>|$)/g, "").trim();
   // 去除 markdown 代码块包裹
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {

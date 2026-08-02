@@ -83,7 +83,10 @@ export async function POST(req: NextRequest) {
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: prompt },
         ],
-        { temperature: 0.9, maxTokens: 2048, thinking: "disabled" }
+        // M2.5-highspeed 即使 thinking:disabled 仍会输出 <think> 标签，
+        // 思考过程会消耗 token，2048 易被截断（finish_reason:length）导致无最终 JSON。
+        // 增大到 4096 给思考+JSON 输出留足空间。
+        { temperature: 0.9, maxTokens: 4096, thinking: "disabled" }
       );
       aiModel = aiResult.model;
       aiTokens = aiResult.totalTokens;

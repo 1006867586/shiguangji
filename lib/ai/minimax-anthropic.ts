@@ -220,9 +220,12 @@ export async function chat(
  * 解析 JSON 输出：容忍模型输出 ```json ... ``` 包裹，或前后带引导语
  * 联网搜索场景下 M3 可能先说"我来帮你搜索..."再给出 JSON，
  * 这里从文本中提取最后一个完整的 {...} 块作为候选。
+ * 同时剥离 <think>...</think> 思考标签，避免 think 里的 { } 干扰提取。
  */
 export function parseJsonContent<T = unknown>(content: string): T {
   let text = content.trim();
+  // 0. 剥离 <think>...</think> 思考块（未闭合时也剥离）
+  text = text.replace(/<think>[\s\S]*?(<\/think>|$)/g, "").trim();
   // 1. 优先匹配 ```json ... ``` 代码块
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
