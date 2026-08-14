@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PwaInstaller } from "@/components/PwaInstaller";
 import { APP_NAME } from "@/lib/constants";
+import { normalizeEnvUrl } from "@/lib/utils";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,8 +22,10 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
+  // EdgeOne 等平台可能注入裸域名（无 https:// 前缀），直接 new URL() 会抛
+  // ERR_INVALID_URL 导致 build 失败。normalizeEnvUrl 会补齐协议前缀。
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+    normalizeEnvUrl(process.env.NEXT_PUBLIC_APP_URL, "http://localhost:3000")
   ),
   title: {
     default: `${APP_NAME} · 圈子聚餐记录`,

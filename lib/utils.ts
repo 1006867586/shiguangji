@@ -7,6 +7,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * 解析可能缺协议的环境变量 URL 为完整 URL 字符串。
+ * EdgeOne 等平台有时会注入裸域名（如 shiguangji-xxx.edgeone.cool），
+ * 直接 new URL() 会抛 ERR_INVALID_URL。这里补 https:// 前缀。
+ * 输入为空或无法解析时返回 fallback（默认 localhost）。
+ */
+export function normalizeEnvUrl(
+  value: string | undefined,
+  fallback = "http://localhost:3000"
+): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return fallback;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  // 裸域名补 https://
+  return `https://${raw}`;
+}
+
 /** 相对时间格式化（中文）。基于 Intl.RelativeTimeFormat，兼顾 i18n。 */
 const rtf = new Intl.RelativeTimeFormat("zh-CN", { numeric: "auto" });
 const dateShortFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -146,6 +163,7 @@ export function isAllowedImageUrl(url: string): boolean {
     const allowedHosts = [
       // 与 lib/r2.ts 保持一致：上传返回的公开 URL 来自 R2_PUBLIC_URL，
       // 这里必须校验同一个变量，否则自定义 R2 域名会被误判为非法。
+      // 注意：EdgeOne 等平台可能注入裸域名（无协议前缀），用 normalizeEnvUrl 补齐。
       process.env.R2_PUBLIC_URL,
       process.env.NEXT_PUBLIC_R2_PUBLIC_URL,
       process.env.NEXT_PUBLIC_APP_URL,
@@ -153,7 +171,7 @@ export function isAllowedImageUrl(url: string): boolean {
       .filter(Boolean)
       .map((h) => {
         try {
-          return new URL(h as string).hostname;
+          return new URL(normalizeEnvUrl(h as string)).hostname;
         } catch {
           return null;
         }
