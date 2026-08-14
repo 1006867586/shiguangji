@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Download, Image as ImageIcon, Loader2, RefreshCw } from "lucide-react";
+import { Download, Image as ImageIcon, Loader2, RefreshCw, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -243,6 +243,74 @@ export function SharePosterDialog({
     }
   }, [posterDataUrl, exportPoster, activity.id]);
 
+  /**
+   * 直接分享海报到社交平台（无需保存到本地）。
+   * 使用 Web Share API 的 files 参数，将 PNG 图片直接推到系统分享面板。
+   * 移动端会唤起微信/朋友圈/QQ/微博等原生分享面板。
+   * 不支持时回退到下载。
+   */
+  const handleShare = useCallback(async () => {
+    let dataUrl: string | null = posterDataUrl ?? null;
+    if (!dataUrl) {
+      const generated = await exportPoster();
+      if (!generated) return;
+      dataUrl = generated;
+    }
+
+    // dataURL → Blob → File
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], `${APP_NAME}_${activity.id}.png`, {
+      type: "image/png",
+    });
+
+    const nav = navigator as Navigator & {
+      canShare?: (data: ShareData) => boolean;
+      share?: (data: ShareData) => Promise<void>;
+    };
+
+    // 检查是否支持文件分享
+    const canShareFiles =
+      typeof nav.canShare === "function" && nav.canShare({ files: [file] });
+
+    if (canShareFiles && nav.share) {
+      try {
+        await nav.share({
+          title: `${APP_NAME} · 聚餐记录`,
+          text: authorName
+            ? `${authorName} 在${APP_NAME}分享了一条聚餐记录`
+            : `${APP_NAME}聚餐记录`,
+          files: [file],
+        });
+        onOpenChange(false);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        toast.error("分享失败，请尝试保存图片后手动分享");
+      }
+      return;
+    }
+
+    // 回退：不支持文件分享时，尝试纯 URL 分享
+    if (nav.share) {
+      try {
+        await nav.share({
+          title: `${APP_NAME} · 聚餐记录`,
+          text: authorName
+            ? `${authorName} 在${APP_NAME}分享了一条聚餐记录`
+            : `${APP_NAME}聚餐记录`,
+          url: shareUrl,
+        });
+        onOpenChange(false);
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
+    }
+
+    // 最终回退：下载图片
+    toast.info("当前浏览器不支持直接分享图片，已为你保存到本地");
+    handleDownload();
+  }, [posterDataUrl, exportPoster, activity.id, authorName, shareUrl, onOpenChange, handleDownload]);
+
   const isLoading = !posterDataUrl && (exporting || !qrReady) && !exportFailed && !qrFailed;
   const showRetry = qrFailed || exportFailed;
 
@@ -330,16 +398,25 @@ export function SharePosterDialog({
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              {showRetry ? "重新生成" : "重新生成"}
+              重新生成
             </button>
             <button
               type="button"
               onClick={handleDownload}
               disabled={exporting || !posterDataUrl}
-              className="flex flex-[1.2] items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 touch-manipulation active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted touch-manipulation active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5" />
-              保存到本地
+              保存
+            </button>
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={exporting || !posterDataUrl}
+              className="flex flex-[1.4] items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 touch-manipulation active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              分享
             </button>
           </div>
         </div>
