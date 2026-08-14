@@ -1,10 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // EdgeOne Makers 支持 Next.js SSR/ISR/SSG，无需 static export
+  // standalone 模式生成自包含运行产物，适配 CloudBase 云托管 / Vercel / 自托管 Node
+  output: "standalone",
   poweredByHeader: false,
   images: {
-    formats: ["image/avif", "image/webp"],
+    // CloudBase 云托管镜像无 Sharp，禁用 Next.js 内置图片优化，避免运行时报错
+    unoptimized: true,
     remotePatterns: [
       { hostname: "img.xiangke.app" },
       { hostname: "img.xiangke.dev" },

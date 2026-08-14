@@ -1,0 +1,32 @@
+node_modules
+.next
+.git
+.gitignore
+
+# 环境变量文件，构建期用 ARG 占位，运行时凭据由 CloudBase 控制台注入
+.env
+.env*.local
+.env.example
+
+# IDE / 系统文件
+.vscode
+.idea
+.DS_Store
+
+# 测试 / e2e产物
+coverage
+test-results
+playwright-report
+playwright/.cache
+
+# 旧 EdgeOne 残留
+.edgeone
+edge-functions
+.trae-html-share-packages
+
+# Vercel 残留
+.vercel
+
+# 日志
+*.log
+npm-debug.log*
