@@ -12,8 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
-    "verify": "npm run lint && npm run type-check && npm run test && npm run build",
-    "deploy": "node scripts/deploy-edgeone.mjs"
+    "verify": "npm run lint && npm run type-check && npm run test && npm run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.654.0",

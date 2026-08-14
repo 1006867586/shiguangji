@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // EdgeOne Pages 支持 SSR/ISR/SSG，无需 static export
+  // EdgeOne Makers 支持 Next.js SSR/ISR/SSG，无需 static export
   poweredByHeader: false,
   images: {
     formats: ["image/avif", "image/webp"],

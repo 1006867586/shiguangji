@@ -101,19 +101,19 @@ xiangke/
 ├── types/              # 全局 TypeScript 类型
 ├── supabase/migrations/# 数据库迁移 SQL（001 ~ 009）
 ├── e2e/                # Playwright 用例
-├── scripts/            # 部署脚本
+├── scripts/            # 测试脚本
 └── public/             # 静态资源 + PWA manifest
 ```
 
 ## 部署
 
-部署至 EdgeOne Pages（项目已配置 `scripts/deploy-edgeone.mjs`）：
+部署至 EdgeOne Makers（支持 Next.js SSR + API Routes）：
 
-```bash
-npm run deploy
-```
-
-在 EdgeOne 控制台配置好上述环境变量后即可一键部署，构建产物支持 SSR + API Routes。
+1. 在 [EdgeOne Makers 控制台](https://console.cloud.tencent.com/edgeone/pages) 创建项目，绑定本 GitHub 仓库。
+2. 构建命令 `npm run build`，输出目录 `.next`（Makers 自动识别）。
+3. 在项目设置中配置环境变量（见上方「环境变量」清单），其中 `NEXT_PUBLIC_APP_URL` 需带 `https://` 协议前缀（如 `https://your-project.edgeone.cool`）。
+4. 推送代码至 `main` 分支即触发自动构建部署。
+5. （可选）在项目设置中添加自定义域名，按提示完成 CNAME 解析。
 
 ## 许可证
 
