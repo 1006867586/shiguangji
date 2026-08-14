@@ -700,7 +700,7 @@ const PosterDOM = forwardRef(function PosterDOM(
         </div>
       </div>
 
-      {/* 3. 正文 + 信息区（minHeight 确保填满封面与二维码间空间） */}
+      {/* 3. 正文 + 信息区 */}
       <div
         style={{
           padding: `14px 18px 0 18px`,
@@ -708,9 +708,11 @@ const PosterDOM = forwardRef(function PosterDOM(
           minHeight: bodyMinHeight,
           display: "flex",
           flexDirection: "column",
+          // 稀疏模式居中：让内容垂直居中于封面和二维码之间
+          justifyContent: hasRichInfo ? "flex-start" : "center",
         }}
       >
-        {/* 稀疏模式装饰条：当没有丰富餐厅/社交信息时，增加视觉层次 */}
+        {/* 稀疏模式装饰条：顶部 + 金色渐变 */}
         {!hasRichInfo && (
           <div
             style={{
@@ -718,7 +720,7 @@ const PosterDOM = forwardRef(function PosterDOM(
               borderRadius: 2,
               background:
                 "linear-gradient(90deg, #fde68a 0%, #f59e0b 50%, #fde68a 100%)",
-              marginBottom: 12,
+              marginBottom: 14,
               opacity: 0.75,
               flexShrink: 0,
             }}
@@ -906,11 +908,11 @@ const PosterDOM = forwardRef(function PosterDOM(
           </div>
         ) : null}
 
-        {/* 底部填充：用 flex:1 撑开空间，稀疏模式加装饰 */}
+        {/* 稀疏模式底部装饰条（居中模式下与内容一起居中） */}
         {!hasRichInfo && (
           <div
             style={{
-              marginTop: 12,
+              marginTop: 14,
               height: 3,
               borderRadius: 2,
               background:
@@ -920,7 +922,9 @@ const PosterDOM = forwardRef(function PosterDOM(
             }}
           />
         )}
-        <div style={{ flex: 1 }} />
+
+        {/* 丰富模式才用 flex:1 填充剩余空间；稀疏模式已用 justify-content:center 居中 */}
+        {hasRichInfo && <div style={{ flex: 1 }} />}
       </div>
 
       {/* 4. 底部二维码区（去掉 shareUrl 域名显示，二维码本身包含跳转） */}

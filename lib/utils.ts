@@ -166,12 +166,15 @@ export function isAllowedImageUrl(url: string): boolean {
       "avatars.githubusercontent.com",
       "q.qlogo.cn",
       "thirdqq.qlogo.cn",
+      "img1.zykh.top",
     ];
     const host = u.hostname.toLowerCase();
     return (
       [...allowedHosts, ...cdnHosts].includes(host) ||
       // 允许 q.qlogo.cn 的所有子域名（thirdqq.qlogo.cn 等 QQ 头像 CDN）
-      host.endsWith(".qlogo.cn")
+      host.endsWith(".qlogo.cn") ||
+      // 允许 zykh.top 的所有子域名（img1.zykh.top 等自建 CDN）
+      host.endsWith(".zykh.top")
     );
   } catch {
     return false;
