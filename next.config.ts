@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // EdgeOne Makers 支持 Next.js SSR/ISR/SSG，无需 static export
+  // Vercel 原生支持 Next.js SSR / ISR / SSG / API Routes，无需 static export
   poweredByHeader: false,
   images: {
     formats: ["image/avif", "image/webp"],

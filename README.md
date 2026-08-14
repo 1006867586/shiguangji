@@ -27,7 +27,7 @@
 | 数据库 / 认证 | Supabase (PostgreSQL + Auth + Realtime) |
 | 对象存储 | Cloudflare R2（预签名 URL 直传） |
 | AI | MiniMax（OpenAI / Anthropic 兼容接口） |
-| 部署 | EdgeOne Pages |
+| 部署 | Vercel（Next.js 原生 SSR + API Routes + Edge/Node Functions） |
 
 ## 本地开发
 
@@ -85,7 +85,7 @@ npm run dev
 | `npm run test` | 运行单元测试 (Vitest) |
 | `npm run test:watch` | 测试监听模式 |
 | `npm run test:e2e` | 端到端测试 (Playwright) |
-| `npm run deploy` | 部署到 EdgeOne Pages |
+| `npm run verify` | 一键校验：lint + type-check + test + build |
 
 ## 目录结构
 
@@ -107,13 +107,40 @@ xiangke/
 
 ## 部署
 
-部署至 EdgeOne Makers（支持 Next.js SSR + API Routes）：
+部署至 Vercel（原生支持 Next.js SSR + API Routes + Middleware）：
 
-1. 在 [EdgeOne Makers 控制台](https://console.cloud.tencent.com/edgeone/pages) 创建项目，绑定本 GitHub 仓库。
-2. 构建命令 `npm run build`，输出目录 `.next`（Makers 自动识别）。
-3. 在项目设置中配置环境变量（见上方「环境变量」清单），其中 `NEXT_PUBLIC_APP_URL` 需带 `https://` 协议前缀（如 `https://your-project.edgeone.cool`）。
-4. 推送代码至 `main` 分支即触发自动构建部署。
-5. （可选）在项目设置中添加自定义域名，按提示完成 CNAME 解析。
+### 方式一：Git 集成（推荐）
+
+1. 在 [vercel.com](https://vercel.com) 创建账号，绑定本 GitHub 仓库。
+2. 在 Vercel 控制台点击 **Add New → Project**，导入该仓库。
+3. Framework Preset 自动识别为 **Next.js**，构建命令 `npm run build`，输出目录由 Vercel 自动处理，无需手动设置。
+4. 在 **Settings → Environment Variables** 配置环境变量（见上方「环境变量」清单），其中 `NEXT_PUBLIC_APP_URL` 需带 `https://` 协议前缀（如 `https://your-project.vercel.app` 或绑定后的自定义域名）。
+5. 推送代码至 `main` 分支即触发自动构建部署。
+6. （可选）在 **Settings → Domains** 添加自定义域名，按提示完成 DNS 解析。
+
+### 方式二：Vercel CLI
+
+```bash
+# 1. 安装 Vercel CLI
+npm i -g vercel
+
+# 2. 登录并关联项目（首次会创建项目）
+vercel link
+
+# 3. 拉取控制台已配置的环境变量到本地 .env.local
+vercel env pull .env.local
+
+# 4. 部署到预览环境
+vercel
+
+# 5. 部署到生产环境
+vercel --prod
+```
+
+### 注意事项
+
+- AI 视觉/联网搜索类接口（[api/ai/**](./app/api/ai)）已设置 `export const maxDuration = 60`，对应 Vercel Hobby 套餐的函数超时上限；如升级到 Pro 套餐可将该值调到 300 以承载更长任务。
+- R2 上传使用 [api/upload/presign](./app/api/upload/presign) 出预签名 URL，密钥仅在服务端使用，前端直传。
 
 ## 许可证
 
