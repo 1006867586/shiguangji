@@ -48,8 +48,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0b" },
+    // 与 globals.css 的 --background 保持一致：浅暖色米白 + 深可可色，避免地址栏与页面底色色差
+    { media: "(prefers-color-scheme: light)", color: "#f7f4ef" },
+    { media: "(prefers-color-scheme: dark)", color: "#131210" },
   ],
   width: "device-width",
   initialScale: 1,
