@@ -33,7 +33,78 @@ interface SharePosterDialogProps {
 
 /** 海报 DOM 尺寸（逻辑像素，导出时 2x 倍率保证清晰度） */
 const POSTER_WIDTH = 375;
-const POSTER_HEIGHT = 500; // 3:4 竖屏
+
+/**
+ * 动态海报高度：根据内容丰富度计算。
+ * 成熟方案——用内容量决定画布高度，而不是把内容硬塞进固定尺寸。
+ *
+ * 公式：
+ *   基础 = 封面 + 作者栏重叠 + 正文区 + 二维码区 + 边距
+ *   正文区 = max(内容所需高度, 最小高度)
+ *   内容所需高度 = 装饰条(8) + 可选信息行 + 正文(最多3行) + 标签 + 互动数据
+ *
+ * 典型值：
+ *   稀疏（只有封面+1行正文）:  ~430px
+ *   标准（封面+餐厅信息+标签）: ~560px
+ *   丰富（全部信息）:          ~680px
+ */
+function computePosterHeight(opts: {
+  coverHeight: number;
+  hasExtTitle: boolean;
+  hasExtInfo: boolean;
+  hasRepost: boolean;
+  tagsCount: number;
+  hasStats: boolean;
+  summaryLength: number;
+}): number {
+  const {
+    coverHeight,
+    hasExtTitle,
+    hasExtInfo,
+    hasRepost,
+    tagsCount,
+    hasStats,
+    summaryLength,
+  } = opts;
+
+  const AUTHOR_OVERLAP = 28;
+  const QR_AREA = 110;
+  const TOP_PADDING = 14;
+  const BOTTOM_PADDING = 18;
+
+  // 信息行（餐厅信息/转发/标签/互动数据）的高度累加
+  let infoLinesHeight = 0;
+  if (hasExtTitle) {
+    infoLinesHeight += 18; // 标题胶囊
+    if (hasExtInfo) infoLinesHeight += 12; // 评分+分类+人均
+  }
+  if (hasExtInfo) infoLinesHeight += 10; // 地址行
+  if (hasRepost) infoLinesHeight += 36; // 转发卡
+  if (tagsCount > 0) infoLinesHeight += 20; // 标签胶囊行
+  if (hasStats) infoLinesHeight += 22; // 互动数据行
+
+  // 稀疏模式装饰条
+  const hasAnyInfo = hasExtTitle || hasExtInfo || hasRepost || tagsCount > 0 || hasStats;
+  const decorHeight = hasAnyInfo ? 0 : 22; // 上下两条装饰条
+
+  // 正文行数估算（13px/行，60字 ≈ 3 行；稀疏模式 15px/行）
+  const lineHeight = 22; // 13 * 1.55 ≈ 20, 加上间距
+  const summaryLines = summaryLength === 0 ? 1 : Math.min(3, Math.ceil(summaryLength / 18));
+  const summaryHeight = summaryLines * lineHeight + (summaryLines > 1 ? 0 : 6);
+
+  // 正文区总高 = padding + 装饰条 + 信息行 + 正文 + padding
+  const bodyHeight = TOP_PADDING + decorHeight + infoLinesHeight + summaryHeight + BOTTOM_PADDING;
+
+  // 最小正文区高度，保证视觉呼吸
+  const MIN_BODY = 80;
+  const bodyMin = Math.max(bodyHeight, MIN_BODY);
+
+  // 总高 = 封面 + body + 二维码 + 底部 margin
+  const total = coverHeight - AUTHOR_OVERLAP + bodyMin + QR_AREA + 10;
+
+  // 限制范围，过短显得局促，过长显得松散
+  return Math.max(420, Math.min(total, 750));
+}
 
 /** 活动正文最多展示的字符数（防止溢出海报，留出空间给信息条） */
 const MAX_CONTENT_CHARS = 60;
@@ -95,6 +166,31 @@ export function SharePosterDialog({
   const groupName = ""; // Activity 类型不含 group 名称（避免额外请求，留空不展示）
   const timeText = formatRelativeTime(activity.created_at);
   const summary = truncateForPoster(activity.content);
+
+  /** 动态计算海报高度：内容决定画布大小，消除空白 */
+  const ext = activity.external_link;
+  const tags = (activity.tags ?? []).slice(0, 4);
+  const reactionsTotal = activity.reactions
+    ? (activity.reactions.like ?? 0) +
+      (activity.reactions.love ?? 0) +
+      (activity.reactions.haha ?? 0) +
+      (activity.reactions.wow ?? 0) +
+      (activity.reactions.sad ?? 0) +
+      (activity.reactions.angry ?? 0)
+    : 0;
+  const posterHeight = computePosterHeight({
+    coverHeight: cover ? Math.min(232, Math.round(POSTER_WIDTH * 0.62)) : 0,
+    hasExtTitle: !!ext?.title,
+    hasExtInfo: !!(ext?.rating || ext?.category || ext?.price || ext?.address),
+    hasRepost: !!activity.repost_of,
+    tagsCount: tags.length,
+    hasStats:
+      (activity.photo_count ?? 0) > 0 ||
+      (activity.comment_count ?? 0) > 0 ||
+      (activity.like_count ?? 0) > 0 ||
+      reactionsTotal > 0,
+    summaryLength: summary.length,
+  });
 
   /** 统一重置所有海报状态：弹窗打开时 & 手动重试时 */
   const resetState = useCallback(() => {
@@ -317,7 +413,7 @@ export function SharePosterDialog({
                 src={posterDataUrl}
                 alt="分享海报预览"
                 width={POSTER_WIDTH}
-                height={POSTER_HEIGHT}
+                height={posterHeight}
                 className="block"
                 style={{ width: POSTER_WIDTH, maxWidth: "88vw" }}
               />
@@ -327,7 +423,7 @@ export function SharePosterDialog({
                 {showRetry ? (
                   <div
                     className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-amber-50 to-white"
-                    style={{ width: POSTER_WIDTH, height: POSTER_HEIGHT, maxWidth: "88vw" }}
+                    style={{ width: POSTER_WIDTH, height: posterHeight, maxWidth: "88vw" }}
                   >
                     <div className="h-12 w-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center">
                       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth="2">
@@ -349,7 +445,7 @@ export function SharePosterDialog({
                   /* 加载骨架（isLoading 控制文案） */
                   <div
                     className="flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-amber-50 to-white"
-                    style={{ width: POSTER_WIDTH, height: POSTER_HEIGHT, maxWidth: "88vw" }}
+                    style={{ width: POSTER_WIDTH, height: posterHeight, maxWidth: "88vw" }}
                   >
                     {isLoading && (
                       <Loader2 className="h-8 w-8 animate-spin text-amber-600/70" />
@@ -385,7 +481,7 @@ export function SharePosterDialog({
                     summary={summary}
                     onImagesReady={handleAllImagesReady}
                     width={POSTER_WIDTH}
-                    height={POSTER_HEIGHT}
+                    height={posterHeight}
                   />
                 </div>
               </>
@@ -536,10 +632,6 @@ const PosterDOM = forwardRef(function PosterDOM(
 
   const repost = activity.repost_of;
   const tags = (activity.tags ?? []).slice(0, 4);
-
-  // 计算 Body 区最小高度，确保信息稀疏时也填满封面与二维码间的空间
-  const QR_AREA_HEIGHT = 110;
-  const bodyMinHeight = height - (cover ? coverHeight - 28 : 200) - QR_AREA_HEIGHT;
 
   return (
     <div
@@ -700,16 +792,13 @@ const PosterDOM = forwardRef(function PosterDOM(
         </div>
       </div>
 
-      {/* 3. 正文 + 信息区 */}
+      {/* 3. 正文 + 信息区（动态高度已计算好，内容自然排列即可） */}
       <div
         style={{
           padding: `14px 18px 0 18px`,
           marginTop: cover ? coverHeight - 28 : 200,
-          minHeight: bodyMinHeight,
           display: "flex",
           flexDirection: "column",
-          // 稀疏模式居中：让内容垂直居中于封面和二维码之间
-          justifyContent: hasRichInfo ? "flex-start" : "center",
         }}
       >
         {/* 稀疏模式装饰条：顶部 + 金色渐变 */}
@@ -908,7 +997,7 @@ const PosterDOM = forwardRef(function PosterDOM(
           </div>
         ) : null}
 
-        {/* 稀疏模式底部装饰条（居中模式下与内容一起居中） */}
+        {/* 底部装饰条（稀疏模式） */}
         {!hasRichInfo && (
           <div
             style={{
@@ -922,9 +1011,6 @@ const PosterDOM = forwardRef(function PosterDOM(
             }}
           />
         )}
-
-        {/* 丰富模式才用 flex:1 填充剩余空间；稀疏模式已用 justify-content:center 居中 */}
-        {hasRichInfo && <div style={{ flex: 1 }} />}
       </div>
 
       {/* 4. 底部二维码区（去掉 shareUrl 域名显示，二维码本身包含跳转） */}
