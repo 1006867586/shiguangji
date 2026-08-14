@@ -482,8 +482,35 @@ const PosterDOM = forwardRef(function PosterDOM(
     if (done) onImagesReady();
   }, [coverLoaded, qrLoaded, qrReady, onImagesReady]);
 
-  // 封面高度稍调小，留出空间给新增的信息行
-  const coverHeight = cover ? Math.min(232, Math.round(width * 0.62)) : 0;
+  // 检测信息是否丰富（用于决定封面大小和是否显示装饰）
+  const reactionsTotal = activity.reactions
+    ? (activity.reactions.like ?? 0) +
+      (activity.reactions.love ?? 0) +
+      (activity.reactions.haha ?? 0) +
+      (activity.reactions.wow ?? 0) +
+      (activity.reactions.sad ?? 0) +
+      (activity.reactions.angry ?? 0)
+    : 0;
+  const hasRichInfo = !!(
+    ext?.title ||
+    ext?.rating ||
+    ext?.category ||
+    ext?.price ||
+    ext?.address ||
+    activity.repost_of ||
+    (activity.tags?.length ?? 0) > 0 ||
+    (activity.photo_count ?? 0) > 0 ||
+    (activity.comment_count ?? 0) > 0 ||
+    (activity.like_count ?? 0) > 0 ||
+    reactionsTotal > 0
+  );
+
+  // 封面高度：信息丰富时正常 0.62，稀疏时缩小到 0.52 给正文更多空间
+  const coverHeight = cover
+    ? hasRichInfo
+      ? Math.min(232, Math.round(width * 0.62))
+      : Math.min(200, Math.round(width * 0.52))
+    : 0;
 
   /** 餐厅信息第一行：评分 ⭐ x.y · 分类 · 人均 ¥xx */
   const infoLineParts: string[] = [];
@@ -499,15 +526,8 @@ const PosterDOM = forwardRef(function PosterDOM(
   if ((activity.comment_count ?? 0) > 0) statsParts.push(`💬 ${activity.comment_count}`);
   if ((activity.like_count ?? 0) > 0) {
     statsParts.push(`❤️ ${activity.like_count}`);
-  } else if (activity.reactions) {
-    const total =
-      (activity.reactions.like ?? 0) +
-      (activity.reactions.love ?? 0) +
-      (activity.reactions.haha ?? 0) +
-      (activity.reactions.wow ?? 0) +
-      (activity.reactions.sad ?? 0) +
-      (activity.reactions.angry ?? 0);
-    if (total > 0) statsParts.push(`👍 ${total}`);
+  } else if (reactionsTotal > 0) {
+    statsParts.push(`👍 ${reactionsTotal}`);
   }
   if (activity.average_rating && (activity.rating_count ?? 0) > 0) {
     statsParts.push(`⭐ ${Number(activity.average_rating).toFixed(1)} (${activity.rating_count})`);
@@ -516,6 +536,10 @@ const PosterDOM = forwardRef(function PosterDOM(
 
   const repost = activity.repost_of;
   const tags = (activity.tags ?? []).slice(0, 4);
+
+  // 计算 Body 区最小高度，确保信息稀疏时也填满封面与二维码间的空间
+  const QR_AREA_HEIGHT = 110;
+  const bodyMinHeight = height - (cover ? coverHeight - 28 : 200) - QR_AREA_HEIGHT;
 
   return (
     <div
@@ -676,16 +700,34 @@ const PosterDOM = forwardRef(function PosterDOM(
         </div>
       </div>
 
-      {/* 3. 正文 + 信息区 */}
+      {/* 3. 正文 + 信息区（minHeight 确保填满封面与二维码间空间） */}
       <div
         style={{
           padding: `14px 18px 0 18px`,
           marginTop: cover ? coverHeight - 28 : 200,
+          minHeight: bodyMinHeight,
+          display: "flex",
+          flexDirection: "column",
         }}
       >
+        {/* 稀疏模式装饰条：当没有丰富餐厅/社交信息时，增加视觉层次 */}
+        {!hasRichInfo && (
+          <div
+            style={{
+              height: 4,
+              borderRadius: 2,
+              background:
+                "linear-gradient(90deg, #fde68a 0%, #f59e0b 50%, #fde68a 100%)",
+              marginBottom: 12,
+              opacity: 0.75,
+              flexShrink: 0,
+            }}
+          />
+        )}
+
         {/* 外链标题条 + 餐厅评分/分类/人均 + 地址 */}
         {ext?.title ? (
-          <div style={{ marginBottom: 8 }}>
+          <div style={{ marginBottom: 8, flexShrink: 0 }}>
             <div
               style={{
                 padding: "5px 10px",
@@ -736,6 +778,27 @@ const PosterDOM = forwardRef(function PosterDOM(
           </div>
         ) : null}
 
+        {/* 独立地址行：即使没有 ext.title，只要有地址就显示 */}
+        {!ext?.title && addressLine ? (
+          <div
+            style={{
+              marginBottom: 8,
+              padding: "4px 10px",
+              borderRadius: 6,
+              background: "#fffbeb",
+              color: "#78350f",
+              fontSize: 11,
+              fontWeight: 500,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              flexShrink: 0,
+            }}
+          >
+            📍 {addressLine}
+          </div>
+        ) : null}
+
         {/* 转发摘要：转发评论 + 原活动作者/内容 */}
         {repost ? (
           <div
@@ -745,6 +808,7 @@ const PosterDOM = forwardRef(function PosterDOM(
               borderRadius: 8,
               background: "#fffbeb",
               border: "1px solid #fde68a",
+              flexShrink: 0,
             }}
           >
             {activity.repost_comment ? (
@@ -779,15 +843,16 @@ const PosterDOM = forwardRef(function PosterDOM(
         {/* 正文摘要（3 行截断 + 正文 60 字） */}
         <div
           style={{
-            fontSize: 13,
-            lineHeight: 1.55,
+            fontSize: !hasRichInfo ? 15 : 13,
+            lineHeight: !hasRichInfo ? 1.6 : 1.55,
             color: "#1f2937",
-            fontWeight: 500,
+            fontWeight: 600,
             display: "-webkit-box",
             WebkitLineClamp: 3,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
-            minHeight: "18px",
+            minHeight: "24px",
+            flexShrink: 0,
           }}
         >
           {summary || "（这条聚餐记录没有文字描述）"}
@@ -801,6 +866,7 @@ const PosterDOM = forwardRef(function PosterDOM(
               display: "flex",
               flexWrap: "wrap",
               gap: 4,
+              flexShrink: 0,
             }}
           >
             {tags.map((t) => (
@@ -833,11 +899,28 @@ const PosterDOM = forwardRef(function PosterDOM(
               color: "#b45309",
               fontWeight: 500,
               letterSpacing: "0.01em",
+              flexShrink: 0,
             }}
           >
             {statsLine}
           </div>
         ) : null}
+
+        {/* 底部填充：用 flex:1 撑开空间，稀疏模式加装饰 */}
+        {!hasRichInfo && (
+          <div
+            style={{
+              marginTop: 12,
+              height: 3,
+              borderRadius: 2,
+              background:
+                "linear-gradient(90deg, rgba(253,230,138,0) 0%, rgba(245,158,11,0.5) 50%, rgba(253,230,138,0) 100%)",
+              flexShrink: 0,
+              opacity: 0.6,
+            }}
+          />
+        )}
+        <div style={{ flex: 1 }} />
       </div>
 
       {/* 4. 底部二维码区（去掉 shareUrl 域名显示，二维码本身包含跳转） */}
