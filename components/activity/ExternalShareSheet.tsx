@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Link2, Share2, Check, Loader2 } from "lucide-react";
+import { Link2, Share2, Check, Loader2, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { SharePosterDialog } from "@/components/activity/SharePosterDialog";
 import { APP_NAME } from "@/lib/constants";
 import type { Activity } from "@/types";
 
@@ -105,6 +106,7 @@ export function ExternalShareSheet({
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [showPoster, setShowPoster] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -168,7 +170,9 @@ export function ExternalShareSheet({
 
   const handleChannel = (channel: ShareChannel) => {
     if (channel.key === "wechat") {
-      toast.info("请复制链接后在微信内粘贴分享");
+      // 微信内无法直接跳转网关，海报是最优分享路径；弹窗自动引导
+      setShowPoster(true);
+      toast.info("推荐生成海报分享到微信/朋友圈");
       return;
     }
     const target = channel.buildUrl(shareUrl, shareText);
@@ -182,7 +186,8 @@ export function ExternalShareSheet({
     typeof (navigator as Navigator & { share?: unknown }).share === "function";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -269,8 +274,46 @@ export function ExternalShareSheet({
               链接含活动 ID，仅同圈子成员可查看详情；站外用户会看到分享卡片预览。
             </p>
           </div>
+
+          {/* 海报生成入口 */}
+          <div className="space-y-1.5">
+            <div className="text-xs font-medium text-muted-foreground">
+              海报分享
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPoster(true)}
+              className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-gradient-to-r from-amber-50 to-orange-50 p-3 text-left transition-colors hover:from-amber-100 hover:to-orange-100 touch-manipulation active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500 text-white shadow-sm">
+                  <ImagePlus className="h-4.5 w-4.5" aria-hidden="true" />
+                </span>
+                <div>
+                  <div className="text-sm font-semibold text-amber-900">
+                    生成分享海报
+                  </div>
+                  <div className="text-[11px] text-amber-800/80">
+                    带二维码，保存后可发微信/朋友圈
+                  </div>
+                </div>
+              </div>
+              <span className="text-xs font-medium text-amber-700/80">立即生成 →</span>
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
+
+      {/* 海报弹窗：和分享弹窗并存，独立控制 */}
+      {shareUrl ? (
+        <SharePosterDialog
+          activity={activity}
+          shareUrl={shareUrl}
+          open={showPoster}
+          onOpenChange={setShowPoster}
+        />
+      ) : null}
+    </>
   );
 }
