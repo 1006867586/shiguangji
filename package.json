@@ -26,6 +26,7 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
+    "@types/qrcode": "^1.5.5",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
