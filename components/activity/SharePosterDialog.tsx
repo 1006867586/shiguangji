@@ -10,7 +10,7 @@ import {
 } from "react";
 import QRCode from "qrcode";
 import html2canvas from "html2canvas";
-import { Download, Image as ImageIcon, Loader2, X } from "lucide-react";
+import { Download, Image as ImageIcon, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -77,10 +77,16 @@ export function SharePosterDialog({
 }: SharePosterDialogProps) {
   const posterRef = useRef<HTMLDivElement>(null);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  /** 图片加载超时兜底计时器（代理/外链图卡死时强制退出 loading） */
+  const imageLoadTimeoutRef = useRef<number | null>(null);
+  /** 二维码生成尝试次数（用于 ref 未就绪的微重试） */
+  const qrRetryRef = useRef<number>(0);
 
   const [qrReady, setQrReady] = useState(false);
+  const [qrFailed, setQrFailed] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportFailed, setExportFailed] = useState(false);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
 
   const cover = pickCoverPhoto(activity);
@@ -91,14 +97,50 @@ export function SharePosterDialog({
   const summary = truncateForPoster(activity.content);
   const externalTitle = activity.external_link?.title ?? "";
 
+  /** 统一重置所有海报状态：弹窗打开时 & 手动重试时 */
+  const resetState = useCallback(() => {
+    setQrReady(false);
+    setQrFailed(false);
+    setImagesLoaded(false);
+    setExporting(false);
+    setExportFailed(false);
+    setPosterDataUrl(null);
+    if (imageLoadTimeoutRef.current) {
+      window.clearTimeout(imageLoadTimeoutRef.current);
+      imageLoadTimeoutRef.current = null;
+    }
+    qrRetryRef.current = 0;
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    resetState();
+  }, [open, resetState]);
+
   /**
    * 渲染二维码到隐藏的 canvas（不显示，二维码在海报里用 <img> 引用 dataURL）
-   * 用 QRCode.toCanvas 画到 ref，然后读 canvas.toDataURL
+   *
+   * Bug1 修复：canvas ref 在挂载时机上可能晚于 Dialog onOpen 触发 effect。
+   * 原代码检测到 ref=null 就 return，且永不重试。现在用 rAF+最多 5 次微重试等 ref 绑定。
    */
   useEffect(() => {
-    if (!open || !shareUrl || !qrCanvasRef.current) return;
+    if (!open || !shareUrl) return;
     let cancelled = false;
-    (async () => {
+
+    const tryRender = async () => {
+      // ref 还没挂载？微重试（rAF → 下一帧再看，最多 5 次 ≈ 80ms）
+      if (!qrCanvasRef.current) {
+        if (qrRetryRef.current < 5) {
+          qrRetryRef.current += 1;
+          window.setTimeout(() => {
+            if (!cancelled) void tryRender();
+          }, 16);
+        } else {
+          setQrFailed(true);
+          toast.error("二维码画布未就绪，请重试");
+        }
+        return;
+      }
       try {
         await QRCode.toCanvas(qrCanvasRef.current, shareUrl, {
           errorCorrectionLevel: "M",
@@ -109,23 +151,31 @@ export function SharePosterDialog({
             light: "#ffffff",
           },
         });
-        if (!cancelled) setQrReady(true);
+        if (!cancelled) {
+          setQrReady(true);
+          setQrFailed(false);
+        }
       } catch (err) {
         console.error("[poster] qr render failed:", err);
-        if (!cancelled) toast.error("二维码生成失败，请重试");
+        if (!cancelled) {
+          setQrFailed(true);
+          toast.error("二维码生成失败，请重试");
+        }
       }
-    })();
+    };
+    void tryRender();
     return () => {
       cancelled = true;
-      setQrReady(false);
-      setImagesLoaded(false);
-      setPosterDataUrl(null);
     };
   }, [open, shareUrl]);
 
   /** 监听封面图 + 二维码（<img ref>）加载完成，作为导出可用的信号 */
   const handleAllImagesReady = useCallback(() => {
     setImagesLoaded(true);
+    if (imageLoadTimeoutRef.current) {
+      window.clearTimeout(imageLoadTimeoutRef.current);
+      imageLoadTimeoutRef.current = null;
+    }
   }, []);
 
   /** 拿二维码的 dataURL（qrcode canvas -> dataURL）*/
@@ -135,8 +185,9 @@ export function SharePosterDialog({
 
   /** 将海报 DOM 渲染成 2x PNG，写入 posterDataUrl 用于预览/下载 */
   const exportPoster = useCallback(async () => {
-    if (!posterRef.current) return;
+    if (!posterRef.current) return null;
     setExporting(true);
+    setExportFailed(false);
     try {
       const canvas = await html2canvas(posterRef.current, {
         backgroundColor: null,
@@ -152,22 +203,71 @@ export function SharePosterDialog({
       return dataUrl;
     } catch (err) {
       console.error("[poster] html2canvas failed:", err);
-      toast.error("海报生成失败，请重试");
+      setExportFailed(true);
+      toast.error("海报合成失败，请点击重新生成");
       return null;
     } finally {
       setExporting(false);
     }
   }, []);
 
-  /** 第一次打开且二维码就绪时，自动生成预览图（省一步用户点击） */
+  /**
+   * 自动导出海报：
+   *  - 必须 qrReady=true（二维码 dataURL 已生成）
+   *  - 必须 imagesLoaded=true 或 6 秒图片加载超时兜底（用户不会永远卡在"合成中"）
+   *  - Bug2 修复：useEffect 依赖数组移除 exportPoster（因为每轮 render 引用可能变，会反复清 200ms timeout）。
+   *    改为用 ref 存最新 exportPoster 函数。
+   */
+  const exportPosterRef = useRef(exportPoster);
   useEffect(() => {
-    if (!open || !qrReady || posterDataUrl || exporting) return;
-    // 等 React 把二维码 img src 挂载好再截图
+    exportPosterRef.current = exportPoster;
+  }, [exportPoster]);
+
+  /** 图片加载超时兜底：qrReady 后 6 秒仍未 imagesLoaded，也让导出流程继续（即使部分图失败） */
+  useEffect(() => {
+    if (!qrReady || imagesLoaded) return;
+    imageLoadTimeoutRef.current = window.setTimeout(() => {
+      console.warn("[poster] images load timeout, force mark imagesLoaded");
+      setImagesLoaded(true);
+    }, 6000);
+    return () => {
+      if (imageLoadTimeoutRef.current) {
+        window.clearTimeout(imageLoadTimeoutRef.current);
+        imageLoadTimeoutRef.current = null;
+      }
+    };
+  }, [qrReady, imagesLoaded]);
+
+  /** 第一次打开且二维码就绪 + 图片 ready 时，自动生成预览图（省一步用户点击） */
+  useEffect(() => {
+    if (!open || !qrReady || !imagesLoaded || posterDataUrl || exporting || exportFailed) return;
     const t = window.setTimeout(() => {
-      void exportPoster();
-    }, 200);
+      void exportPosterRef.current();
+    }, 300);
     return () => window.clearTimeout(t);
-  }, [open, qrReady, posterDataUrl, exporting, exportPoster]);
+    // 注意：这里只依赖纯 state，不依赖 exportPoster 函数引用（防 timeout 被反复清）
+  }, [open, qrReady, imagesLoaded, posterDataUrl, exporting, exportFailed]);
+
+  /** 手动重试：完整走一遍"重置 → 二维码 → 合成"流程 */
+  const handleRetry = useCallback(() => {
+    resetState();
+    // 下一帧再触发：等 reset effect 清完状态再让二维码 effect 重跑
+    window.setTimeout(() => {
+      if (!qrCanvasRef.current) return;
+      void (async () => {
+        try {
+          await QRCode.toCanvas(qrCanvasRef.current, shareUrl, {
+            errorCorrectionLevel: "M", margin: 1, width: 160,
+            color: { dark: "#1f2937", light: "#fff" },
+          });
+          setQrReady(true);
+        } catch {
+          setQrFailed(true);
+          toast.error("二维码生成失败，请重试");
+        }
+      })();
+    }, 0);
+  }, [resetState, shareUrl]);
 
   /** 下载海报到本地 */
   const handleDownload = useCallback(async () => {
@@ -191,6 +291,8 @@ export function SharePosterDialog({
   }, [posterDataUrl, exportPoster, activity.id]);
 
   const canExport = qrReady && imagesLoaded;
+  const isLoading = !posterDataUrl && (exporting || !qrReady || !imagesLoaded) && !exportFailed && !qrFailed;
+  const showRetry = qrFailed || exportFailed;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -222,17 +324,54 @@ export function SharePosterDialog({
               />
             ) : (
               <>
-                {/* 加载骨架 */}
-                <div
-                  className="flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-amber-50 to-white"
-                  style={{ width: POSTER_WIDTH, height: POSTER_HEIGHT, maxWidth: "88vw" }}
-                >
-                  <Loader2 className="h-8 w-8 animate-spin text-amber-600/70" />
-                  <p className="text-xs text-muted-foreground">
-                    {!qrReady ? "正在生成二维码…" : "正在合成海报…"}
-                  </p>
-                </div>
+                {/* 失败态卡片（二维码失败 or 合成失败） */}
+                {showRetry ? (
+                  <div
+                    className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-amber-50 to-white"
+                    style={{ width: POSTER_WIDTH, height: POSTER_HEIGHT, maxWidth: "88vw" }}
+                  >
+                    <div className="h-12 w-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center">
+                      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" strokeLinecap="round" />
+                        <line x1="12" y1="8" x2="12" y2="12" strokeLinecap="round" />
+                        <circle cx="12" cy="16" r="0.8" fill="currentColor" stroke="none" />
+                      </svg>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 px-6 text-center">
+                      <p className="text-sm font-medium text-foreground">
+                        {qrFailed ? "二维码生成失败" : "海报合成失败"}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        可能是网络波动或图片加载超时。<br />请点击下方「重新生成」再试一次。
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  /* 加载骨架（isLoading 控制文案） */
+                  <div
+                    className="flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-amber-50 to-white"
+                    style={{ width: POSTER_WIDTH, height: POSTER_HEIGHT, maxWidth: "88vw" }}
+                  >
+                    {isLoading && (
+                      <Loader2 className="h-8 w-8 animate-spin text-amber-600/70" />
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {qrFailed
+                        ? "二维码生成失败"
+                        : exportFailed
+                          ? "海报合成失败"
+                          : !qrReady
+                            ? "正在生成二维码…"
+                            : !imagesLoaded
+                              ? "正在加载图片资源…"
+                              : exporting
+                                ? "正在合成海报…"
+                                : "准备中…"}
+                    </p>
+                  </div>
+                )}
                 {/* 真实海报 DOM（离屏视觉渲染中，html2canvas 截这一屏） */}
+                {/* 即使失败态也保留：用户点重新生成会重置状态，避免海报 DOM 重新挂载导致图片 ref 丢失 */}
                 <div className="pointer-events-none absolute left-0 top-0 opacity-0 [&_*]:pointer-events-none">
                   <PosterDOM
                     ref={posterRef}
@@ -262,16 +401,20 @@ export function SharePosterDialog({
           <div className="flex w-full items-center gap-2">
             <button
               type="button"
-              onClick={exportPoster}
-              disabled={exporting || !canExport}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted touch-manipulation active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              onClick={handleRetry}
+              disabled={exporting && !showRetry}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors touch-manipulation active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 ${
+                showRetry
+                  ? "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                  : "border-border bg-background text-foreground hover:bg-muted"
+              }`}
             >
               {exporting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <X className="h-3.5 w-3.5" />
+                <RefreshCw className="h-3.5 w-3.5" />
               )}
-              {exporting ? "生成中…" : "重新生成"}
+              {exporting ? "生成中…" : showRetry ? "重新生成" : "重新生成"}
             </button>
             <button
               type="button"
