@@ -58,6 +58,17 @@ function truncateForPoster(text: string | null | undefined): string {
   return `${t.slice(0, MAX_CONTENT_CHARS)}…`;
 }
 
+/**
+ * 将跨域图片 URL 转为同域代理 URL，让 html2canvas 截图时不受 CORS 限制。
+ * 代理 API 会服务端 fetch 原图并附带 CORS 头返回，保证 canvas 不被 taint。
+ */
+function toProxyUrl(url: string): string {
+  if (!url) return url;
+  // 已经是 data URL 的不需要代理
+  if (url.startsWith("data:")) return url;
+  return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
 export function SharePosterDialog({
   activity,
   shareUrl,
@@ -130,10 +141,10 @@ export function SharePosterDialog({
       const canvas = await html2canvas(posterRef.current, {
         backgroundColor: null,
         scale: 2,
-        useCORS: true,
+        // 图片已通过 /api/image-proxy 同域代理，无需 useCORS
+        useCORS: false,
         allowTaint: false,
         logging: false,
-        // 对跨域图（R2/外部美团封面）强制加时间戳绕缓存，避免 CORS tainted canvas
         imageTimeout: 15000,
       });
       const dataUrl = canvas.toDataURL("image/png");
@@ -361,9 +372,8 @@ const PosterDOM = forwardRef(function PosterDOM(
             }}
           >
             <img
-              src={cover.url}
+              src={toProxyUrl(cover.url)}
               alt=""
-              crossOrigin="anonymous"
               onLoad={() => setCoverLoaded(true)}
               onError={() => setCoverLoaded(true)}
               style={{
@@ -449,9 +459,8 @@ const PosterDOM = forwardRef(function PosterDOM(
           >
             {authorAvatar ? (
               <img
-                src={authorAvatar}
+                src={toProxyUrl(authorAvatar)}
                 alt=""
-                crossOrigin="anonymous"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
