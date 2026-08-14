@@ -15,17 +15,21 @@ function JoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
-  const [code, setCode] = useState(searchParams.get("code") ?? "");
+  const codeFromUrl = searchParams.get("code");
+  const [code, setCode] = useState(codeFromUrl ?? "");
   const [submitting, setSubmitting] = useState(false);
 
-  const codeFromUrl = searchParams.get("code");
+  // 构造携带 code 的完整 redirect 路径，供登录跳转使用
+  const redirectPath = codeFromUrl
+    ? `/join?code=${encodeURIComponent(codeFromUrl.toUpperCase())}`
+    : "/join";
 
   useEffect(() => {
     if (codeFromUrl) setCode(codeFromUrl.toUpperCase());
   }, [codeFromUrl]);
 
-  const join = async () => {
-    const c = code.trim().toUpperCase();
+  const join = async (candidate?: unknown) => {
+    const c = (typeof candidate === "string" ? candidate : code).trim().toUpperCase();
     if (!c) {
       toast.error("请输入邀请码");
       return;
@@ -46,6 +50,17 @@ function JoinContent() {
     }
   };
 
+  // 自动加入：已登录 + URL 携带合法长度邀请码，自动提交一次
+  useEffect(() => {
+    if (loading || !user) return;
+    const c = (codeFromUrl ?? "").trim().toUpperCase();
+    if (c.length === 6 && !submitting) {
+      join(c);
+    }
+    // 仅在「首次进入 / 登录状态刚确认 / URL code 刚变化」时触发一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user, codeFromUrl]);
+
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center text-muted-foreground">
@@ -65,7 +80,7 @@ function JoinContent() {
           请先登录后再使用邀请码加入圈子
         </p>
         <Button asChild className="shadow-sm">
-          <a href={`/login?redirect=${encodeURIComponent("/join")}`}>
+          <a href={`/login?redirect=${encodeURIComponent(redirectPath)}`}>
             去登录
           </a>
         </Button>
