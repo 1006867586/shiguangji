@@ -139,7 +139,6 @@ export function PhotoGrid({
                   fill
                   sizes="(max-width: 768px) 33vw, 200px"
                   className="object-cover transition-transform duration-300 hover:scale-105 motion-reduce:hover:scale-100"
-                  unoptimized
                 />
               )}
               {/* 视频播放图标 overlay */}
@@ -353,7 +352,6 @@ function Lightbox({
             fill
             sizes="100vw"
             className="object-contain"
-            unoptimized
             priority
           />
         )}

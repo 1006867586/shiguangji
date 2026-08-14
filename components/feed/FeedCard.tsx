@@ -545,27 +545,19 @@ export function FeedCard({
         </div>
       ) : null}
 
-      {/* 评论区：grid-rows 0fr→1fr 平滑展开 + opacity 淡入 */}
+      {/* 评论区：条件挂载 + 淡入（评论按需懒加载，见 useComments） */}
       {showComments ? (
-        <div
-          className="grid animate-fade-in"
-          style={{
-            gridTemplateRows: "1fr",
-            transition: "grid-template-rows 0.3s ease",
-          }}
-        >
-          <div className="overflow-hidden">
-            <CommentSection
-              activityId={activity.id}
-              comments={comments}
-              currentUserId={currentUserId}
-              onAdd={async (content, parentId) => {
-                await addComment({ content, parentId });
-              }}
-              onDelete={removeComment}
-              inline
-            />
-          </div>
+        <div className="animate-fade-in">
+          <CommentSection
+            activityId={activity.id}
+            comments={comments}
+            currentUserId={currentUserId}
+            onAdd={async (content, parentId) => {
+              await addComment({ content, parentId });
+            }}
+            onDelete={removeComment}
+            inline
+          />
         </div>
       ) : null}
 

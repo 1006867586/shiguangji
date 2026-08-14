@@ -166,7 +166,6 @@ export function PhotoUploader({
               fill
               sizes="120px"
               className="object-cover"
-              unoptimized
             />
             {canDeletePhoto?.(p) ? (
               <button
