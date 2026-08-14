@@ -124,10 +124,136 @@ function drawAvatar(
   ctx.restore();
 }
 
+/** cover 模式裁切绘制图片到指定区域 */
+function drawImageCover(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement | null,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fallbackColor = "#fef3c7"
+) {
+  ctx.save();
+  if (img) {
+    const imgRatio = img.width / img.height;
+    const boxRatio = w / h;
+    let sx = 0, sy = 0, sw = img.width, sh = img.height;
+    if (imgRatio > boxRatio) {
+      sw = img.height * boxRatio;
+      sx = (img.width - sw) / 2;
+    } else {
+      sh = img.width / boxRatio;
+      sy = (img.height - sh) / 2;
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  } else {
+    ctx.fillStyle = fallbackColor;
+    ctx.fillRect(x, y, w, h);
+  }
+  ctx.restore();
+}
+
+/**
+ * 多图网格布局：根据图片数量决定布局方式
+ *
+ * 1 张：全宽大图
+ * 2 张：左右并排，各 50%
+ * 3 张：左大右小（左 50% + 右侧 2 张堆叠）
+ * 4+ 张：2×2 网格，第 4 格叠加 "+N"
+ *
+ * @returns 网格区域的高度
+ */
+function getGalleryHeight(imageCount: number, width: number): number {
+  if (imageCount <= 1) return Math.min(232, Math.round(width * 0.62));
+  if (imageCount === 2) return Math.round(width * 0.42);
+  if (imageCount === 3) return Math.round(width * 0.5);
+  return Math.round(width * 0.5); // 4+
+}
+
+/**
+ * 绘制多图网格
+ * @param extraCount 额外图片数（显示在最后一格的 "+N"）
+ * @returns 网格区域的高度
+ */
+function drawGallery(
+  ctx: CanvasRenderingContext2D,
+  images: (HTMLImageElement | null)[],
+  x: number,
+  y: number,
+  width: number,
+  gap: number,
+  extraCount: number
+): number {
+  const count = images.length;
+  if (count === 0) return 0;
+
+  // 1 张：全宽大图
+  if (count === 1) {
+    const h = getGalleryHeight(1, width);
+    drawImageCover(ctx, images[0], x, y, width, h);
+    return h;
+  }
+
+  // 2 张：左右并排
+  if (count === 2) {
+    const h = getGalleryHeight(2, width);
+    const halfW = (width - gap) / 2;
+    drawImageCover(ctx, images[0], x, y, halfW, h);
+    drawImageCover(ctx, images[1], x + halfW + gap, y, halfW, h);
+    return h;
+  }
+
+  // 3 张：左大右小
+  if (count === 3) {
+    const h = getGalleryHeight(3, width);
+    const leftW = Math.round(width * 0.5);
+    const rightW = width - leftW - gap;
+    const smallH = (h - gap) / 2;
+    drawImageCover(ctx, images[0], x, y, leftW, h);
+    drawImageCover(ctx, images[1], x + leftW + gap, y, rightW, smallH);
+    drawImageCover(ctx, images[2], x + leftW + gap, y + smallH + gap, rightW, smallH);
+    return h;
+  }
+
+  // 4+ 张：2×2 网格
+  const h = getGalleryHeight(4, width);
+  const cellW = (width - gap) / 2;
+  const cellH = (h - gap) / 2;
+  const positions = [
+    { cx: x, cy: y },
+    { cx: x + cellW + gap, cy: y },
+    { cx: x, cy: y + cellH + gap },
+    { cx: x + cellW + gap, cy: y + cellH + gap },
+  ];
+  for (let i = 0; i < 4; i++) {
+    drawImageCover(ctx, images[i] ?? null, positions[i].cx, positions[i].cy, cellW, cellH);
+  }
+
+  // 第 4 格叠加 "+N"
+  if (extraCount > 0) {
+    const lastPos = positions[3];
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(lastPos.cx, lastPos.cy, cellW, cellH);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `700 22px ${FONT_FAMILY}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`+${extraCount}`, lastPos.cx + cellW / 2, lastPos.cy + cellH / 2);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.restore();
+  }
+
+  return h;
+}
+
 /** 海报绘制配置 */
 export interface PosterDrawConfig {
   activity: Activity;
-  coverImage: HTMLImageElement | null;
+  /** 多张图片（封面 + 用户上传的照片，最多 4 张用于网格展示） */
+  galleryImages: (HTMLImageElement | null)[];
   avatarImage: HTMLImageElement | null;
   qrImage: HTMLImageElement | null;
   authorName: string;
@@ -139,7 +265,7 @@ export interface PosterDrawConfig {
 export function drawPoster(config: PosterDrawConfig): string {
   const {
     activity,
-    coverImage,
+    galleryImages,
     avatarImage,
     qrImage,
     authorName,
@@ -209,11 +335,10 @@ export function drawPoster(config: PosterDrawConfig): string {
   const measureCanvas = document.createElement("canvas");
   const mctx = measureCanvas.getContext("2d")!;
 
-  // 封面高度
-  const coverHeight = coverImage
-    ? Math.min(232, Math.round(W * 0.62))
-    : 0;
-  const logoHeight = !coverImage ? 200 : 0;
+  // 多图网格高度
+  const galleryCount = galleryImages.length;
+  const galleryHeight = galleryCount > 0 ? getGalleryHeight(galleryCount, W) : 0;
+  const logoHeight = galleryCount === 0 ? 200 : 0;
 
   // 正文行数
   const summaryFontSize = hasRichInfo ? 13 : 15;
@@ -225,7 +350,7 @@ export function drawPoster(config: PosterDrawConfig): string {
 
   // ---- 第一遍：计算总高度 ----
   let y = 0;
-  y += coverHeight || logoHeight; // 封面/LOGO
+  y += galleryHeight || logoHeight; // 图片网格 / LOGO
   y += 14; // 顶部 padding
 
   // 餐厅标题胶囊
@@ -284,32 +409,22 @@ export function drawPoster(config: PosterDrawConfig): string {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // ---- 1. 封面 / LOGO ----
+  // ---- 1. 图片网格 / LOGO ----
   let currentY = 0;
-  if (coverImage) {
-    // 封面图：cover 模式裁切
-    ctx.save();
-    const imgRatio = coverImage.width / coverImage.height;
-    const coverRatio = W / coverHeight;
-    let sx = 0, sy = 0, sw = coverImage.width, sh = coverImage.height;
-    if (imgRatio > coverRatio) {
-      sw = coverImage.height * coverRatio;
-      sx = (coverImage.width - sw) / 2;
-    } else {
-      sh = coverImage.width / coverRatio;
-      sy = (coverImage.height - sh) / 2;
-    }
-    ctx.drawImage(coverImage, sx, sy, sw, sh, 0, 0, W, coverHeight);
-    ctx.restore();
+  const hasGallery = galleryCount > 0;
+  if (hasGallery) {
+    // 绘制多图网格
+    const totalPhotos = activity.photos?.length ?? 0;
+    const extraCount = totalPhotos > 4 ? totalPhotos - 4 : 0;
+    drawGallery(ctx, galleryImages, 0, 0, W, 3, extraCount);
+    currentY = galleryHeight;
 
     // 顶部渐变遮罩（保证作者名可读）
     const topGrad = ctx.createLinearGradient(0, 0, 0, 88);
     topGrad.addColorStop(0, "rgba(0,0,0,0.35)");
     topGrad.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = topGrad;
-    ctx.fillRect(0, 0, W, 88);
-
-    currentY = coverHeight;
+    ctx.fillRect(0, 0, W, Math.min(88, galleryHeight));
   } else {
     // LOGO 占位
     const logoGrad = ctx.createLinearGradient(0, 0, W, logoHeight);
@@ -334,8 +449,8 @@ export function drawPoster(config: PosterDrawConfig): string {
     currentY = logoHeight;
   }
 
-  // ---- 2. 作者栏（浮层，叠在封面下部） ----
-  const authorY = coverImage ? 14 : 18;
+  // ---- 2. 作者栏（浮层，叠在图片下部） ----
+  const authorY = hasGallery ? 14 : 18;
   const avatarSize = 32;
   const avatarX = PADDING_X;
   drawAvatar(
@@ -349,12 +464,12 @@ export function drawPoster(config: PosterDrawConfig): string {
 
   // 作者名 + 时间
   ctx.textBaseline = "alphabetic";
-  const textColor = coverImage ? "#ffffff" : "#111827";
+  const textColor = hasGallery ? "#ffffff" : "#111827";
   ctx.fillStyle = textColor;
   ctx.font = `600 12px ${FONT_FAMILY}`;
   ctx.fillText(authorName || APP_NAME, avatarX + avatarSize + 10, authorY + 15);
   ctx.font = `400 10px ${FONT_FAMILY}`;
-  ctx.globalAlpha = coverImage ? 0.85 : 0.65;
+  ctx.globalAlpha = hasGallery ? 0.85 : 0.65;
   const subText = [timeText].filter(Boolean).join(" · ");
   ctx.fillText(subText, avatarX + avatarSize + 10, authorY + 28);
   ctx.globalAlpha = 1;
@@ -572,7 +687,7 @@ export function drawPoster(config: PosterDrawConfig): string {
   ctx.fill();
   ctx.fillStyle = "rgba(251,191,36,0.1)";
   ctx.beginPath();
-  ctx.arc(15, (coverImage ? coverHeight : logoHeight) + 10, 35, 0, Math.PI * 2);
+  ctx.arc(15, (hasGallery ? galleryHeight : logoHeight) + 10, 35, 0, Math.PI * 2);
   ctx.fill();
 
   return canvas.toDataURL("image/png");
@@ -580,26 +695,28 @@ export function drawPoster(config: PosterDrawConfig): string {
 
 /**
  * 完整的海报生成流程：
- * 1. 加载封面图 + 头像图 + 二维码图
+ * 1. 加载多张图片 + 头像图 + 二维码图
  * 2. 绘制海报到 canvas
  * 3. 返回 dataURL
  */
 export async function generatePoster(
-  config: Omit<PosterDrawConfig, "coverImage" | "avatarImage" | "qrImage"> & {
-    coverUrl: string | null;
+  config: Omit<PosterDrawConfig, "galleryImages" | "avatarImage" | "qrImage"> & {
+    galleryUrls: string[];
     avatarUrl: string;
     qrDataUrl: string;
   }
 ): Promise<string> {
-  const [coverImage, avatarImage, qrImage] = await Promise.all([
-    config.coverUrl ? loadImage(config.coverUrl) : Promise.resolve(null),
+  const [galleryImages, avatarImage, qrImage] = await Promise.all([
+    Promise.all(
+      config.galleryUrls.slice(0, 4).map((url) => loadImage(url))
+    ),
     config.avatarUrl ? loadImage(config.avatarUrl) : Promise.resolve(null),
     config.qrDataUrl ? loadImage(config.qrDataUrl) : Promise.resolve(null),
   ]);
 
   return drawPoster({
     activity: config.activity,
-    coverImage,
+    galleryImages,
     avatarImage,
     qrImage,
     authorName: config.authorName,

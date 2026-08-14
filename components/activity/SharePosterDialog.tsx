@@ -27,16 +27,31 @@ interface SharePosterDialogProps {
 const POSTER_WIDTH = 375;
 const MAX_CONTENT_CHARS = 60;
 
-/** 从 activity 中挑一张最合适的海报封面图 */
-function pickCoverPhoto(activity: Activity): { url: string; caption?: string } | null {
-  if (activity.external_link?.coverImage) {
-    return { url: activity.external_link.coverImage };
+/**
+ * 从 activity 中挑出海报展示用的图片 URL 列表（最多 4 张）。
+ * 优先用外链封面 + 用户上传照片；去重后截取前 4 张。
+ */
+function pickGalleryPhotos(activity: Activity): string[] {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+
+  // 外链封面图优先放第一张
+  const extCover = activity.external_link?.coverImage;
+  if (extCover) {
+    urls.push(extCover);
+    seen.add(extCover);
   }
-  const firstPhoto = activity.photos?.find((p) => p.url);
-  if (firstPhoto) {
-    return { url: firstPhoto.url, caption: firstPhoto.caption ?? undefined };
+
+  // 用户上传的照片
+  for (const photo of activity.photos ?? []) {
+    if (photo.url && !seen.has(photo.url)) {
+      urls.push(photo.url);
+      seen.add(photo.url);
+    }
+    if (urls.length >= 4) break;
   }
-  return null;
+
+  return urls.slice(0, 4);
 }
 
 /** 正文截断 + 省略号 */
@@ -63,7 +78,10 @@ export function SharePosterDialog({
   const [exportFailed, setExportFailed] = useState(false);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
 
-  const cover = pickCoverPhoto(activity);
+  const galleryUrls = pickGalleryPhotos(activity);
+  const galleryKey = galleryUrls.join(",");
+  const galleryUrlsRef = useRef(galleryUrls);
+  galleryUrlsRef.current = galleryUrls;
   const authorName = activity.author?.nickname ?? APP_NAME;
   const authorAvatar = activity.author?.avatar_url ?? "";
   const timeText = formatRelativeTime(activity.created_at);
@@ -144,7 +162,7 @@ export function SharePosterDialog({
 
       const dataUrl = await generatePoster({
         activity,
-        coverUrl: cover?.url ?? null,
+        galleryUrls: galleryUrlsRef.current,
         avatarUrl: authorAvatar,
         qrDataUrl,
         authorName,
@@ -162,7 +180,7 @@ export function SharePosterDialog({
     } finally {
       setExporting(false);
     }
-  }, [activity, cover?.url, authorAvatar, authorName, timeText, summary]);
+  }, [activity, galleryKey, authorAvatar, authorName, timeText, summary]);
 
   /** 二维码就绪后自动生成海报 */
   const exportRef = useRef(exportPoster);
