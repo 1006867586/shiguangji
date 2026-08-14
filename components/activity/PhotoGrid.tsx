@@ -53,14 +53,17 @@ export function PhotoGrid({
 
   const gridClass =
     count === 1
-      ? "grid-cols-1 max-w-[60%]"
+      ? "grid-cols-1"
       : count === 2
       ? "grid-cols-2"
       : count === 4
       ? "grid-cols-2"
       : "grid-cols-3";
 
-  const aspect = count === 1 ? "aspect-square" : "aspect-square";
+  // 多图统一正方形裁剪；单图保留原始比例，用 max-w/max-h 限制极端尺寸
+  const aspect = count === 1 ? undefined : "aspect-square";
+  const singleWrapClass =
+    count === 1 ? "max-w-[65%] max-h-[380px] self-start" : undefined;
 
   const handleClick = (i: number, e: React.MouseEvent<HTMLButtonElement>) => {
     onPhotoClick?.(i);
@@ -81,6 +84,7 @@ export function PhotoGrid({
           const isLivePhoto = !isVideo && !!p.paired_video_url;
           // Live Photo：悬停时播放视频，否则显示静态图
           const showLiveVideo = isLivePhoto && hoveredIdx === i;
+          const singleImage = count === 1 && !isVideo && !isLivePhoto;
           return (
             <button
               key={p.id}
@@ -91,13 +95,17 @@ export function PhotoGrid({
               aria-label={`查看第 ${i + 1} 张${isVideo ? "视频" : isLivePhoto ? "Live Photo" : "照片"}`}
               className={cn(
                 "relative overflow-hidden rounded-lg bg-muted shadow-sm ring-1 ring-border/40 transition-transform hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none",
-                aspect
+                aspect,
+                singleWrapClass
               )}
             >
               {isVideo ? (
                 <video
                   src={p.url}
-                  className="h-full w-full object-cover transition-transform duration-300 hover:scale-105 motion-reduce:hover:scale-100"
+                  className={cn(
+                    "h-full w-full transition-transform duration-300 hover:scale-105 motion-reduce:hover:scale-100",
+                    singleWrapClass ? "object-contain" : "object-cover"
+                  )}
                   muted
                   playsInline
                   preload="metadata"
@@ -106,12 +114,23 @@ export function PhotoGrid({
                 // Live Photo 悬停态：播放动态视频（静音循环）
                 <video
                   src={p.paired_video_url as string}
-                  className="h-full w-full object-cover"
+                  className={cn(singleWrapClass ? "object-contain h-full w-full" : "object-cover h-full w-full")}
                   muted
                   loop
                   playsInline
                   autoPlay
                   preload="metadata"
+                />
+              ) : singleImage ? (
+                // 单图：保留原始比例，max-w/max-h 约束在按钮层已设置
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.url}
+                  alt={`活动照片 ${i + 1}`}
+                  className={cn(
+                    "block max-w-full w-auto h-auto transition-transform duration-300 hover:scale-[1.02] motion-reduce:hover:scale-100"
+                  )}
+                  loading="lazy"
                 />
               ) : (
                 <Image
