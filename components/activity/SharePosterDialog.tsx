@@ -35,8 +35,8 @@ interface SharePosterDialogProps {
 const POSTER_WIDTH = 375;
 const POSTER_HEIGHT = 500; // 3:4 竖屏
 
-/** 活动正文最多展示的字符数（防止溢出海报） */
-const MAX_CONTENT_CHARS = 90;
+/** 活动正文最多展示的字符数（防止溢出海报，留出空间给信息条） */
+const MAX_CONTENT_CHARS = 60;
 
 /** 从 activity 中挑一张最合适的海报封面图 */
 function pickCoverPhoto(activity: Activity): { url: string; caption?: string } | null {
@@ -95,7 +95,6 @@ export function SharePosterDialog({
   const groupName = ""; // Activity 类型不含 group 名称（避免额外请求，留空不展示）
   const timeText = formatRelativeTime(activity.created_at);
   const summary = truncateForPoster(activity.content);
-  const externalTitle = activity.external_link?.title ?? "";
 
   /** 统一重置所有海报状态：弹窗打开时 & 手动重试时 */
   const resetState = useCallback(() => {
@@ -375,6 +374,7 @@ export function SharePosterDialog({
                 <div className="pointer-events-none absolute left-0 top-0 opacity-0 [&_*]:pointer-events-none">
                   <PosterDOM
                     ref={posterRef}
+                    activity={activity}
                     cover={cover}
                     qrDataUrl={getQrDataUrl()}
                     qrReady={qrReady}
@@ -383,8 +383,6 @@ export function SharePosterDialog({
                     groupName={groupName}
                     timeText={timeText}
                     summary={summary}
-                    externalTitle={externalTitle}
-                    shareUrl={shareUrl}
                     onImagesReady={handleAllImagesReady}
                     width={POSTER_WIDTH}
                     height={POSTER_HEIGHT}
@@ -437,6 +435,7 @@ export function SharePosterDialog({
 /* -------------------------------------------------------------------------- */
 
 interface PosterDOMProps {
+  activity: Activity;
   cover: { url: string; caption?: string } | null;
   qrDataUrl: string;
   qrReady: boolean;
@@ -445,8 +444,6 @@ interface PosterDOMProps {
   groupName: string;
   timeText: string;
   summary: string;
-  externalTitle: string;
-  shareUrl: string;
   onImagesReady: () => void;
   width: number;
   height: number;
@@ -460,205 +457,238 @@ const PosterDOM = forwardRef(function PosterDOM(
   props: PosterDOMProps,
   ref: ForwardedRef<HTMLDivElement>
 ) {
-    const {
-      cover,
-      qrDataUrl,
-      qrReady,
-      authorName,
-      authorAvatar,
-      groupName,
-      timeText,
-      summary,
-      externalTitle,
-      shareUrl,
-      onImagesReady,
-      width,
-      height,
-    } = props;
+  const {
+    activity,
+    cover,
+    qrDataUrl,
+    qrReady,
+    authorName,
+    authorAvatar,
+    groupName,
+    timeText,
+    summary,
+    onImagesReady,
+    width,
+    height,
+  } = props;
 
-    const [coverLoaded, setCoverLoaded] = useState(!cover);
-    const [qrLoaded, setQrLoaded] = useState(!qrReady);
+  const ext = activity.external_link;
+  const [coverLoaded, setCoverLoaded] = useState(!cover);
+  const [qrLoaded, setQrLoaded] = useState(!qrReady);
 
-    // 两张图都 ready 时通知父（qrReady 为 false 时不算，此时不会有图）
-    useEffect(() => {
-      const done = coverLoaded && (qrLoaded || !qrReady);
-      if (done) onImagesReady();
-    }, [coverLoaded, qrLoaded, qrReady, onImagesReady]);
+  // 两张图都 ready 时通知父（qrReady 为 false 时不算，此时不会有图）
+  useEffect(() => {
+    const done = coverLoaded && (qrLoaded || !qrReady);
+    if (done) onImagesReady();
+  }, [coverLoaded, qrLoaded, qrReady, onImagesReady]);
 
-    const coverHeight = cover ? Math.min(280, Math.round(width * 0.75)) : 0;
+  // 封面高度稍调小，留出空间给新增的信息行
+  const coverHeight = cover ? Math.min(232, Math.round(width * 0.62)) : 0;
 
-    return (
-      <div
-        ref={ref}
-        style={{
-          width: `${width}px`,
-          height: `${height}px`,
-          background:
-            "linear-gradient(180deg, #fffbeb 0%, #ffffff 42%, #ffffff 100%)",
-          color: "#111827",
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-          position: "relative",
-          overflow: "hidden",
-          boxSizing: "border-box",
-        }}
-      >
-        {/* 1. 封面图（若有） */}
-        {cover ? (
-          <div
-            style={{
-              width: "100%",
-              height: `${coverHeight}px`,
-              overflow: "hidden",
-              background: "#f3f4f6",
-              position: "relative",
-            }}
-          >
-            <img
-              src={toProxyUrl(cover.url)}
-              alt=""
-              onLoad={() => setCoverLoaded(true)}
-              onError={() => setCoverLoaded(true)}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-            {/* 顶部装饰渐变，保证作者昵称在深色封面下可读 */}
-            <div
-              style={{
-                position: "absolute",
-                inset: "0 0 auto 0",
-                height: 88,
-                background:
-                  "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 100%)",
-              }}
-            />
-          </div>
-        ) : (
-          // 无封面时用纯色大 LOGO 占位
-          <div
-            style={{
-              width: "100%",
-              height: "240px",
-              background:
-                "linear-gradient(135deg, #f59e0b 0%, #d97706 55%, #b45309 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fffbeb",
-              position: "relative",
-            }}
-          >
-            <div style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  fontSize: 64,
-                  fontWeight: 800,
-                  letterSpacing: "0.04em",
-                  lineHeight: 1,
-                }}
-              >
-                {APP_NAME}
-              </div>
-              <div
-                style={{
-                  marginTop: 10,
-                  fontSize: 13,
-                  opacity: 0.9,
-                  letterSpacing: "0.18em",
-                }}
-              >
-                记录我们吃的每一顿
-              </div>
-            </div>
-          </div>
-        )}
+  /** 餐厅信息第一行：评分 ⭐ x.y · 分类 · 人均 ¥xx */
+  const infoLineParts: string[] = [];
+  if (ext?.rating) infoLineParts.push(`⭐ ${Number(ext.rating).toFixed(1)}`);
+  if (ext?.category) infoLineParts.push(`${ext.category}`);
+  if (ext?.price) infoLineParts.push(`人均 ¥${ext.price.replace(/[¥￥]/g, "")}`);
+  const infoLine1 = infoLineParts.join(" · ");
+  const addressLine = ext?.address?.trim() ? ext.address.trim() : null;
 
-        {/* 2. 作者栏（浮层，有封面时半透明白底叠在上部） */}
+  /** 互动数据行：📸 N · 💬 N · ❤️ N · ⭐ N (N) */
+  const statsParts: string[] = [];
+  if ((activity.photo_count ?? 0) > 0) statsParts.push(`📸 ${activity.photo_count}`);
+  if ((activity.comment_count ?? 0) > 0) statsParts.push(`💬 ${activity.comment_count}`);
+  if ((activity.like_count ?? 0) > 0) {
+    statsParts.push(`❤️ ${activity.like_count}`);
+  } else if (activity.reactions) {
+    const total =
+      (activity.reactions.like ?? 0) +
+      (activity.reactions.love ?? 0) +
+      (activity.reactions.haha ?? 0) +
+      (activity.reactions.wow ?? 0) +
+      (activity.reactions.sad ?? 0) +
+      (activity.reactions.angry ?? 0);
+    if (total > 0) statsParts.push(`👍 ${total}`);
+  }
+  if (activity.average_rating && (activity.rating_count ?? 0) > 0) {
+    statsParts.push(`⭐ ${Number(activity.average_rating).toFixed(1)} (${activity.rating_count})`);
+  }
+  const statsLine = statsParts.join("  ");
+
+  const repost = activity.repost_of;
+  const tags = (activity.tags ?? []).slice(0, 4);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        width: `${width}px`,
+        height: `${height}px`,
+        background:
+          "linear-gradient(180deg, #fffbeb 0%, #ffffff 38%, #ffffff 100%)",
+        color: "#111827",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+        position: "relative",
+        overflow: "hidden",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* 1. 封面图（若有） */}
+      {cover ? (
         <div
           style={{
-            position: "absolute",
-            top: cover ? 14 : 20,
-            left: 16,
-            right: 16,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
+            width: "100%",
+            height: `${coverHeight}px`,
+            overflow: "hidden",
+            background: "#f3f4f6",
+            position: "relative",
           }}
         >
+          <img
+            src={toProxyUrl(cover.url)}
+            alt=""
+            onLoad={() => setCoverLoaded(true)}
+            onError={() => setCoverLoaded(true)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+          {/* 顶部装饰渐变，保证作者昵称在深色封面下可读 */}
           <div
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: 999,
-              background: "#fff",
-              border: "2px solid rgba(255,255,255,0.85)",
-              overflow: "hidden",
-              flexShrink: 0,
+              position: "absolute",
+              inset: "0 0 auto 0",
+              height: 88,
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 100%)",
             }}
-          >
-            {authorAvatar ? (
-              <img
-                src={toProxyUrl(authorAvatar)}
-                alt=""
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#d97706",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  background: "#fef3c7",
-                }}
-              >
-                {(authorName || APP_NAME).slice(0, 1)}
-              </div>
-            )}
-          </div>
-          <div style={{ minWidth: 0, flex: 1, color: cover ? "#fff" : "#111827" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>
-              {authorName || APP_NAME}
+          />
+        </div>
+      ) : (
+        // 无封面时用纯色大 LOGO 占位（稍调小以适配新增信息行）
+        <div
+          style={{
+            width: "100%",
+            height: "200px",
+            background:
+              "linear-gradient(135deg, #f59e0b 0%, #d97706 55%, #b45309 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fffbeb",
+            position: "relative",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                fontSize: 58,
+                fontWeight: 800,
+                letterSpacing: "0.04em",
+                lineHeight: 1,
+              }}
+            >
+              {APP_NAME}
             </div>
             <div
               style={{
-                marginTop: 2,
-                fontSize: 11,
-                opacity: cover ? 0.85 : 0.65,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                marginTop: 10,
+                fontSize: 12,
+                opacity: 0.9,
+                letterSpacing: "0.18em",
               }}
             >
-              {[groupName, timeText].filter(Boolean).join(" · ")}
+              记录我们吃的每一顿
             </div>
           </div>
         </div>
+      )}
 
-        {/* 3. 正文区 */}
+      {/* 2. 作者栏（浮层，有封面时半透明白底叠在上部） */}
+      <div
+        style={{
+          position: "absolute",
+          top: cover ? 14 : 18,
+          left: 16,
+          right: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
         <div
           style={{
-            padding: `20px 20px 0 20px`,
-            marginTop: cover ? coverHeight - 36 : 240,
+            width: 32,
+            height: 32,
+            borderRadius: 999,
+            background: "#fff",
+            border: "2px solid rgba(255,255,255,0.85)",
+            overflow: "hidden",
+            flexShrink: 0,
           }}
         >
-          {/* 外部链接标题条（若有） */}
-          {externalTitle ? (
+          {authorAvatar ? (
+            <img
+              src={toProxyUrl(authorAvatar)}
+              alt=""
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
             <div
               style={{
-                marginBottom: 10,
-                padding: "6px 10px",
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#d97706",
+                fontSize: 13,
+                fontWeight: 700,
+                background: "#fef3c7",
+              }}
+            >
+              {(authorName || APP_NAME).slice(0, 1)}
+            </div>
+          )}
+        </div>
+        <div style={{ minWidth: 0, flex: 1, color: cover ? "#fff" : "#111827" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2 }}>
+            {authorName || APP_NAME}
+          </div>
+          <div
+            style={{
+              marginTop: 2,
+              fontSize: 10,
+              opacity: cover ? 0.85 : 0.65,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {[groupName, timeText].filter(Boolean).join(" · ")}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. 正文 + 信息区 */}
+      <div
+        style={{
+          padding: `14px 18px 0 18px`,
+          marginTop: cover ? coverHeight - 28 : 200,
+        }}
+      >
+        {/* 外链标题条 + 餐厅评分/分类/人均 + 地址 */}
+        {ext?.title ? (
+          <div style={{ marginBottom: 8 }}>
+            <div
+              style={{
+                padding: "5px 10px",
                 borderRadius: 8,
                 background: "#fef3c7",
                 color: "#92400e",
@@ -667,130 +697,267 @@ const PosterDOM = forwardRef(function PosterDOM(
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
+                display: "inline-block",
+                maxWidth: "100%",
               }}
             >
-              🏷️ {externalTitle}
+              🏷️ {ext.title}
             </div>
-          ) : null}
-
-          <div
-            style={{
-              fontSize: 14,
-              lineHeight: 1.55,
-              color: "#1f2937",
-              fontWeight: 500,
-              // 最多 4 行（大约刚好对应 MAX_CONTENT_CHARS 90 的预期）
-              display: "-webkit-box",
-              WebkitLineClamp: 4,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              minHeight: "18px",
-            }}
-          >
-            {summary || "（这条聚餐记录没有文字描述）"}
-          </div>
-        </div>
-
-        {/* 4. 底部二维码区 */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: "16px 20px 20px",
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-          }}
-        >
-          {/* 二维码 */}
-          <div
-            style={{
-              width: 84,
-              height: 84,
-              padding: 4,
-              background: "#fff",
-              borderRadius: 10,
-              border: "1px solid #fde68a",
-              boxShadow: "0 4px 12px -4px rgba(251, 191, 36, 0.35)",
-              flexShrink: 0,
-              overflow: "hidden",
-            }}
-          >
-            {qrReady && qrDataUrl ? (
-              <img
-                src={qrDataUrl}
-                alt="扫码查看活动"
-                onLoad={() => setQrLoaded(true)}
-                onError={() => setQrLoaded(true)}
-                style={{ width: "100%", height: "100%", display: "block" }}
-              />
-            ) : (
+            {infoLine1 ? (
               <div
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  background:
-                    "repeating-linear-gradient(45deg, #f3f4f6 0 6px, #ffffff 6px 12px)",
-                  borderRadius: 6,
+                  marginTop: 6,
+                  fontSize: 11,
+                  color: "#78350f",
+                  fontWeight: 500,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
-              />
-            )}
+              >
+                {infoLine1}
+              </div>
+            ) : null}
+            {addressLine ? (
+              <div
+                style={{
+                  marginTop: 3,
+                  fontSize: 10,
+                  color: "#6b7280",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 1,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                📍 {addressLine}
+              </div>
+            ) : null}
           </div>
+        ) : null}
 
-          {/* 右侧：品牌 + 扫码提示 + 域名 */}
-          <div style={{ minWidth: 0, flex: 1 }}>
+        {/* 转发摘要：转发评论 + 原活动作者/内容 */}
+        {repost ? (
+          <div
+            style={{
+              marginBottom: 8,
+              padding: "8px 10px",
+              borderRadius: 8,
+              background: "#fffbeb",
+              border: "1px solid #fde68a",
+            }}
+          >
+            {activity.repost_comment ? (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#78350f",
+                  fontWeight: 500,
+                  marginBottom: 4,
+                }}
+              >
+                🔁 &ldquo;{activity.repost_comment}&rdquo;
+              </div>
+            ) : null}
             <div
               style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: "#b45309",
-                lineHeight: 1.2,
-              }}
-            >
-              {APP_NAME}
-            </div>
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: 12,
-                color: "#78350f",
-                lineHeight: 1.35,
-              }}
-            >
-              扫码查看完整聚餐记录
-            </div>
-            <div
-              style={{
-                marginTop: 6,
                 fontSize: 10,
-                color: "#9ca3af",
-                overflow: "hidden",
+                color: "#92400e",
                 whiteSpace: "nowrap",
+                overflow: "hidden",
                 textOverflow: "ellipsis",
               }}
             >
-              {shareUrl}
+              转发自 @{repost.author?.nickname ?? APP_NAME}：
+              {repost.content
+                ? `「${repost.content.replace(/\s+/g, " ").slice(0, 22)}${repost.content.length > 22 ? "…" : ""}」`
+                : repost.external_link?.title ?? ""}
             </div>
           </div>
+        ) : null}
+
+        {/* 正文摘要（3 行截断 + 正文 60 字） */}
+        <div
+          style={{
+            fontSize: 13,
+            lineHeight: 1.55,
+            color: "#1f2937",
+            fontWeight: 500,
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            minHeight: "18px",
+          }}
+        >
+          {summary || "（这条聚餐记录没有文字描述）"}
         </div>
 
-        {/* 背景角装饰（金色小圆点，纯视觉） */}
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            right: -40,
-            top: cover ? coverHeight + 40 : 280,
-            width: 160,
-            height: 160,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(251,191,36,0.14) 0%, rgba(251,191,36,0) 70%)",
-            pointerEvents: "none",
-          }}
-        />
+        {/* 标签胶囊（最多 4 个）*/}
+        {tags.length > 0 && (
+          <div
+            style={{
+              marginTop: 8,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 4,
+            }}
+          >
+            {tags.map((t) => (
+              <span
+                key={t.id}
+                style={{
+                  display: "inline-block",
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: "#fef3c7",
+                  color: "#92400e",
+                  fontSize: 10,
+                  fontWeight: 500,
+                }}
+              >
+                # {t.name}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* 互动数据行（分隔虚线 + 琥珀色） */}
+        {statsLine ? (
+          <div
+            style={{
+              marginTop: 8,
+              paddingTop: 8,
+              borderTop: "1px dashed #fde68a",
+              fontSize: 11,
+              color: "#b45309",
+              fontWeight: 500,
+              letterSpacing: "0.01em",
+            }}
+          >
+            {statsLine}
+          </div>
+        ) : null}
       </div>
-    );
+
+      {/* 4. 底部二维码区（去掉 shareUrl 域名显示，二维码本身包含跳转） */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          padding: "14px 18px 18px",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          borderTop: "1px solid #fef3c7",
+          background:
+            "linear-gradient(180deg, rgba(255,251,235,0) 0%, rgba(255,251,235,0.6) 100%)",
+        }}
+      >
+        {/* 二维码 */}
+        <div
+          style={{
+            width: 80,
+            height: 80,
+            padding: 4,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #fde68a",
+            boxShadow: "0 4px 12px -4px rgba(251, 191, 36, 0.35)",
+            flexShrink: 0,
+            overflow: "hidden",
+          }}
+        >
+          {qrReady && qrDataUrl ? (
+            <img
+              src={qrDataUrl}
+              alt="扫码查看活动"
+              onLoad={() => setQrLoaded(true)}
+              onError={() => setQrLoaded(true)}
+              style={{ width: "100%", height: "100%", display: "block" }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                background:
+                  "repeating-linear-gradient(45deg, #f3f4f6 0 6px, #ffffff 6px 12px)",
+                borderRadius: 6,
+              }}
+            />
+          )}
+        </div>
+
+        {/* 右侧：品牌 + Slogan + 扫码提示（三行精炼，域名删掉） */}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 800,
+              color: "#b45309",
+              lineHeight: 1.2,
+              letterSpacing: "0.01em",
+            }}
+          >
+            {APP_NAME}
+          </div>
+          <div
+            style={{
+              marginTop: 3,
+              fontSize: 11,
+              color: "#92400e",
+              lineHeight: 1.4,
+              opacity: 0.9,
+            }}
+          >
+            记录我们吃的每一顿
+          </div>
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#78350f",
+              lineHeight: 1.3,
+            }}
+          >
+            扫码查看完整聚餐记录
+          </div>
+        </div>
+      </div>
+
+      {/* 背景角装饰（金色小圆点，纯视觉） */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          right: -30,
+          bottom: 60,
+          width: 120,
+          height: 120,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(251,191,36,0.18) 0%, rgba(251,191,36,0) 70%)",
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: -20,
+          top: cover ? coverHeight + 10 : 200,
+          width: 70,
+          height: 70,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(251,191,36,0.1) 0%, rgba(251,191,36,0) 70%)",
+          pointerEvents: "none",
+        }}
+      />
+    </div>
+  );
 });
