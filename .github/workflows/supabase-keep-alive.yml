@@ -1,0 +1,66 @@
+name: Supabase Keep-Alive
+
+# 防止 Supabase 免费项目因 7 天不活跃被自动暂停。
+# 原理：Supabase 会检测数据库活动（查询/写入等）。这里通过
+# PostgREST REST API 定期执行一次轻量查询，即可被计入活跃度。
+#
+# 调度：每周一、周四 12:00 UTC（约 20:00 北京时间）各跑一次，
+# 间隔小于 7 天，留出安全冗余。
+# 同时提供手动触发（workflow_dispatch）便于即时验证。
+
+on:
+  schedule:
+    - cron: "0 12 * * 1,4"
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    name: Ping Supabase for activity
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Fail fast if secrets missing
+        if: env.SUPABASE_URL == '' || env.SUPABASE_ANON_KEY == ''
+        run: |
+          echo "::error::缺少 GitHub Secrets: 请在仓库 Settings → Secrets and variables → Actions 中添加 SUPABASE_URL 和 SUPABASE_ANON_KEY"
+          exit 1
+
+      - name: Hit Supabase PostgREST endpoint (ping profiles count)
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/supabase_resp.json -w "%{http_code}" \
+            -X GET "${SUPABASE_URL}/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Range-Unit: items" \
+            -H "Range: 0-0")
+
+          echo "HTTP 状态码: ${HTTP_CODE}"
+          echo "响应内容预览:"
+          cat /tmp/supabase_resp.json | head -c 500
+          echo ""
+
+          if [[ "${HTTP_CODE}" -ge 200 && "${HTTP_CODE}" -lt 400 ]]; then
+            echo "✅ Supabase 查询成功，活跃信号已发送"
+          else
+            echo "::warning::Supabase 返回非 2xx 状态码 (${HTTP_CODE})，请检查 URL 和 anon key"
+            echo "完整响应:"
+            cat /tmp/supabase_resp.json
+            echo ""
+            # 注意：这里不 exit 1，避免因临时网络抖动导致 workflow 失败，
+            # 只要 cron 按时触发，下一次大概率会成功。
+            # 如果希望失败时发告警，可自行接入 Slack/邮件 action。
+          fi
+
+      - name: Run lightweight SQL via RPC (optional extra activity)
+        run: |
+          # 通过 REST 调用一个简单的 RPC 或直接查询，进一步确保数据库层活跃
+          HTTP_CODE=$(curl -s -o /tmp/supabase_rpc_resp.json -w "%{http_code}" \
+            -X GET "${SUPABASE_URL}/rest/v1/groups?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+
+          echo "RPC/额外查询 HTTP 状态码: ${HTTP_CODE}"
