@@ -19,27 +19,27 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # 构建期需要的 NEXT_PUBLIC_* 变量（必须在 docker build 阶段拿到真实值，
 # 因为它们会被内联进前端 JS bundle，运行时改不了）
 #
-# 这里同时接受两种注入方式：
-#   1) ARG（docker build --build-arg FOO=xxx 传入）
-#   2) 直接 ENV（部分平台会把环境变量直接注入构建进程，无需 --build-arg）
-# 优先顺序：ARG 设置了就用 ARG，否则用当前 shell 环境中已有的同名 env。
-# 如果都没有，使用 BUILD_ 前缀的占位符，镜像仍能构建成功，
-# 等运行时 entrypoint.sh 再用 sed 把这些占位符替换掉（双保险）。
+# 这里【只用 ARG】，绝对不用 ENV！
+# 原因：ENV 会写入镜像层并被 runner stage 继承，导致 CloudBase 运行时
+# 注入的同名环境变量被镜像内的占位符 BUILD_PLACEHOLDER_* 覆盖。
+# ARG 仅对当前 build 阶段有效，不会被继承到最终镜像。
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_APP_URL
-ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-BUILD_PLACEHOLDER_SUPABASE_URL}
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-BUILD_PLACEHOLDER_SUPABASE_ANON_KEY}
-ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-BUILD_PLACEHOLDER_APP_URL}
+# 非 NEXT_PUBLIC_ 变量只在服务端使用，构建期根本不需要注入（由运行时 env 提供）
+ARG SUPABASE_SERVICE_ROLE_KEY
+ARG QQ_APP_ID
+ARG QQ_APP_KEY
 
-# 非 NEXT_PUBLIC_ 变量只在服务端使用，构建期占位即可，不影响前端 JS
-ENV SUPABASE_SERVICE_ROLE_KEY=placeholder-service-role-key-build
-ENV QQ_APP_ID=placeholder-qq-app-id-build
-ENV QQ_APP_KEY=placeholder-qq-app-key-build
-
+# 把 ARG 转成仅对本 RUN shell 生效的 shell 变量，不污染镜像 ENV 层。
+# 注意：ENV 指令在本 stage 不会再出现。
+#
 # 构建前检查：如果 NEXT_PUBLIC_* 没在构建期注入真实值，
 # 打印醒目的警告，但不中断构建（因为 entrypoint.sh 会在运行时替换占位符）。
 RUN \
+  export NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-BUILD_PLACEHOLDER_SUPABASE_URL}" && \
+  export NEXT_PUBLIC_SUPABASE_ANON_KEY="${NEXT_PUBLIC_SUPABASE_ANON_KEY:-BUILD_PLACEHOLDER_SUPABASE_ANON_KEY}" && \
+  export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-BUILD_PLACEHOLDER_APP_URL}" && \
   WARN=0; \
   case "$NEXT_PUBLIC_SUPABASE_URL" in BUILD_PLACEHOLDER*) echo "⚠ WARN: NEXT_PUBLIC_SUPABASE_URL 未在构建期注入（将依赖运行时替换）"; WARN=1;; esac; \
   case "$NEXT_PUBLIC_SUPABASE_ANON_KEY" in BUILD_PLACEHOLDER*) echo "⚠ WARN: NEXT_PUBLIC_SUPABASE_ANON_KEY 未在构建期注入（将依赖运行时替换）"; WARN=1;; esac; \
