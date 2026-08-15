@@ -21,6 +21,8 @@ export interface ExternalLink {
   price?: string | null;
   /** 餐厅分类，如 火锅/烤肉/烧烤/川菜 */
   category?: string | null;
+  /** POI 匹配补齐的经纬度（GCJ-02，微信 openLocation / 高德同系） */
+  location?: { lng: number; lat: number } | null;
 }
 
 /** 用户资料 */

@@ -6,6 +6,7 @@
 // ============================================================
 
 import { matchPoi, type MatchPoiInput, type MatchResult } from "./matcher";
+import { bd09ToGcj02 } from "./coords";
 import type { ExternalLink } from "@/types";
 
 export interface PoiEnrichPlace {
@@ -218,6 +219,13 @@ export async function enrichLinkWithPoi(
     if (!enriched.category && cand.category) enriched.category = cand.category;
     if (enriched.rating == null && cand.rating != null) {
       enriched.rating = cand.rating;
+    }
+    // 坐标落库（GCJ-02 统一系），供小程序 wx.openLocation / 地图导航使用
+    if (!enriched.location && cand.location) {
+      enriched.location =
+        cand.location.coordType === "bd09"
+          ? bd09ToGcj02(cand.location.lng, cand.location.lat)
+          : { lng: cand.location.lng, lat: cand.location.lat };
     }
 
     return {
