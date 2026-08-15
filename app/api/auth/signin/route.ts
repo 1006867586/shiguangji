@@ -70,11 +70,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) {
+      console.error("[/api/auth/signin] Supabase 认证失败:", {
+        name: error.name,
+        code: error.code,
+        message: error.message,
+        status: error.status,
+      });
       // Supabase 约定：invalid_credentials → 邮箱/密码错误
       if (
         error.name === "AuthInvalidCredentialsError" ||
@@ -92,6 +98,11 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+    console.log("[/api/auth/signin] 登录成功:", {
+      userId: data.user?.id,
+      sessionLen: data.session?.access_token?.length ?? 0,
+      cookiesLen: sbCookies.length,
+    });
 
     // 写 sb-* cookies 到响应
     const isProd = process.env.NODE_ENV === "production";
