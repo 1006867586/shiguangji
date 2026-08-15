@@ -33,22 +33,17 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
+# CloudBase 云托管默认健康检查打 80 端口，应用必须监听 80
+ENV PORT=80
 # standalone 默认监听 localhost，容器外访问不到，必须改成 0.0.0.0
 ENV HOSTNAME=0.0.0.0
 
-# 创建非 root 用户运行
-RUN addgroup --system --gid 1001 nodejs \
- && adduser --system --uid 1001 nextjs
-
 # standalone 产物 + 静态资源（这两个目录 standalone 不会自动复制，必须手动 COPY）
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-USER nextjs
-
-EXPOSE 3000
+EXPOSE 80
 
 # standalone 入口是 server.js，跳过 npm 一层启动更快
 CMD ["node", "server.js"]

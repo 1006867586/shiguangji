@@ -121,8 +121,8 @@ xiangke/
 # 1. 登录
 tcb login
 
-# 2. 部署到云托管（首次会创建服务，端口 3000 与 Dockerfile 一致）
-tcb cloudrun deploy --port 3000
+# 2. 部署到云托管（首次会创建服务，端口 80 与 Dockerfile 一致）
+tcb cloudrun deploy --port 80
 
 # 3. 后续更新：直接重跑上面命令，或绑定 Git 仓库自动部署
 ```

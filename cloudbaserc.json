@@ -10,7 +10,7 @@
   "container": {
     "cloudRun": {
       "service": "xiangke",
-      "port": 3000,
+      "port": 80,
       "envId": "{{envId}}",
       "runtime": "docker"
     }
