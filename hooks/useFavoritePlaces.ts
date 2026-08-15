@@ -8,6 +8,7 @@ import type {
   FavoritePlace,
   FavoritePlatform,
   ParsedFavoritesScreenshot,
+  UpdateFavoritePlaceBody,
 } from "@/types";
 
 // ============================================================
@@ -31,6 +32,11 @@ interface UseFavoritePlacesReturn {
     } | null;
   }>;
   remove: (id: string) => Promise<void>;
+  /** 编辑单条店铺（乐观更新，失败回滚），返回更新后的完整数据 */
+  updateOne: (
+    id: string,
+    body: UpdateFavoritePlaceBody
+  ) => Promise<FavoritePlace>;
   /** 局部更新单条店铺（用于联网搜索补齐后回填 UI，避免整表重新拉取） */
   patchPlace: (id: string, patch: Partial<FavoritePlace>) => void;
 }
@@ -92,6 +98,44 @@ export function useFavoritePlaces(): UseFavoritePlacesReturn {
     [data, mutate]
   );
 
+  const updateOne = useCallback(
+    async (id: string, body: UpdateFavoritePlaceBody) => {
+      // 乐观更新
+      const prev = data?.data;
+      if (prev) {
+        await mutate(
+          {
+            data: prev.map((p) =>
+              p.id === id ? ({ ...p, ...body } as FavoritePlace) : p
+            ),
+          },
+          { revalidate: false }
+        );
+      }
+      try {
+        const res = await fetcher<{ data: FavoritePlace }>(
+          `/api/favorite-places/${id}`,
+          { method: "PATCH", body: JSON.stringify(body) }
+        );
+        // 以服务端返回为准回填（含规范化后的 rating/空串转 null 等）
+        await mutate(
+          {
+            data: (prev ?? []).map((p) =>
+              p.id === id ? res.data : p
+            ),
+          },
+          { revalidate: false }
+        );
+        return res.data;
+      } catch (e) {
+        // 回滚
+        if (prev) await mutate({ data: prev }, { revalidate: false });
+        throw e;
+      }
+    },
+    [data, mutate]
+  );
+
   const patchPlace = useCallback(
     (id: string, patch: Partial<FavoritePlace>) => {
       const prev = data?.data;
@@ -117,6 +161,7 @@ export function useFavoritePlaces(): UseFavoritePlacesReturn {
     reload,
     addMany,
     remove,
+    updateOne,
     patchPlace,
   };
 }

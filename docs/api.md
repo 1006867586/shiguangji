@@ -5,6 +5,7 @@
 ## 目录
 
 - [主流程集成](#主流程集成)
+- [PATCH /api/favorite-places/[id]](#patch-apifavorite-placesid)
 - [POST /api/favorite-places](#post-apifavorite-places)
 - [POST /api/places/match-poi](#post-apiplacesmatch-poi)
 - [POST /api/link-preview](#post-apilink-preview)
@@ -49,6 +50,62 @@
 | AI 联网搜索 | MiniMax web_search | cover_image_url / store_url | 慢（10-30s/条）、覆盖面广 |
 
 **前端行为**：收藏夹截图导入保存时自动传 `enrichPoi: true`；服务端未配置地图 Key 时静默跳过，不影响入库。
+
+---
+
+## PATCH /api/favorite-places/[id]
+
+编辑单条店铺收藏（白名单字段，全部可选局部更新）。需登录，只能改自己的。
+
+### 请求
+
+```http
+PATCH /api/favorite-places/{id}
+Content-Type: application/json
+```
+
+```json
+{
+  "title": "海底捞（望京店）",
+  "address": "北京市朝阳区望京街1号",
+  "phone": "010-64786666",
+  "store_url": "https://www.haidilao.com",
+  "signature_dishes": ["番茄锅", "捞面"],
+  "rating": 4.7,
+  "price": "￥120",
+  "category": "火锅",
+  "summary": "服务好，适合聚餐",
+  "platform": "dianping"
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 校验 |
+|------|------|------|
+| `title` | string | 传则必须非空（trim 后） |
+| `address` / `phone` / `category` / `price` | string \| null | 空串自动转 null |
+| `store_url` | string \| null | 需 http(s):// 开头 |
+| `signature_dishes` | string[] | 自动 trim + 去空项 |
+| `rating` | number \| null | 0-5，保留一位小数；null 清空 |
+| `summary` | string | trim 后保存 |
+| `platform` | enum | meituan/dianping/xiaohongshu/douyin/unknown |
+
+### 响应
+
+```json
+{ "data": { "id": "...", "title": "海底捞（望京店）", "...": "..." } }
+```
+
+| 状态码 | 场景 |
+|--------|------|
+| 200 | 更新成功，返回更新后的完整行 |
+| 400 | 店名为空 / 评分越界 / 链接格式错误 / 无可更新字段 |
+| 401 | 未登录 |
+| 404 | 收藏不存在或不属于当前用户 |
+| 409 | 改后与其他店铺同名同地址（唯一索引冲突） |
+
+**前端行为**：收藏夹列表 hover 显示铅笔按钮 → 弹「编辑店铺」对话框；乐观更新 + 失败回滚。
 
 ---
 

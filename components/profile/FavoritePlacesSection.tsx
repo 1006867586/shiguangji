@@ -12,6 +12,7 @@ import {
   Star,
   Globe,
   ExternalLink,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,11 @@ import {
   useAiParseFavorites,
   useEnrichPlace,
 } from "@/hooks/useFavoritePlaces";
-import type { FavoritePlatform } from "@/types";
+import type {
+  FavoritePlace,
+  FavoritePlatform,
+  UpdateFavoritePlaceBody,
+} from "@/types";
 import { useAiEnabled } from "@/hooks/useAiEnabled";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/heic";
@@ -64,7 +69,8 @@ type DraftPlace = {
  */
 export function FavoritePlacesSection() {
   const aiEnabled = useAiEnabled();
-  const { places, loading, addMany, remove, patchPlace } = useFavoritePlaces();
+  const { places, loading, addMany, remove, patchPlace, updateOne } =
+    useFavoritePlaces();
   const { uploadFile, uploading } = useUpload();
   const { parse, loading: parsing } = useAiParseFavorites();
   const {
@@ -82,6 +88,9 @@ export function FavoritePlacesSection() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  /** 正在编辑的店铺（编辑对话框开关由 editingPlace 是否为空控制） */
+  const [editingPlace, setEditingPlace] = useState<FavoritePlace | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -176,6 +185,23 @@ export function FavoritePlacesSection() {
       toast.error(e instanceof Error ? e.message : "删除失败");
     } finally {
       setRemovingId(null);
+    }
+  };
+
+  /** 保存编辑：把对话框表单值规范化后 PATCH，成功后关闭并 toast */
+  const handleSaveEdit = async (
+    placeId: string,
+    body: UpdateFavoritePlaceBody
+  ) => {
+    setSavingEdit(true);
+    try {
+      await updateOne(placeId, body);
+      toast.success("已保存");
+      setEditingPlace(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -460,6 +486,15 @@ export function FavoritePlacesSection() {
                     ) : null}
                     <button
                       type="button"
+                      onClick={() => setEditingPlace(p)}
+                      aria-label="编辑店铺信息"
+                      title="编辑店铺信息"
+                      className="rounded-full p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleRemove(p.id)}
                       disabled={removingId === p.id}
                       aria-label="删除"
@@ -489,6 +524,16 @@ export function FavoritePlacesSection() {
         onRemove={removeDraft}
         onSave={handleSave}
         saving={saving}
+      />
+
+      <EditPlaceDialog
+        key={editingPlace?.id ?? "none"}
+        place={editingPlace}
+        onOpenChange={(v) => {
+          if (!v) setEditingPlace(null);
+        }}
+        onSave={handleSaveEdit}
+        saving={savingEdit}
       />
     </div>
   );
@@ -707,6 +752,212 @@ function ParsePreviewDialog({
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : null}
             全部入库 ({drafts.length})
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================
+// 编辑对话框：修改已入库的单条店铺信息
+// ============================================================
+
+interface EditPlaceDialogProps {
+  /** 为 null 时关闭 */
+  place: FavoritePlace | null;
+  onOpenChange: (v: boolean) => void;
+  onSave: (placeId: string, body: UpdateFavoritePlaceBody) => void;
+  saving: boolean;
+}
+
+function EditPlaceDialog({
+  place,
+  onOpenChange,
+  onSave,
+  saving,
+}: EditPlaceDialogProps) {
+  // place 变化时由父组件 key 重挂载，这里初始化一次即可
+  const [title, setTitle] = useState(place?.title ?? "");
+  const [address, setAddress] = useState(place?.address ?? "");
+  const [phone, setPhone] = useState(place?.phone ?? "");
+  const [storeUrl, setStoreUrl] = useState(place?.store_url ?? "");
+  const [dishes, setDishes] = useState(
+    place?.signature_dishes.join("，") ?? ""
+  );
+  const [rating, setRating] = useState(place?.rating?.toString() ?? "");
+  const [price, setPrice] = useState(place?.price ?? "");
+  const [category, setCategory] = useState(place?.category ?? "");
+  const [summary, setSummary] = useState(place?.summary ?? "");
+  const [platform, setPlatform] = useState<FavoritePlatform>(
+    place?.platform ?? "unknown"
+  );
+
+  const canSubmit = title.trim().length > 0 && !saving;
+
+  const handleSubmit = () => {
+    if (!place || !canSubmit) return;
+    const parsedRating = rating ? parseFloat(rating) : NaN;
+    onSave(place.id, {
+      title: title.trim(),
+      address: address.trim() || null,
+      phone: phone.trim() || null,
+      store_url: storeUrl.trim() || null,
+      signature_dishes: dishes
+        .split(/[,，]/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+      rating: rating && Number.isFinite(parsedRating) ? parsedRating : null,
+      price: price.trim() || null,
+      category: category.trim() || null,
+      summary: summary.trim(),
+      platform,
+    });
+  };
+
+  return (
+    <Dialog open={place != null} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>编辑店铺</DialogTitle>
+          <DialogDescription>
+            修改后立即保存，留空的选填字段会清空
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[60vh] space-y-2.5 overflow-y-auto pr-1">
+          <div>
+            <Label className="text-[11px] text-muted-foreground">
+              店名 <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px] text-muted-foreground">
+                地址
+              </Label>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-[11px] text-muted-foreground">
+                电话
+              </Label>
+              <Input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="text-[11px] text-muted-foreground">
+              店铺链接
+            </Label>
+            <Input
+              value={storeUrl}
+              onChange={(e) => setStoreUrl(e.target.value)}
+              placeholder="https://..."
+              className="h-8 text-sm"
+            />
+          </div>
+          <div>
+            <Label className="text-[11px] text-muted-foreground">
+              招牌菜（逗号分隔）
+            </Label>
+            <Input
+              value={dishes}
+              onChange={(e) => setDishes(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-[11px] text-muted-foreground">
+                评分
+              </Label>
+              <Input
+                value={rating}
+                onChange={(e) => setRating(e.target.value)}
+                placeholder="4.5"
+                inputMode="decimal"
+                type="number"
+                min={0}
+                max={5}
+                step={0.1}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-[11px] text-muted-foreground">
+                人均
+              </Label>
+              <Input
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="￥80"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-[11px] text-muted-foreground">
+                分类
+              </Label>
+              <Input
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="火锅"
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="text-[11px] text-muted-foreground">
+              一句话简介
+            </Label>
+            <Input
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">来源平台</span>
+            <select
+              value={platform}
+              onChange={(e) =>
+                setPlatform(e.target.value as FavoritePlatform)
+              }
+              className="rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {(Object.keys(PLATFORM_LABEL) as FavoritePlatform[]).map((p) => (
+                <option key={p} value={p}>
+                  {PLATFORM_LABEL[p]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
+            取消
+          </Button>
+          <Button onClick={handleSubmit} disabled={!canSubmit}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            保存
           </Button>
         </DialogFooter>
       </DialogContent>

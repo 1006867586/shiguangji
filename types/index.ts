@@ -477,6 +477,24 @@ export interface CreateFavoritePlacesBody {
   }>;
 }
 
+/** 编辑单条店铺收藏请求体（PATCH，全部字段可选局部更新） */
+export interface UpdateFavoritePlaceBody {
+  /** 店名（传则必须非空） */
+  title?: string;
+  address?: string | null;
+  phone?: string | null;
+  signature_dishes?: string[];
+  summary?: string;
+  category?: string | null;
+  /** 评分 0-5，传 null 清空 */
+  rating?: number | null;
+  /** 人均消费，如 "￥80" */
+  price?: string | null;
+  /** 店铺链接（需 http(s):// 开头，传 null 清空） */
+  store_url?: string | null;
+  platform?: FavoritePlatform;
+}
+
 /** 「今天吃什么」转盘候选项（圈子级共享） */
 export interface MealRouletteItem {
   id: UUID;
