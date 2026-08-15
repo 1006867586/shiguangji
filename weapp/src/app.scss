@@ -1,0 +1,22 @@
+/**
+ * 全局样式：仅放通用的 reset / 主题变量，页面样式写在各自 .scss 里。
+ * px 单位在编译期按 designWidth=750 换算为 rpx。
+ */
+page {
+  background-color: #f6f6f7;
+  font-size: 28rpx;
+  color: #1f2937;
+}
+
+/* 通用小工具类 */
+.text-muted {
+  color: #9ca3af;
+  font-size: 24rpx;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin: 16rpx 24rpx;
+}

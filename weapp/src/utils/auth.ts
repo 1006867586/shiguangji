@@ -1,0 +1,66 @@
+import Taro from "@tarojs/taro";
+import { TOKEN_KEY, REFRESH_KEY, EXPIRES_KEY } from "./config";
+import { request } from "./request";
+
+/**
+ * 登录态管理：wx.login code → /api/auth/weapp/login → 本地存储 token。
+ * 服务端同构复用 Supabase 会话（Bearer 通道），Web/小程序同一账号体系。
+ */
+
+export interface WeappSession {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt?: string;
+  isNewUser?: boolean;
+}
+
+export function isLoggedIn(): boolean {
+  return Boolean(Taro.getStorageSync<string>(TOKEN_KEY));
+}
+
+export function getAccessToken(): string | null {
+  return Taro.getStorageSync<string>(TOKEN_KEY) || null;
+}
+
+/** 微信一键登录：wx.login 拿 code，换服务端会话 token */
+export async function weappLogin(): Promise<WeappSession> {
+  const { code } = await Taro.login();
+  if (!code) throw new Error("微信登录失败：未获取到 code");
+
+  const session = await request<WeappSession>("/api/auth/weapp/login", {
+    method: "POST",
+    data: { code },
+    auth: false,
+  });
+
+  Taro.setStorageSync(TOKEN_KEY, session.accessToken);
+  Taro.setStorageSync(REFRESH_KEY, session.refreshToken);
+  if (session.expiresAt) Taro.setStorageSync(EXPIRES_KEY, session.expiresAt);
+  return session;
+}
+
+/** 退出登录：仅清本地凭据（服务端 Supabase token 自然过期） */
+export function logout() {
+  Taro.removeStorageSync(TOKEN_KEY);
+  Taro.removeStorageSync(REFRESH_KEY);
+  Taro.removeStorageSync(EXPIRES_KEY);
+}
+
+/** 启动时静默校验：本地凭据存在即可，真正有效性由请求层 401 兜底 */
+export async function ensureSession(): Promise<void> {
+  if (!isLoggedIn()) return;
+  const expiresAt = Taro.getStorageSync<string>(EXPIRES_KEY);
+  if (expiresAt && new Date(expiresAt).getTime() - Date.now() < 5 * 60_000) {
+    // 即将过期，提前触发一次刷新（失败不阻塞启动）
+    try {
+      await request("/api/auth/weapp/refresh", {
+        method: "POST",
+        data: { refreshToken: Taro.getStorageSync<string>(REFRESH_KEY) },
+        auth: false,
+        silent: true,
+      });
+    } catch {
+      // 交给请求层在真正 401 时处理
+    }
+  }
+}

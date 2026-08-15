@@ -32,6 +32,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# weapp（Taro 小程序）
+/weapp/node_modules/
+/weapp/dist/
+/weapp/.swc/
+
 # edgeone
 .edgeone
 
