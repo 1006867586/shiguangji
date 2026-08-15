@@ -92,13 +92,14 @@ export async function POST(request: NextRequest) {
     // --------------------------------------------------------------
     let userUid: string | null = null;
     try {
-      // 临时用 service role 建一个 client，只用于 getUser 校验
-      const { createClient: createAdminClient } = await import(
-        "@/lib/supabase/admin"
-      ).catch(() => {
-        // 如果 admin.ts 没导出 createClient，退而用 createServerClient + service_role
-        return { createClient: null };
-      });
+      // admin.ts 默认导出 createAdminClient
+      const AdminMod = await import("@/lib/supabase/admin").catch(
+        () => null
+      );
+      const createAdminClient: (() => any) | null =
+        AdminMod && (AdminMod as { createAdminClient?: unknown }).createAdminClient
+          ? (AdminMod as { createAdminClient: () => any }).createAdminClient
+          : null;
       if (createAdminClient && serviceRoleKey) {
         const admin = createAdminClient();
         const { data, error } = await admin.auth.getUser(accessToken);
@@ -117,9 +118,6 @@ export async function POST(request: NextRequest) {
         userUid = data.user.id;
       }
     } catch (err) {
-      // 管理员 client 调不到时，降级用 createServerClient + auth.setSession
-      //（上一个实现方案，因为校验较严格可能 AuthInvalidJwtError，
-      // 所以这里是降级兜底，非首选）
       console.warn("[auth/session] admin.auth.getUser 降级:", err);
     }
 
