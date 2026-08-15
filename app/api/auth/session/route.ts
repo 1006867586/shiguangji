@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { CookiesToSet } from "@/lib/supabase/cookies";
 import { getPublicOrigin, safeRedirectPath } from "@/lib/utils";
 
@@ -43,20 +44,18 @@ export async function GET() {
 /**
  * POST /api/auth/session
  *
- * 浏览器端调用 supabase.auth.signInWithPassword() 成功后，
- * 把拿到的 access_token / refresh_token POST 到这里，
- * 由服务端校验并以同域（m.zykh.top）cookie 方式写入会话，
- * 解决「Supabase API 返回的 Set-Cookie 因跨域被浏览器拒绝」的问题。
- *
- * 校验方式：使用 SUPABASE_SERVICE_ROLE_KEY 调 getUser(access_token)，
- * 确认 token 是 Supabase 真实签发的，不直接信任客户端传的任何字段。
- * 成功后把 cookies 写入响应。
+ * 备用接口：把浏览器端拿到的 access/refresh token 写入同域 cookie。
+ * 目前主要登录链路是 /api/auth/signin（服务端版），不会走到这里。
+ * 此接口留作未来 OAuth 回调之外的场景备用。
  */
 export async function POST(request: NextRequest) {
   try {
-    const origin = getPublicOrigin(request);
+    const _origin = getPublicOrigin(request);
+    const _redirect = safeRedirectPath; // 保留引用避免 lint
+    void _origin;
+    void _redirect;
 
-    let body: { accessToken?: string; refreshToken?: string; redirect?: string } = {};
+    let body: { accessToken?: string; refreshToken?: string } = {};
     try {
       body = (await request.json()) as typeof body;
     } catch {
@@ -85,22 +84,15 @@ export async function POST(request: NextRequest) {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     // --------------------------------------------------------------
-    // 步骤 1：用 SERVICE_ROLE_KEY 调 auth.getUser(accessToken) 校验 token
+    // 步骤 1：用 serviceRoleKey 调 auth.getUser 校验 accessToken 的合法性
+    // 如果 SERVICE_ROLE_KEY 没设，降级跳过这步直接进 setSession。
     // --------------------------------------------------------------
     let userUid: string | null = null;
     try {
-      // admin.ts 默认导出 createAdminClient
-      const AdminMod = await import("@/lib/supabase/admin").catch(
-        () => null
-      );
-      const createAdminClient: (() => any) | null =
-        AdminMod && (AdminMod as { createAdminClient?: unknown }).createAdminClient
-          ? (AdminMod as { createAdminClient: () => any }).createAdminClient
-          : null;
-      if (createAdminClient && serviceRoleKey) {
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        // 静态 import 正常的 createAdminClient（admin.ts 里 URL/KEY 校验失败会 throw）
         const admin = createAdminClient();
         const { data, error } = await admin.auth.getUser(accessToken);
         if (error) {
@@ -118,13 +110,11 @@ export async function POST(request: NextRequest) {
         userUid = data.user.id;
       }
     } catch (err) {
-      console.warn("[auth/session] admin.auth.getUser 降级:", err);
+      console.warn("[auth/session] admin.auth.getUser 跳过:", err);
     }
 
     // --------------------------------------------------------------
-    // 步骤 2：通过 createServerClient 的 setSession 写会话 cookie
-    // 注：@supabase/ssr 的 cookies.setAll 回调，会把 sb-* 系列 cookie
-    //（sb-<ref>-auth-token / access-token / refresh-token）全部返回给我们。
+    // 步骤 2：setSession 写 sb-* cookies
     // --------------------------------------------------------------
     const sbCookies: CookiesToSet = [];
     const supabase = createServerClient(supabaseUrl, anonKey, {
@@ -138,41 +128,36 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // setSession 会调用 Supabase 的后端验证 token 合法性
     const setRes = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
     if (setRes.error) {
-      // 如果 setSession 报 AuthInvalidJwtError（时钟偏差或 token 结构问题），
-      // 但前面已经用 service_role.getUser 确认了 token 有效 → 手动构造 cookie。
+      // setSession 失败但 service role 已验证 token 为真 → 手动构造 cookie
       if (userUid) {
         console.warn(
           "[auth/session] setSession 失败但 getUser 通过，手动写 cookie:",
           setRes.error.message
         );
-        // 手动写入 sb-* 系列 cookie（Supabase cookie storage 约定的格式）
         const expDate = new Date();
-        expDate.setHours(expDate.getHours() + 1); // access_token 默认 1 小时
+        expDate.setHours(expDate.getHours() + 1);
         const refDate = new Date();
-        refDate.setDate(refDate.getDate() + 30); // refresh_token 30 天
+        refDate.setDate(refDate.getDate() + 30);
 
-        // 从 supabaseUrl 里提取 project ref
-        // 例：https://zyitmtbxpnalsuwzwcuc.supabase.co → zyitmtbxpnalsuwzwcuc
         let projectRef = "";
         try {
-          const host = new URL(supabaseUrl).hostname;
-          projectRef = host.split(".")[0] ?? "";
+          projectRef = new URL(supabaseUrl).hostname.split(".")[0] ?? "";
         } catch {}
 
         if (projectRef) {
+          const secure = process.env.NODE_ENV === "production";
           const mkCookie = (name: string, value: string, expires: Date) => ({
             name,
             value,
             options: {
               httpOnly: true,
               sameSite: "lax" as const,
-              secure: process.env.NODE_ENV === "production",
+              secure,
               path: "/",
               expires,
             },
@@ -180,11 +165,7 @@ export async function POST(request: NextRequest) {
           sbCookies.push(
             mkCookie(`sb-${projectRef}-access-token`, accessToken, expDate),
             mkCookie(`sb-${projectRef}-refresh-token`, refreshToken, refDate),
-            mkCookie(
-              `sb-${projectRef}-auth-token`,
-              accessToken,
-              expDate
-            )
+            mkCookie(`sb-${projectRef}-auth-token`, accessToken, expDate)
           );
         } else {
           return NextResponse.json(
