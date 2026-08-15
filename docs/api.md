@@ -9,6 +9,7 @@
 - [POST /api/places/match-poi](#post-apiplacesmatch-poi)
 - [POST /api/link-preview](#post-apilink-preview)
 - [匹配算法说明](#匹配算法说明)
+- [前端地图唤起](#前端地图唤起)
 - [错误码参考](#错误码参考)
 - [环境变量](#环境变量)
 
@@ -342,6 +343,68 @@ import { matchPoi, enrichPlacesWithPoi, enrichLinkWithPoi } from "@/lib/poi";
 - `matchPoi(input, deps?)`：单条匹配，支持注入搜索函数（测试/扩展数据源）
 - `enrichPlacesWithPoi(places, opts?)`：批量串行编排（默认 150ms 间隔），支持 `timeBudgetMs` 超时预算，仅生成「填空字段」补丁
 - `enrichLinkWithPoi(link, opts?)`：单条 ExternalLink 兜底（链接解析用），仅补缺失的电话/地址/品类/评分，失败返回原链接
+
+---
+
+## 前端地图唤起
+
+点击地址唤起高德/百度/Apple 地图 App，支持安卓、鸿蒙、iOS 三平台。已集成于：
+
+- 收藏夹店铺卡片地址（`FavoritePlacesSection`）
+- 活动外部链接卡片地址（`ExternalLinkCard`）
+
+### 组件
+
+```tsx
+import { MapLauncher } from "@/components/common/MapLauncher";
+
+<MapLauncher name={place.title} address={place.address} city={place.city}>
+  <span>{place.address}</span>
+</MapLauncher>
+```
+
+| Prop | 类型 | 说明 |
+|------|------|------|
+| `name` | `string \| null` | 店铺名，优先作为搜索关键词 |
+| `address` | `string \| null` | 地址；名称地址均缺时不渲染菜单 |
+| `city` | `string \| null` | 城市名，限定检索范围减少异地同名误匹配 |
+
+### 平台兼容策略
+
+采用官方 **Web URI API**（https 链接）而非 native scheme：
+
+| 平台 | 已装 App | 未装 App |
+|------|---------|---------|
+| 安卓 | 浏览器经 intent 自动唤起 App | 降级打开网页版 |
+| 鸿蒙 | app linking 唤起（高德/百度均有鸿蒙版） | 降级打开网页版 |
+| iOS | Universal Link 唤起 | 降级打开网页版 |
+
+选择 Web URI 的原因：native scheme（`androidamap://` 等）在未装 App 时直接报错且鸿蒙不兼容，Web URI 可优雅降级。
+
+- Apple 地图入口仅在苹果移动设备显示（`isApplePlatform()` UA + 触点检测，兼容 iPadOS 13+ 桌面 UA）
+- 菜单另提供「复制名称与地址」兜底操作
+- 触发器阻止事件冒泡，嵌在可点击卡片内不会误触卡片跳转
+
+### 链接生成（`lib/map-links.ts`）
+
+```ts
+import { buildMapLinks } from "@/lib/map-links";
+
+buildMapLinks({ name: "海底捞", address: "xx路1号", city: "上海" });
+// {
+//   amap:   "https://uri.amap.com/search?keyword=海底捞&city=上海&src=xiangke",
+//   baidu:  "https://api.map.baidu.com/place/search?query=海底捞&region=上海&output=html&src=xiangke",
+//   apple:  "https://maps.apple.com/?q=海底捞 xx路1号",
+// }
+```
+
+| 提供商 | 端点 | 说明 |
+|--------|------|------|
+| 高德 | `https://uri.amap.com/search` | `keyword`/`city`/`src` |
+| 百度 | `https://api.map.baidu.com/place/search` | `query`/`region`（必填，缺城市退化为全国）/`output=html`/`src` |
+| Apple | `https://maps.apple.com/` | `q` 为「名称 + 地址」组合 |
+
+纯前端功能，无需服务端 Key；未配置任何地图 Key 也可正常使用。
 
 ---
 

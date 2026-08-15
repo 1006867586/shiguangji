@@ -27,6 +27,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/common/EmptyState";
+import { MapLauncher } from "@/components/common/MapLauncher";
 import { useUpload } from "@/hooks/useUpload";
 import {
   useFavoritePlaces,
@@ -397,9 +398,11 @@ export function FavoritePlacesSection() {
                       {p.address ? (
                         <span className="inline-flex items-center gap-0.5">
                           <MapPin className="h-3 w-3" />
-                          <span className="line-clamp-1 max-w-[12rem]">
-                            {p.address}
-                          </span>
+                          <MapLauncher name={p.title} address={p.address}>
+                            <span className="line-clamp-1 max-w-[12rem]">
+                              {p.address}
+                            </span>
+                          </MapLauncher>
                         </span>
                       ) : null}
                       {p.phone ? (
