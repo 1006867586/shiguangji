@@ -3,23 +3,32 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * 中间件：刷新 Supabase 会话 cookie + 路由保护。
  *
- * Node.js 运行时（Next.js 15.5+ 稳定特性）：
- * EdgeOne 等平台默认把 middleware 放进 V8 edge isolate，
- * @supabase/ssr 在其中会崩溃（所有匹配路由空响应），
- * 显式指定 nodejs 运行时可避免该问题。
- */
-export const runtime = "nodejs";
-
-/**
- * NEXT_DISABLE_MIDDLEWARE=1 时变为纯透传（不加载任何 Supabase 依赖）：
- * 用于排查平台兼容性问题。注意用动态 import，确保禁用时不打包依赖。
+ * EdgeOne 使用 OpenNext 适配器，middleware 会被编译为 V8 edge function：
+ * - @supabase/ssr 在 edge isolate 中可能崩溃（历史上表现为全站空响应）
+ * - 崩溃会被 OpenNext 静默吞掉并放行请求（无重定向、无会话刷新）
+ *
+ * 因此这里用 try/catch 显式兜底，并通过 x-mw-mode 响应头暴露运行状态：
+ *   disabled = NEXT_DISABLE_MIDDLEWARE=1 透传
+ *   full     = updateSession 正常执行
+ *   crashed  = middleware 内部异常（查函数日志）
  */
 export async function middleware(request: NextRequest) {
   if (process.env.NEXT_DISABLE_MIDDLEWARE === "1") {
-    return NextResponse.next();
+    const res = NextResponse.next();
+    res.headers.set("x-mw-mode", "disabled");
+    return res;
   }
-  const { updateSession } = await import("@/lib/supabase/middleware");
-  return updateSession(request);
+  try {
+    const { updateSession } = await import("@/lib/supabase/middleware");
+    const res = await updateSession(request);
+    res.headers.set("x-mw-mode", "full");
+    return res;
+  } catch (err) {
+    console.error("[middleware] 执行失败（已兜底放行）:", err);
+    const res = NextResponse.next();
+    res.headers.set("x-mw-mode", "crashed");
+    return res;
+  }
 }
 
 export const config = {
