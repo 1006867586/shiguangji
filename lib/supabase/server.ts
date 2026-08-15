@@ -1,5 +1,6 @@
 import { createServerClient as createSSRClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { cookies, headers } from "next/headers";
 import type { CookiesToSet } from "./cookies";
 
 /**
@@ -70,8 +71,32 @@ export async function createServerClient() {
 
 /**
  * 获取当前登录用户，未登录返回 null。
+ *
+ * 双通道（小程序迁移 · weapp 分支）：
+ * 1. Authorization: Bearer <access_token> — 小程序端（Taro）请求携带，
+ *    直接用 token 换用户，无 cookie 参与
+ * 2. sb-* cookie 会话 — Web 端（Next.js SSR）原链路，保持不变
+ *
+ * 两通道互不干扰：带 Bearer 头时优先走 token 校验，否则回落 cookie。
  */
 export async function getCurrentUser() {
+  // 小程序通道：Authorization: Bearer
+  const headerList = await headers();
+  const authorization = headerList.get("authorization");
+  if (authorization?.toLowerCase().startsWith("bearer ")) {
+    const token = authorization.slice(7).trim();
+    if (!token) return null;
+    if (!isSupabaseConfigured()) return null;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const client = createSupabaseClient(url, anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data } = await client.auth.getUser(token);
+    return data.user;
+  }
+
+  // Web 通道：cookie 会话
   const supabase = await createServerClient();
   const {
     data: { user },

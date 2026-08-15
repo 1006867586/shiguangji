@@ -11,6 +11,7 @@
 - [POST /api/link-preview](#post-apilink-preview)
 - [匹配算法说明](#匹配算法说明)
 - [前端地图唤起](#前端地图唤起)
+- [小程序认证（weapp 分支）](#小程序认证weapp-分支)
 - [错误码参考](#错误码参考)
 - [环境变量](#环境变量)
 
@@ -479,6 +480,50 @@ openMapApp("amap", { name: "海底捞", address: "xx路1号", city: "上海" });
 | `openMapApp(provider, input)` | 唤起编排：scheme 优先 + 微信/鸿蒙/桌面降级 |
 
 纯前端功能，无需服务端 Key；未配置任何地图 Key 也可正常使用。
+
+---
+
+## 小程序认证（weapp 分支）
+
+小程序端（Taro，`weapp/` 目录）与 Web 端共用同一套 Supabase 账号体系，通过 **Bearer token 双通道**接入：`getCurrentUser()` 检测 `Authorization: Bearer <access_token>` 头优先走 token 校验，否则回落 `sb-*` cookie 会话 —— 既有 50 余个业务 API 对小程序零改动可用。
+
+```
+小程序启动 → Taro.login() 拿 code
+→ POST /api/auth/weapp/login { code }
+    ├─ 服务端 code2Session 换 openid（需 WEAPP_APPID / WEAPP_SECRET）
+    ├─ 虚拟邮箱 wx_{openid}@wechat.local + magic link 建立 Supabase 会话
+    └─ 返回 { accessToken, refreshToken, expiresAt, isNewUser }
+→ 小程序本地存储，后续请求携带 Bearer 头
+→ access_token 过期（401）→ POST /api/auth/weapp/refresh 静默续期并重放
+→ refresh 也失效 → 清除本地态引导重新登录
+```
+
+### POST /api/auth/weapp/login
+
+| 项 | 说明 |
+|----|------|
+| 请求体 | `{ "code": "wx.login()获取的临时凭证" }` |
+| 成功 | `200 { accessToken, refreshToken, expiresAt, isNewUser }` |
+| 400 | code 缺失 / 请求体非 JSON |
+| 401 | code 无效或已被使用（微信 40029 / 40163） |
+| 501 | 服务端未配置 `WEAPP_APPID` / `WEAPP_SECRET`（`code: weapp_not_configured`） |
+| 502 | 微信接口不可用 / Supabase 会话建立失败 |
+
+首次登录自动注册：`profiles` 表入库，昵称默认 `微信用户{openid后4位}`；openid 写入 `user_metadata.weapp_openid`。
+
+### POST /api/auth/weapp/refresh
+
+| 项 | 说明 |
+|----|------|
+| 请求体 | `{ "refreshToken": "..." }` |
+| 成功 | `200 { accessToken, refreshToken, expiresAt }` |
+| 401 | refresh_token 已失效，小程序端应清除凭据重新登录 |
+
+### 本地开发
+
+1. `weapp/` 下 `cp .env.example .env`（指向本地 Next.js）
+2. 微信开发者工具导入 `weapp/` 目录，appid 换成真实值，勾选「不校验合法域名」
+3. 服务端 `.env` 配置 `WEAPP_APPID` / `WEAPP_SECRET`
 
 ---
 
