@@ -1,33 +1,34 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * 中间件：刷新 Supabase 会话 cookie + 路由保护。
+ * EdgeOne/OpenNext 兼容性说明（2026-08 排查结论）：
  *
- * EdgeOne 使用 OpenNext 适配器，middleware 会被编译为 V8 edge function：
- * - @supabase/ssr 在 edge isolate 中可能崩溃（历史上表现为全站空响应）
- * - 崩溃会被 OpenNext 静默吞掉并放行请求（无重定向、无会话刷新）
+ * EdgeOne 通过 OpenNext 适配器将本 middleware 编译为 V8 edge function，
+ * @supabase/ssr 在该 isolate 中会崩溃，且 OpenNext 会静默吞错放行——
+ * 既没有会话刷新，也没有路由保护，还曾导致全站空响应。
  *
- * 因此这里用 try/catch 显式兜底，并通过 x-mw-mode 响应头暴露运行状态：
- *   disabled = NEXT_DISABLE_MIDDLEWARE=1 透传
- *   full     = updateSession 正常执行
- *   crashed  = middleware 内部异常（查函数日志）
+ * 因此 middleware 在 EdgeOne 上整体退役，职责转移如下：
+ * - 路由保护 → app/(main)/layout.tsx 的 getCurrentUser + redirect（已存在）
+ * - API 鉴权 → lib/supabase/server.ts 的 requireUser（已存在）
+ * - 会话刷新 → 服务端 createServerClient（cookies API 请求级读写）+
+ *   LoginClient 内的 refreshSession 兜底
+ * - /login 已登录跳转 → app/login/page.tsx 服务端检查（本次新增）
+ *
+ * 文件保留而非删除：Vercel/自托管/Docker 部署仍走 Node 运行时，
+ * @supabase/ssr 在那里工作正常，middleware 依然提供最优路径。
+ * 通过 NEXT_DISABLE_MIDDLEWARE=1 一键禁用（EdgeOne 环境变量已配置）。
  */
 export async function middleware(request: NextRequest) {
   if (process.env.NEXT_DISABLE_MIDDLEWARE === "1") {
-    const res = NextResponse.next();
-    res.headers.set("x-mw-mode", "disabled");
-    return res;
+    return NextResponse.next();
   }
   try {
     const { updateSession } = await import("@/lib/supabase/middleware");
-    const res = await updateSession(request);
-    res.headers.set("x-mw-mode", "full");
-    return res;
+    return await updateSession(request);
   } catch (err) {
+    // 兜底：middleware 内部异常时放行，避免整站不可用
     console.error("[middleware] 执行失败（已兜底放行）:", err);
-    const res = NextResponse.next();
-    res.headers.set("x-mw-mode", "crashed");
-    return res;
+    return NextResponse.next();
   }
 }
 
