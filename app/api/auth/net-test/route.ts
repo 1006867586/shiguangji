@@ -91,10 +91,11 @@ export async function GET() {
       }
     }
   } catch (err) {
+    const maybeCause = (err as { cause?: unknown })?.cause;
     results.fetchRoot = {
       ok: false,
       error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-      cause: (err as any)?.cause ? String((err as any).cause) : undefined,
+      cause: maybeCause ? String(maybeCause) : undefined,
     };
   }
 
@@ -127,10 +128,11 @@ export async function GET() {
       }
     }
   } catch (err) {
+    const maybeCause = (err as { cause?: unknown })?.cause;
     results.fetchAuthSettings = {
       ok: false,
       error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-      cause: (err as any)?.cause ? String((err as any).cause) : undefined,
+      cause: maybeCause ? String(maybeCause) : undefined,
     };
   }
 
