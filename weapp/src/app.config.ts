@@ -5,6 +5,9 @@ export default defineAppConfig({
     "pages/profile/index",
     "pages/login/index",
     "pages/detail/index",
+    "pages/groups/index",
+    "pages/group-detail/index",
+    "pages/notifications/index",
   ],
   tabBar: {
     color: "#8a8a8a",

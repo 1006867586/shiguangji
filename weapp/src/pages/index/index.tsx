@@ -7,6 +7,7 @@ import {
   fetchGroups,
   fetchFeed,
   toggleLike,
+  joinGroup,
   type GroupLite,
   type ActivityLite,
 } from "@/utils/api";
@@ -17,6 +18,7 @@ const PAGE_SIZE = 20;
 
 /**
  * 动态流页（TabBar 首页）：圈子切换 + cursor 分页 + 下拉刷新 + 触底加载。
+ * 兼容圈子转发卡片进入：path 带 inviteCode 时弹窗确认加入。
  */
 export default function IndexPage() {
   const [groups, setGroups] = useState<GroupLite[] | null>(null);
@@ -29,15 +31,45 @@ export default function IndexPage() {
 
   const cursorRef = useRef<string | null>(null);
   const requestingRef = useRef(false); // 防重复请求
+  const inviteHandledRef = useRef(false);
   const loggedIn = isLoggedIn();
 
-  // ---- 首次加载圈子列表，默认选第一个 ----
+  // ---- 首次加载圈子列表，默认选第一个；处理分享卡邀请码 ----
   const loadGroups = useCallback(async () => {
     try {
       const list = await fetchGroups();
       setGroups(list);
       if (list.length > 0 && !activeGroupId) {
         setActiveGroupId(list[0].id);
+      }
+
+      // 分享卡片带 inviteCode：未加入该圈子时弹窗确认加入
+      const inviteCode = Taro.getCurrentInstance().router?.params?.inviteCode;
+      if (inviteCode && !inviteHandledRef.current) {
+        inviteHandledRef.current = true;
+        const joined = list.find(
+          (g) => g.invite_code?.toUpperCase() === inviteCode.toUpperCase()
+        );
+        if (!joined) {
+          const res = await Taro.showModal({
+            title: "加入圈子",
+            content: "好友邀请你加入 TA 的饭局圈子，是否加入？",
+            confirmText: "加入",
+          });
+          if (res.confirm) {
+            try {
+              const group = await joinGroup(inviteCode);
+              const refreshed = await fetchGroups();
+              setGroups(refreshed);
+              if (group?.id) setActiveGroupId(group.id);
+              Taro.showToast({ title: "加入成功", icon: "success" });
+            } catch {
+              // 邀请码无效等，request 层已 toast
+            }
+          }
+        } else {
+          setActiveGroupId(joined.id);
+        }
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "加载圈子失败");
@@ -188,7 +220,14 @@ export default function IndexPage() {
     return (
       <View className="page placeholder">
         <Text className="title">还没有圈子</Text>
-        <Text className="text-muted">请先在 Web 端创建或加入圈子</Text>
+        <Text className="text-muted">创建一个，或用好友的邀请码加入</Text>
+        <Button
+          className="btn-primary"
+          type="primary"
+          onClick={() => Taro.navigateTo({ url: "/pages/groups/index" })}
+        >
+          去创建 / 加入
+        </Button>
       </View>
     );
   }

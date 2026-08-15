@@ -1,0 +1,96 @@
+.groups-page {
+  min-height: 100vh;
+  background: #f5f6f5;
+  padding: 24rpx 24rpx calc(48rpx + env(safe-area-inset-bottom));
+
+  &.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24rpx;
+    padding-top: 30vh;
+  }
+}
+
+.action-bar {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.state {
+  display: flex;
+  justify-content: center;
+  padding: 96rpx 0;
+}
+
+.group-card {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  margin-bottom: 16rpx;
+
+  .group-avatar {
+    width: 96rpx;
+    height: 96rpx;
+    border-radius: 16rpx;
+    background: #f0f0f0;
+    flex-shrink: 0;
+  }
+
+  .group-info {
+    flex: 1;
+    min-width: 0;
+    margin-left: 20rpx;
+  }
+
+  .group-name-row {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+  }
+
+  .group-name {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1a1a1a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .role-badge {
+    flex-shrink: 0;
+    font-size: 20rpx;
+    color: #f59e0b;
+    border: 1rpx solid #f59e0b;
+    border-radius: 8rpx;
+    padding: 2rpx 10rpx;
+  }
+
+  .group-desc {
+    display: block;
+    margin-top: 6rpx;
+    font-size: 24rpx;
+    color: #999;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .group-code {
+    display: block;
+    margin-top: 8rpx;
+    font-size: 22rpx;
+    color: #16a34a;
+  }
+
+  .arrow {
+    flex-shrink: 0;
+    font-size: 40rpx;
+    color: #ccc;
+    margin-left: 8rpx;
+  }
+}

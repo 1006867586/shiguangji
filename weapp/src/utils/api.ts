@@ -4,13 +4,15 @@ import { request } from "./request";
  * 业务 API 封装（M2 核心闭环）。
  * 类型为后端返回字段的子集，只声明小程序端用到的部分。
  */
-
 // ---- 类型 ----
 
 export interface GroupLite {
   id: string;
   name: string;
+  description?: string | null;
+  avatar_url?: string | null;
   invite_code?: string;
+  role?: "admin" | "member";
 }
 
 export interface ExternalLinkLite {
@@ -120,6 +122,80 @@ export function postComment(activityId: string, content: string, parentId?: stri
 
 export function fetchGroups(): Promise<GroupLite[]> {
   return request<GroupLite[]>("/api/groups", { silent: true });
+}
+
+/** POST /api/groups — 创建圈子 */
+export function createGroup(body: {
+  name: string;
+  description?: string;
+}): Promise<GroupLite> {
+  return request("/api/groups", { method: "POST", data: body });
+}
+
+/** POST /api/groups/join — 邀请码加入圈子 */
+export function joinGroup(inviteCode: string): Promise<GroupLite> {
+  return request("/api/groups/join", {
+    method: "POST",
+    data: { inviteCode },
+  });
+}
+
+export interface GroupMemberLite {
+  id: string;
+  user_id: string;
+  role: "admin" | "member";
+  joined_at: string;
+  profile?: { id: string; nickname: string; avatar_url: string | null } | null;
+}
+
+/** GET /api/groups/[id]/members — 成员列表 */
+export function fetchGroupMembers(groupId: string): Promise<GroupMemberLite[]> {
+  return request<GroupMemberLite[]>(`/api/groups/${groupId}/members`, {
+    silent: true,
+  });
+}
+
+// ---- 通知 ----
+
+export interface NotificationLite {
+  id: string;
+  type: string;
+  activity_id: string | null;
+  group_id: string | null;
+  data: Record<string, unknown> | null;
+  read_at: string | null;
+  created_at: string;
+  actor?: { id: string; nickname: string; avatar_url: string | null } | null;
+}
+
+/** GET /api/notifications?cursor=&limit= （raw 读取 next_cursor） */
+export async function fetchNotifications(opts: {
+  cursor?: string | null;
+  limit?: number;
+}): Promise<{ data: NotificationLite[]; next_cursor: string | null }> {
+  const params = new URLSearchParams({ limit: String(opts.limit ?? 30) });
+  if (opts.cursor) params.set("cursor", opts.cursor);
+  return request<{ data: NotificationLite[]; next_cursor: string | null }>(
+    `/api/notifications?${params.toString()}`,
+    { raw: true, silent: true }
+  );
+}
+
+/** GET /api/notifications/unread-count */
+export function fetchUnreadCount(): Promise<{ count: number }> {
+  return request<{ count: number }>("/api/notifications/unread-count", {
+    silent: true,
+  });
+}
+
+/** POST /api/notifications/[id]/read */
+export function markNotificationRead(id: string): Promise<unknown> {
+  return request(`/api/notifications/${id}/read`, { method: "POST", silent: true });
+}
+
+/** POST /api/notifications/read-all */
+export function markAllNotificationsRead(): Promise<unknown> {
+  return request("/api/notifications/read-all", { method: "POST", silent: true });
 }
 
 // ---- 发布 ----
