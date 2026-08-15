@@ -31,6 +31,8 @@ interface RequestOptions {
   auth?: boolean;
   /** 出错时不弹 toast（默认弹） */
   silent?: boolean;
+  /** 请求超时毫秒数（默认 15s；AI 识别等慢接口需 45s+） */
+  timeout?: number;
   /**
    * 跳过 { data } 信封解包，原样返回响应体。
    * 供需要读取包裹层其他字段的接口使用（如 feed 的 next_cursor）。
@@ -83,14 +85,14 @@ function clearSessionAndGoLogin() {
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", data, auth = true, silent = false } = options;
+  const { method = "GET", data, auth = true, silent = false, timeout } = options;
 
   const doRequest = () =>
     Taro.request<ApiEnvelope<T> | null>({
       url: `${API_BASE_URL}${path}`,
       method,
       data,
-      timeout: 15_000,
+      timeout: timeout ?? 15_000,
       header: {
         "content-type": "application/json",
         ...(auth && Taro.getStorageSync<string>(TOKEN_KEY)

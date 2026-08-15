@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Taro, { useDidShow } from "@tarojs/taro";
 import { View, Text, Image, Textarea, Button, Picker } from "@tarojs/components";
 import { ApiError } from "@/utils/request";
@@ -33,6 +33,7 @@ export default function PublishPage() {
   const [linkPreview, setLinkPreview] = useState<LinkPreviewResult | null>(null);
   const [parsing, setParsing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const prefillApplied = useRef(false);
 
   const loadGroups = useCallback(async () => {
     try {
@@ -52,6 +53,22 @@ export default function PublishPage() {
   useEffect(() => {
     if (isLoggedIn() && groups.length === 0) void loadGroups();
   }, [groups.length, loadGroups]);
+
+  // 收藏卡片「发起聚餐」进入：预填店名/地址到正文草稿
+  useEffect(() => {
+    if (prefillApplied.current) return;
+    prefillApplied.current = true;
+    const params = Taro.getCurrentInstance().router?.params ?? {};
+    const title = params.title ? decodeURIComponent(params.title) : "";
+    const address = params.address ? decodeURIComponent(params.address) : "";
+    if (title) {
+      setContent(
+        [`【${title}】`, address ? `📍 ${address}` : "", "", "打算去吃，有人一起吗？"]
+          .filter((line) => line !== undefined)
+          .join("\n")
+      );
+    }
+  }, []);
 
   // ---- 选图（压缩） ----
   const chooseImages = async () => {

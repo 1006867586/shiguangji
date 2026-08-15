@@ -229,3 +229,113 @@ export function addActivityPhoto(
     data: { url, kind },
   });
 }
+
+// ---- 收藏夹（M3）----
+
+export type FavoritePlatform =
+  | "meituan"
+  | "dianping"
+  | "xiaohongshu"
+  | "douyin"
+  | "unknown";
+
+export const PLATFORM_LABELS: Record<FavoritePlatform, string> = {
+  meituan: "美团",
+  dianping: "大众点评",
+  xiaohongshu: "小红书",
+  douyin: "抖音",
+  unknown: "未知来源",
+};
+
+export interface FavoritePlace {
+  id: string;
+  title: string;
+  address: string | null;
+  phone: string | null;
+  signature_dishes: string[] | null;
+  platform: FavoritePlatform;
+  summary: string | null;
+  source_screenshot_url: string | null;
+  created_at: string;
+  category: string | null;
+  rating: number | null;
+  price: string | null;
+  cover_image_url: string | null;
+  store_url: string | null;
+}
+
+/** AI 识别出的店铺（入库前草稿） */
+export interface ParsedPlaceDraft {
+  title: string;
+  address: string | null;
+  phone: string | null;
+  signatureDishes: string[];
+  summary: string;
+  rating: number | null;
+  averagePrice: string | null;
+  category: string | null;
+}
+
+/** GET /api/favorite-places — 我的收藏列表 */
+export function fetchFavoritePlaces(limit = 200): Promise<FavoritePlace[]> {
+  return request<FavoritePlace[]>(`/api/favorite-places?limit=${limit}`, {
+    silent: true,
+  });
+}
+
+/** PATCH /api/favorite-places/[id] — 编辑收藏（白名单字段） */
+export function updateFavoritePlace(
+  id: string,
+  body: Partial<{
+    title: string;
+    address: string | null;
+    phone: string | null;
+    signature_dishes: string[];
+    rating: number | null;
+    price: string | null;
+    category: string | null;
+    summary: string;
+    platform: FavoritePlatform;
+  }>
+): Promise<FavoritePlace> {
+  return request(`/api/favorite-places/${id}`, { method: "PATCH", data: body });
+}
+
+/** DELETE /api/favorite-places/[id] */
+export function deleteFavoritePlace(id: string): Promise<unknown> {
+  return request(`/api/favorite-places/${id}`, { method: "DELETE" });
+}
+
+/** POST /api/favorite-places — 批量入库（可选 POI 补齐） */
+export function createFavoritePlaces(body: {
+  platform: FavoritePlatform;
+  sourceScreenshotUrl?: string;
+  enrichPoi?: boolean;
+  places: Array<{
+    title: string;
+    address: string | null;
+    phone: string | null;
+    signatureDishes: string[];
+    summary: string;
+    rating: number | null;
+    averagePrice: string | null;
+    category: string | null;
+  }>;
+}): Promise<FavoritePlace[]> {
+  return request("/api/favorite-places", { method: "POST", data: body });
+}
+
+/**
+ * POST /api/ai/parse-favorites-screenshot — AI 识别收藏夹截图。
+ * 后端 MiniMax-M3 视觉识别通常 15-30s，timeout 放宽到 60s。
+ */
+export function parseFavoritesScreenshot(body: {
+  imageUrl: string;
+  platform?: FavoritePlatform;
+}): Promise<{ platform: FavoritePlatform; places: ParsedPlaceDraft[] }> {
+  return request("/api/ai/parse-favorites-screenshot", {
+    method: "POST",
+    data: body,
+    timeout: 60_000,
+  });
+}

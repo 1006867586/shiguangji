@@ -69,10 +69,12 @@ export default function ProfilePage() {
       </View>
 
       <View className="menu-card">
-        <View className="menu-item" onClick={() => Taro.showToast({ title: "M3 上线", icon: "none" })}>
+        <View
+          className="menu-item"
+          onClick={() => Taro.navigateTo({ url: "/pages/favorites/index" })}
+        >
           <Text className="menu-icon">⭐</Text>
           <Text className="menu-label">收藏夹</Text>
-          <Text className="coming">M3 上线</Text>
           <Text className="arrow">›</Text>
         </View>
       </View>

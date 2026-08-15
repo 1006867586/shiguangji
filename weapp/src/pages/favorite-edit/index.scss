@@ -1,0 +1,67 @@
+.fe-page {
+  min-height: 100vh;
+  background: #f5f6f5;
+  padding: 24rpx 24rpx calc(48rpx + env(safe-area-inset-bottom));
+
+  &.state {
+    display: flex;
+    justify-content: center;
+    padding-top: 30vh;
+  }
+}
+
+.fe-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 8rpx 24rpx 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.fe-field {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f7f7f7;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &.half {
+    flex: 1;
+    min-width: 0;
+
+    &:first-child {
+      margin-right: 24rpx;
+    }
+  }
+}
+
+.fe-row {
+  display: flex;
+}
+
+.fe-label {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 8rpx;
+}
+
+.fe-input {
+  width: 100%;
+  font-size: 30rpx;
+  color: #1a1a1a;
+  min-height: 48rpx;
+
+  &.picker-value {
+    display: flex;
+    align-items: center;
+    line-height: 48rpx;
+  }
+}
+
+.fe-textarea {
+  width: 100%;
+  font-size: 30rpx;
+  color: #1a1a1a;
+  min-height: 80rpx;
+}

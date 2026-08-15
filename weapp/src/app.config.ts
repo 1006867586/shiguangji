@@ -8,6 +8,9 @@ export default defineAppConfig({
     "pages/groups/index",
     "pages/group-detail/index",
     "pages/notifications/index",
+    "pages/favorites/index",
+    "pages/favorites-import/index",
+    "pages/favorite-edit/index",
   ],
   tabBar: {
     color: "#8a8a8a",
