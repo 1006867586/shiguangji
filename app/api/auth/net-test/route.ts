@@ -1,152 +1,114 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import dns from "node:dns";
 import net from "node:net";
 
 /**
- * GET /api/auth/net-test
+ * GET /api/auth/net-test[?test=xxx]
  *
  * 调试端点：检查容器内访问 Supabase API 的网络连通性。
  * 排查问题：/api/auth/signin 返回 "fetch failed"（Node.js 访问外网不通）。
  *
- * 测试项：
- *  1. DNS 解析
- *  2. 原生 TCP 连接测试（区分 TCP 不通 vs TLS 失败）
- *  3. 多目标 fetch 对比（国内 vs 海外，确认是否所有海外都不通）
- *  4. HTTPS GET Supabase 根路径 + auth settings
- *  5. 代理环境变量
+ * 重要：所有测试并行执行、单项 6s 超时，整体 <7s 必须返回，
+ * 否则 Cloudflare Worker/网关会以 503 {"error":"网络不可用"} 掐断连接。
+ *
+ * ?test=tcp|dns|fetch_baidu_cn|fetch_qq_cn|fetch_cf_intl|fetch_supabase|fetch_auth
+ *      → 只跑单项（备用，进一步降低耗时）
  */
-export async function GET() {
+const TIMEOUT_MS = 6_000;
+
+export async function GET(request: NextRequest) {
+  const only = request.nextUrl.searchParams.get("test");
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "MISSING";
   const supabaseHost =
     supabaseUrl.startsWith("http") ? new URL(supabaseUrl).hostname : null;
+
   const results: Record<string, unknown> = {
     supabaseUrl,
     nodeEnv: process.env.NODE_ENV,
     nodeVersion: process.version,
+    mode: only ?? "all",
   };
 
-  // ------------------------------------------------------------------
-  // 1) DNS 解析
-  // ------------------------------------------------------------------
-  try {
-    if (supabaseHost) {
-      results.dns = await new Promise((resolve) => {
-        dns.lookup(supabaseHost, { all: true, family: 0 }, (err, addresses) => {
-          if (err) {
-            resolve({ ok: false, error: `${err.code}: ${err.message}` });
-          } else {
-            resolve({ ok: true, addresses });
-          }
-        });
-      });
+  /** 所有任务并行，各自写各自的 key */
+  const tasks: Record<string, Promise<unknown>> = {};
+  const run = (name: string, fn: () => Promise<unknown>) => {
+    if (!only || only === name || only === "all") {
+      tasks[name] = fn();
     }
-  } catch (err: unknown) {
-    results.dns = { ok: false, error: String(err) };
-  }
+  };
 
-  // ------------------------------------------------------------------
-  // 2) 原生 TCP 连接测试（net.connect）
-  //    区分：TCP 超时（出网被墙/受限） vs TCP 通但 HTTPS 失败（TLS 问题）
-  // ------------------------------------------------------------------
-  if (supabaseHost) {
-    const dnsRes = results.dns as { addresses?: { address: string }[] };
-    const firstIp = dnsRes.addresses?.[0]?.address;
-    results.tcpConnect = await tcpTest(firstIp ?? supabaseHost, 443, 12_000);
-  }
+  // 1) DNS 解析
+  run("dns", () =>
+    supabaseHost ? dnsLookup(supabaseHost) : Promise.resolve({ ok: false, error: "no host" })
+  );
 
-  // ------------------------------------------------------------------
-  // 3) 多目标 fetch 对比（8s 超时，只看连通性）
-  // ------------------------------------------------------------------
-  const targets = [
-    { name: "baidu_cn", url: "https://www.baidu.com" },
-    { name: "qq_graph_cn", url: "https://graph.qq.com/oauth2.0/token" },
-    { name: "cloudflare_intl", url: "https://www.cloudflare.com/cdn-cgi/trace" },
-  ];
+  // 2) 原生 TCP 443（区分 TCP 不通 vs TLS 失败）
+  run("tcp", async () => {
+    if (!supabaseHost) return { ok: false, error: "no host" };
+    const d = (await dnsLookup(supabaseHost)) as {
+      addresses?: { address: string }[];
+    };
+    const ip = d.addresses?.[0]?.address;
+    return tcpTest(ip ?? supabaseHost, 443, TIMEOUT_MS);
+  });
+
+  // 3) 多目标 HTTPS fetch 对比（国内 vs 海外）
+  const fetchTargets: Record<string, () => Promise<unknown>> = {
+    fetch_baidu_cn: () => fetchTest("https://www.baidu.com", TIMEOUT_MS),
+    fetch_qq_cn: () => fetchTest("https://graph.qq.com/oauth2.0/token", TIMEOUT_MS),
+    fetch_cf_intl: () => fetchTest("https://www.cloudflare.com/cdn-cgi/trace", TIMEOUT_MS),
+  };
   if (supabaseUrl.startsWith("http")) {
-    targets.push({ name: "supabase_root", url: supabaseUrl });
+    fetchTargets.fetch_supabase = () => fetchTest(supabaseUrl, TIMEOUT_MS);
+    fetchTargets.fetch_auth = () =>
+      fetchTest(`${supabaseUrl}/auth/v1/settings`, TIMEOUT_MS, {
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+      });
   }
-  results.multiFetch = {};
+  for (const [name, fn] of Object.entries(fetchTargets)) {
+    run(name, fn);
+  }
+
+  // 并行等待所有任务（Promise.all 不会因单项 reject 中断，各任务内部已 catch）
   await Promise.all(
-    targets.map(async ({ name, url }) => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8_000);
-      const start = Date.now();
-      try {
-        const resp = await fetch(url, {
-          method: "GET",
-          redirect: "manual",
-          signal: controller.signal,
-        });
-        (results.multiFetch as Record<string, unknown>)[name] = {
-          ok: true,
-          status: resp.status,
-          elapsedMs: Date.now() - start,
-        };
-      } catch (err: unknown) {
-        const maybeCause = (err as { cause?: unknown })?.cause;
-        (results.multiFetch as Record<string, unknown>)[name] = {
-          ok: false,
-          elapsedMs: Date.now() - start,
-          error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-          cause: maybeCause ? String(maybeCause) : undefined,
-        };
-      } finally {
-        clearTimeout(timer);
-      }
+    Object.entries(tasks).map(async ([k, p]) => {
+      results[k] = await p;
     })
   );
 
-  // ------------------------------------------------------------------
-  // 4) Supabase auth settings（匿名 health 检查，20s 宽松超时）
-  // ------------------------------------------------------------------
-  try {
-    if (supabaseUrl.startsWith("http")) {
-      const start = Date.now();
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 20_000);
-      try {
-        const resp = await fetch(`${supabaseUrl}/auth/v1/settings`, {
-          method: "GET",
-          headers: {
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-          },
-          signal: controller.signal,
-        });
-        results.fetchAuthSettings = {
-          ok: resp.ok,
-          status: resp.status,
-          elapsedMs: Date.now() - start,
-          bodyPreview: !resp.ok ? (await resp.text()).slice(0, 200) : undefined,
-        };
-      } finally {
-        clearTimeout(timer);
-      }
-    }
-  } catch (err: unknown) {
-    const maybeCause = (err as { cause?: unknown })?.cause;
-    results.fetchAuthSettings = {
-      ok: false,
-      error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-      cause: maybeCause ? String(maybeCause) : undefined,
+  // 4) 代理环境变量
+  if (!only || only === "proxy" || only === "all") {
+    results.proxyEnv = {
+      HTTP_PROXY: process.env.HTTP_PROXY ?? process.env.http_proxy ?? "",
+      HTTPS_PROXY: process.env.HTTPS_PROXY ?? process.env.https_proxy ?? "",
+      NO_PROXY: process.env.NO_PROXY ?? process.env.no_proxy ?? "",
+      ALL_PROXY: process.env.ALL_PROXY ?? process.env.all_proxy ?? "",
     };
   }
 
-  // ------------------------------------------------------------------
-  // 5) 代理环境变量（检查是否配置了 http 代理导致异常）
-  // ------------------------------------------------------------------
-  results.proxyEnv = {
-    HTTP_PROXY: process.env.HTTP_PROXY ?? process.env.http_proxy ?? "",
-    HTTPS_PROXY: process.env.HTTPS_PROXY ?? process.env.https_proxy ?? "",
-    NO_PROXY: process.env.NO_PROXY ?? process.env.no_proxy ?? "",
-    ALL_PROXY: process.env.ALL_PROXY ?? process.env.all_proxy ?? "",
-  };
-
-  return NextResponse.json(results, { status: 200 });
+  return NextResponse.json(results, {
+    status: 200,
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 // ============================================================
 // helpers
 // ============================================================
+
+function dnsLookup(
+  hostname: string
+): Promise<Record<string, unknown>> {
+  return new Promise((resolve) => {
+    dns.lookup(hostname, { all: true, family: 0 }, (err, addresses) => {
+      if (err) {
+        resolve({ ok: false, error: `${err.code}: ${err.message}` });
+      } else {
+        resolve({ ok: true, addresses });
+      }
+    });
+  });
+}
 
 /** 原生 TCP 连接测试：成功/拒绝/超时 三态区分 */
 function tcpTest(
@@ -163,9 +125,7 @@ function tcpTest(
       resolve({ ...result, elapsedMs: Date.now() - start, host, port });
     };
     socket.setTimeout(timeoutMs);
-    socket.once("connect", () =>
-      finish({ tcp: "CONNECTED", ok: true })
-    );
+    socket.once("connect", () => finish({ tcp: "CONNECTED", ok: true }));
     socket.once("timeout", () =>
       finish({ tcp: "TIMEOUT", ok: false, hint: "TCP 连接超时：出网被墙或安全组限制" })
     );
@@ -173,4 +133,37 @@ function tcpTest(
       finish({ tcp: "ERROR", ok: false, error: `${e.name}: ${e.message}` })
     );
   });
+}
+
+async function fetchTest(
+  url: string,
+  timeoutMs: number,
+  headers?: Record<string, string>
+): Promise<Record<string, unknown>> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const start = Date.now();
+  try {
+    const resp = await fetch(url, {
+      method: "GET",
+      redirect: "manual",
+      signal: controller.signal,
+      headers,
+    });
+    return {
+      ok: true,
+      status: resp.status,
+      elapsedMs: Date.now() - start,
+    };
+  } catch (err: unknown) {
+    const maybeCause = (err as { cause?: unknown })?.cause;
+    return {
+      ok: false,
+      elapsedMs: Date.now() - start,
+      error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+      cause: maybeCause ? String(maybeCause) : undefined,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
