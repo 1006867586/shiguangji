@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import dns from "node:dns";
-import { spawn } from "node:child_process";
+import net from "node:net";
 
 /**
  * GET /api/auth/net-test
@@ -9,26 +9,29 @@ import { spawn } from "node:child_process";
  * 排查问题：/api/auth/signin 返回 "fetch failed"（Node.js 访问外网不通）。
  *
  * 测试项：
- *  1. DNS 解析 zyitmtbxpnalsuwzwcuc.supabase.co
- *  2. TCP 连接 443 端口（如果 curl 可用）
- *  3. HTTPS GET /（用原生 fetch + 原生 dns 解析，绕过 Node.js cache）
- *  4. Supabase auth health endpoint（匿名可访问）
+ *  1. DNS 解析
+ *  2. 原生 TCP 连接测试（区分 TCP 不通 vs TLS 失败）
+ *  3. 多目标 fetch 对比（国内 vs 海外，确认是否所有海外都不通）
+ *  4. HTTPS GET Supabase 根路径 + auth settings
+ *  5. 代理环境变量
  */
 export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "MISSING";
+  const supabaseHost =
+    supabaseUrl.startsWith("http") ? new URL(supabaseUrl).hostname : null;
   const results: Record<string, unknown> = {
     supabaseUrl,
     nodeEnv: process.env.NODE_ENV,
+    nodeVersion: process.version,
   };
 
   // ------------------------------------------------------------------
   // 1) DNS 解析
   // ------------------------------------------------------------------
   try {
-    if (supabaseUrl && supabaseUrl.startsWith("http")) {
-      const hostname = new URL(supabaseUrl).hostname;
+    if (supabaseHost) {
       results.dns = await new Promise((resolve) => {
-        dns.lookup(hostname, { all: true, family: 0 }, (err, addresses) => {
+        dns.lookup(supabaseHost, { all: true, family: 0 }, (err, addresses) => {
           if (err) {
             resolve({ ok: false, error: `${err.code}: ${err.message}` });
           } else {
@@ -42,71 +45,65 @@ export async function GET() {
   }
 
   // ------------------------------------------------------------------
-  // 2) 尝试 curl -v 测试 HTTPS 握手（如果容器内有 curl）
+  // 2) 原生 TCP 连接测试（net.connect）
+  //    区分：TCP 超时（出网被墙/受限） vs TCP 通但 HTTPS 失败（TLS 问题）
   // ------------------------------------------------------------------
-  try {
-    const curlPath = await execWhich("curl");
-    if (curlPath && supabaseUrl && supabaseUrl.startsWith("http")) {
-      const curlOut = await execCmd(
-        curlPath,
-        ["-sS", "--max-time", "10", "-o", "/dev/null", "-w", jsonCurlFormat(), supabaseUrl],
-        15
-      );
-      try {
-        results.curl = JSON.parse(curlOut.stdout);
-      } catch {
-        results.curl = { raw: curlOut.stdout, stderr: curlOut.stderr };
-      }
-      results.curlPath = curlPath;
-    } else {
-      results.curlPath = "(curl not available)";
-    }
-  } catch (err: unknown) {
-    results.curl = { ok: false, error: String(err) };
+  if (supabaseHost) {
+    const dnsRes = results.dns as { addresses?: { address: string }[] };
+    const firstIp = dnsRes.addresses?.[0]?.address;
+    results.tcpConnect = await tcpTest(firstIp ?? supabaseHost, 443, 12_000);
   }
 
   // ------------------------------------------------------------------
-  // 3) 原生 Node.js fetch GET Supabase 根路径
+  // 3) 多目标 fetch 对比（8s 超时，只看连通性）
   // ------------------------------------------------------------------
-  try {
-    if (supabaseUrl && supabaseUrl.startsWith("http")) {
-      const start = Date.now();
+  const targets = [
+    { name: "baidu_cn", url: "https://www.baidu.com" },
+    { name: "qq_graph_cn", url: "https://graph.qq.com/oauth2.0/token" },
+    { name: "cloudflare_intl", url: "https://www.cloudflare.com/cdn-cgi/trace" },
+  ];
+  if (supabaseUrl.startsWith("http")) {
+    targets.push({ name: "supabase_root", url: supabaseUrl });
+  }
+  results.multiFetch = {};
+  await Promise.all(
+    targets.map(async ({ name, url }) => {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10_000);
+      const timer = setTimeout(() => controller.abort(), 8_000);
+      const start = Date.now();
       try {
-        const resp = await fetch(supabaseUrl, {
+        const resp = await fetch(url, {
           method: "GET",
-          signal: controller.signal,
           redirect: "manual",
+          signal: controller.signal,
         });
-        results.fetchRoot = {
+        (results.multiFetch as Record<string, unknown>)[name] = {
           ok: true,
           status: resp.status,
-          statusText: resp.statusText,
           elapsedMs: Date.now() - start,
-          contentType: resp.headers.get("content-type"),
+        };
+      } catch (err: unknown) {
+        const maybeCause = (err as { cause?: unknown })?.cause;
+        (results.multiFetch as Record<string, unknown>)[name] = {
+          ok: false,
+          elapsedMs: Date.now() - start,
+          error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+          cause: maybeCause ? String(maybeCause) : undefined,
         };
       } finally {
         clearTimeout(timer);
       }
-    }
-  } catch (err: unknown) {
-    const maybeCause = (err as { cause?: unknown })?.cause;
-    results.fetchRoot = {
-      ok: false,
-      error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-      cause: maybeCause ? String(maybeCause) : undefined,
-    };
-  }
+    })
+  );
 
   // ------------------------------------------------------------------
-  // 4) Supabase auth settings（匿名 health 检查）
+  // 4) Supabase auth settings（匿名 health 检查，20s 宽松超时）
   // ------------------------------------------------------------------
   try {
-    if (supabaseUrl && supabaseUrl.startsWith("http")) {
+    if (supabaseUrl.startsWith("http")) {
       const start = Date.now();
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10_000);
+      const timer = setTimeout(() => controller.abort(), 20_000);
       try {
         const resp = await fetch(`${supabaseUrl}/auth/v1/settings`, {
           method: "GET",
@@ -151,57 +148,29 @@ export async function GET() {
 // helpers
 // ============================================================
 
-function jsonCurlFormat(): string {
-  // curl -w 输出 JSON 字符串（注意不要换行）
-  return (
-    '{"http_code":%{http_code},"time_total":%{time_total},' +
-    '"time_connect":%{time_connect},"time_appconnect":%{time_appconnect},' +
-    '"remote_ip":"%{remote_ip}","remote_port":%{remote_port},' +
-    '"size_download":%{size_download},"errormsg":"%{errormsg}",' +
-    '"ssl_verify_result":%{ssl_verify_result}}'
-  );
-}
-
-async function execWhich(cmd: string): Promise<string | null> {
-  try {
-    const r = await execCmd("which", [cmd], 3);
-    const path = r.stdout.trim();
-    return path || null;
-  } catch {
-    return null;
-  }
-}
-
-function execCmd(
-  bin: string,
-  args: string[],
-  timeoutSec: number
-): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
+/** 原生 TCP 连接测试：成功/拒绝/超时 三态区分 */
+function tcpTest(
+  host: string,
+  port: number,
+  timeoutMs: number
+): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
-    const child = spawn(bin, args, {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    const timer = setTimeout(() => {
-      try {
-        child.kill("SIGKILL");
-      } catch {}
-    }, timeoutSec * 1000);
-
-    child.stdout?.on("data", (d) => {
-      stdout += String(d);
-    });
-    child.stderr?.on("data", (d) => {
-      stderr += String(d);
-    });
-    child.on("error", (e) => {
-      clearTimeout(timer);
-      resolve({ stdout, stderr: `${e.name}: ${e.message}\n${stderr}`, exitCode: null });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ stdout, stderr, exitCode: code });
-    });
+    const start = Date.now();
+    const socket = net.connect({ host, port });
+    const finish = (result: Record<string, unknown>) => {
+      socket.removeAllListeners();
+      socket.destroy();
+      resolve({ ...result, elapsedMs: Date.now() - start, host, port });
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () =>
+      finish({ tcp: "CONNECTED", ok: true })
+    );
+    socket.once("timeout", () =>
+      finish({ tcp: "TIMEOUT", ok: false, hint: "TCP 连接超时：出网被墙或安全组限制" })
+    );
+    socket.once("error", (e: Error) =>
+      finish({ tcp: "ERROR", ok: false, error: `${e.name}: ${e.message}` })
+    );
   });
 }
