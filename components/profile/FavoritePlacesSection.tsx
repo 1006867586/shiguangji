@@ -136,6 +136,8 @@ export function FavoritePlacesSection() {
       const res = await addMany({
         platform: draftPlatform,
         sourceScreenshotUrl: sourceUrl ?? undefined,
+        // 入库后自动通过高德/百度地图补齐缺失的电话/地址（未配置地图 Key 时后端跳过）
+        enrichPoi: true,
         places: valid.map((d) => ({
           title: d.title.trim(),
           address: d.address.trim() || null,
@@ -150,6 +152,9 @@ export function FavoritePlacesSection() {
       const parts: string[] = [];
       if (res.inserted > 0) parts.push(`新增 ${res.inserted} 家`);
       if (res.duplicated > 0) parts.push(`${res.duplicated} 家已存在`);
+      if (res.poiEnriched && res.poiEnriched.matched > 0) {
+        parts.push(`地图补齐 ${res.poiEnriched.matched} 家`);
+      }
       toast.success(parts.length ? parts.join("，") : "没有变化");
       setPreviewOpen(false);
       setDrafts([]);

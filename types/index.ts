@@ -461,6 +461,10 @@ export interface FavoritePlace {
 export interface CreateFavoritePlacesBody {
   platform?: FavoritePlatform;
   sourceScreenshotUrl?: string;
+  /** 入库后自动跑地图 POI 匹配，补齐缺失的电话/地址/品类/评分 */
+  enrichPoi?: boolean;
+  /** 城市名（POI 匹配限定范围用），如 武汉/北京市 */
+  city?: string;
   places: Array<{
     title: string;
     address?: string | null;

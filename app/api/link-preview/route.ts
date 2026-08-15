@@ -4,6 +4,8 @@ import { parseExternalLink, parseShareText } from "@/lib/link-preview";
 import { jsonResponse, detectPlatform, extractUrlFromText } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+// 页面抓取 8s + POI 三级降级最坏 ~24s，给足 serverless 预算
+export const maxDuration = 30;
 
 /** POST /api/link-preview — 解析外部链接（美团/点评分享文本或纯 URL） */
 export async function POST(request: NextRequest) {

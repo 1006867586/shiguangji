@@ -5,6 +5,8 @@ import {
   UnauthorizedError,
 } from "@/lib/supabase/server";
 import { jsonResponse, safeErrorMessage, safeParseInt } from "@/lib/utils";
+import { enrichPlacesWithPoi } from "@/lib/poi/enrich";
+import { isPoiProviderConfigured } from "@/lib/poi/providers";
 import type {
   CreateFavoritePlacesBody,
   FavoritePlace,
@@ -12,6 +14,8 @@ import type {
 } from "@/types";
 
 export const dynamic = "force-dynamic";
+// 入库 + POI 批量匹配（预算 35s），与解析等请求共用 60s serverless 上限
+export const maxDuration = 60;
 
 const VALID_PLATFORMS: FavoritePlatform[] = [
   "meituan",
@@ -74,6 +78,8 @@ export async function GET(request: NextRequest) {
  * POST /api/favorite-places
  * 批量创建店铺收藏（来自 AI 识别结果，用户确认后调用）。
  * 同名同地址的店铺因唯一索引会冲突，使用 onConflict do nothing 跳过。
+ * body.enrichPoi=true 时，入库后对缺失电话/地址的店铺自动跑地图 POI 匹配
+ * （高德/百度官方接口），仅 high/medium 置信命中且仅填空字段才写库。
  */
 export async function POST(req: NextRequest) {
   try {
@@ -208,10 +214,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const insertedRows = (data ?? []) as FavoritePlace[];
+
+    // 入库后按需跑地图 POI 匹配补齐（未配置地图 Key 时静默跳过）
+    let poiEnriched: Awaited<ReturnType<typeof runPoiEnrich>> | null = null;
+    if (body.enrichPoi === true && insertedRows.length > 0) {
+      poiEnriched = await runPoiEnrich(supabase, insertedRows, body);
+    }
+
     return jsonResponse({
-      data: (data ?? []) as FavoritePlace[],
-      inserted: data?.length ?? 0,
+      data: mergePoiPatches(insertedRows, poiEnriched),
+      inserted: insertedRows.length,
       duplicated: rows.length - toInsert.length,
+      poiEnriched,
     });
   } catch (err) {
     if (err instanceof UnauthorizedError) {
@@ -229,4 +244,63 @@ function normalizeKey(title: string, address: string | null): string {
   const t = (title ?? "").trim().toLowerCase();
   const a = (address ?? "").trim().toLowerCase();
   return `${t}|${a}`;
+}
+
+/** 单条 POI 匹配的默认时间预算（serverless 超时保护） */
+const POI_ENRICH_BUDGET_MS = 35_000;
+
+/**
+ * 对新入库的店铺批量跑 POI 匹配并落库。
+ * 返回统计摘要；未配置地图 Key 或无待补齐行时返回 null。
+ * 匹配失败不阻塞主流程（数据已入库，摘要中记录 errors）。
+ */
+async function runPoiEnrich(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  insertedRows: FavoritePlace[],
+  body: CreateFavoritePlacesBody
+) {
+  const configured = isPoiProviderConfigured();
+  if (!configured.amap && !configured.baidu) return null;
+
+  const summary = await enrichPlacesWithPoi(
+    insertedRows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      address: r.address,
+      phone: r.phone,
+      category: r.category,
+      rating: r.rating,
+    })),
+    {
+      city: typeof body.city === "string" ? body.city : null,
+      timeBudgetMs: POI_ENRICH_BUDGET_MS,
+    }
+  );
+
+  // 逐条落库（patches 已保证仅填空字段，不覆盖已有值）
+  for (const patch of summary.patches) {
+    const { error } = await supabase
+      .from("favorite_places")
+      .update(patch.updates)
+      .eq("id", patch.id)
+      .eq("user_id", insertedRows[0].user_id);
+    if (error) {
+      summary.errors.push({ id: patch.id, message: error.message });
+    }
+  }
+
+  return summary;
+}
+
+/** 将 POI 补丁合并进返回数据，避免前端为看到补齐结果再拉一次全表 */
+function mergePoiPatches(
+  rows: FavoritePlace[],
+  summary: Awaited<ReturnType<typeof runPoiEnrich>>
+): FavoritePlace[] {
+  if (!summary || summary.patches.length === 0) return rows;
+  const byId = new Map(summary.patches.map((p) => [p.id, p.updates]));
+  return rows.map((r) => {
+    const updates = byId.get(r.id);
+    return updates ? ({ ...r, ...updates } as FavoritePlace) : r;
+  });
 }

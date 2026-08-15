@@ -1,4 +1,6 @@
 import { detectPlatform, extractUrlFromText } from "./utils";
+import { enrichLinkWithPoi } from "./poi/enrich";
+import type { MatchPoiInput, MatchResult } from "./poi/matcher";
 import type { ExternalLink } from "@/types";
 
 /** 美团/点评分享文本中提取的元数据 */
@@ -264,9 +266,11 @@ function extractAddress(desc?: string): string | null {
  * - 先从分享文本提取元数据（店名/地址/电话，这些在网页 share 页可能被打码）
  * - 再 fetch 商家页 SSR HTML 补充封面图、评分、人均
  * - 文本提取的元数据优先，网页抓取结果仅补充缺失字段
+ * - 电话/地址仍缺失时，用店名跑地图 POI 匹配兜底（需配置 AMAP_KEY/BAIDU_MAP_AK）
  */
 export async function parseExternalLink(
-  input: string
+  input: string,
+  opts: { poiMatchFn?: (input: MatchPoiInput) => Promise<MatchResult> } = {}
 ): Promise<ExternalLink | null> {
   // 1. 从分享文本提取元数据
   const meta = parseShareText(input);
@@ -288,7 +292,7 @@ export async function parseExternalLink(
   }
 
   // 3. 合并：文本提取优先，网页抓取补充
-  return {
+  const merged: ExternalLink = {
     platform,
     url: url ?? "",
     title: meta.title ?? pageMeta?.title ?? url ?? "",
@@ -298,6 +302,12 @@ export async function parseExternalLink(
     rating: pageMeta?.rating ?? null,
     price: pageMeta?.price ?? null,
   };
+
+  // 4. POI 兜底：商家 share 页打码电话/详细地址，缺失时用店名匹配地图补齐
+  const { link } = await enrichLinkWithPoi(merged, {
+    matchFn: opts.poiMatchFn,
+  });
+  return link;
 }
 
 /** 校验是否为合法 URL */

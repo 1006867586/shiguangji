@@ -19,10 +19,16 @@ interface UseFavoritePlacesReturn {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
-  /** 批量入库（去重由后端处理），返回 { inserted, duplicated } */
+  /** 批量入库（去重由后端处理），返回 { inserted, duplicated, poiEnriched } */
   addMany: (input: CreateFavoritePlacesBody) => Promise<{
     inserted: number;
     duplicated: number;
+    poiEnriched: {
+      matched: number;
+      unmatched: number;
+      skipped: number;
+      budgetExhausted: number;
+    } | null;
   }>;
   remove: (id: string) => Promise<void>;
   /** 局部更新单条店铺（用于联网搜索补齐后回填 UI，避免整表重新拉取） */
@@ -45,12 +51,22 @@ export function useFavoritePlaces(): UseFavoritePlacesReturn {
       const res = await fetchData<{
         inserted: number;
         duplicated: number;
+        poiEnriched?: {
+          matched: number;
+          unmatched: number;
+          skipped: number;
+          budgetExhausted: number;
+        } | null;
       }>("/api/favorite-places", {
         method: "POST",
         body: JSON.stringify(input),
       });
       await mutate();
-      return { inserted: res.inserted, duplicated: res.duplicated };
+      return {
+        inserted: res.inserted,
+        duplicated: res.duplicated,
+        poiEnriched: res.poiEnriched ?? null,
+      };
     },
     [mutate]
   );
