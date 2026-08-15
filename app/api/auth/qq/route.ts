@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { randomBytes } from "crypto";
+import { getPublicOrigin } from "@/lib/utils";
 
 /** GET /api/auth/qq — 发起 QQ 互联 OAuth2 授权 */
 export async function GET(request: NextRequest) {
-  const { origin } = new URL(request.url);
+  const origin = getPublicOrigin(request);
   const appId = process.env.QQ_APP_ID;
 
   if (!appId) {

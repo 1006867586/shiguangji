@@ -3,7 +3,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { randomBytes } from "crypto";
 import type { CookiesToSet } from "@/lib/supabase/cookies";
-import { safeRedirectPath } from "@/lib/utils";
+import { getPublicOrigin, safeRedirectPath } from "@/lib/utils";
 
 /** QQ 互联 token 接口返回的 query string 解析 */
 function parseQqTokenResponse(text: string): Record<string, string> {
@@ -30,7 +30,8 @@ interface QqUserInfo {
 /** GET /api/auth/qq/callback — QQ 授权回调，换取用户信息并建立 Supabase 会话 */
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const { origin, searchParams } = url;
+  const searchParams = url.searchParams;
+  const origin = getPublicOrigin(request);
 
   const code = searchParams.get("code");
   const stateParam = searchParams.get("state") ?? "";

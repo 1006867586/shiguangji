@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { CookiesToSet } from "@/lib/supabase/cookies";
-import { safeRedirectPath } from "@/lib/utils";
+import { getPublicOrigin, safeRedirectPath } from "@/lib/utils";
 
 /** GET /api/auth/callback — 处理 Supabase 邮箱/OAuth 回调 */
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const searchParams = new URL(request.url).searchParams;
+  const origin = getPublicOrigin(request);
   const code = searchParams.get("code");
   const next = safeRedirectPath(searchParams.get("next"));
 
