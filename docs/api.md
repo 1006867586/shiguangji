@@ -519,6 +519,50 @@ openMapApp("amap", { name: "海底捞", address: "xx路1号", city: "上海" });
 | 成功 | `200 { accessToken, refreshToken, expiresAt }` |
 | 401 | refresh_token 已失效，小程序端应清除凭据重新登录 |
 
+## 小程序内容安全（msgSecCheck）
+
+小程序端发布动态 / 评论 / 创建圈子等 UGC 行为前，调用文本内容安全检测（微信官方 msgSecCheck 2.0），满足小程序审核要求。
+
+### POST /api/weapp/security/msg-sec-check
+
+需登录（Bearer 双通道）。openid 取自登录时写入的 `user_metadata.weapp_openid`，前端无需传。
+
+```http
+POST /api/weapp/security/msg-sec-check
+Content-Type: application/json
+```
+
+```json
+{
+  "content": "要检测的文本（≤2500 字）",
+  "scene": 4
+}
+```
+
+| scene | 场景 |
+|-------|------|
+| 1 | 资料（圈子名称等） |
+| 2 | 评论 |
+| 3 | 论坛 |
+| 4 | 社交日志（动态发布，默认） |
+
+响应：
+
+```json
+{ "data": { "pass": true, "suggest": "pass", "label": 100 } }
+```
+
+| 字段 | 说明 |
+|------|------|
+| `pass` | 是否放行（前端只看这个） |
+| `suggest` | 微信判定：`pass` / `review`（人审，放行）/ `risky`（拦截） |
+| `label` | 100 正常；10001 广告、20002 色情、20003 辱骂、20006 违法犯罪、20008 欺诈、20012 低俗 等 |
+| `reason` | `pass: false` 时的拦截提示文案 |
+| `skipped` | 服务端未配置密钥或会话无 openid，跳过检测 |
+| `fallback` | 微信接口故障，放行并记录日志（不阻塞业务） |
+
+降级策略：本地开发未配置密钥直接放行；微信侧故障放行 + `console.error` 留痕；`review` 判定放行、`risky` 拦截。access_token 走 `stable_token` 接口（`lib/wechat.ts` 模块级缓存，提前 5 分钟刷新，40001 强制刷新重试一次）。
+
 ### 本地开发
 
 1. `weapp/` 下 `cp .env.example .env`（指向本地 Next.js）
