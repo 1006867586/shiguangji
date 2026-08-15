@@ -82,6 +82,32 @@ function LoginForm({ qqEnabled, initialError }: LoginClientProps) {
     };
   }, [supabase, router, redirect]);
 
+  /**
+   * 将浏览器端 signInWithPassword / signUp 拿到的会话，
+   * 写入同域 cookie（自家 /api/auth/session 接口负责）。
+   * 必须这么做：Supabase API 返回的 Set-Cookie 因为跨域（m.zykh.top ↔ supabase.co）
+   * 浏览器不会写入，导致 middleware 读不到 session → 再次 307 回 login。
+   */
+  const writeSessionCookie = async (access: string, refresh: string) => {
+    const res = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessToken: access,
+        refreshToken: refresh,
+        redirect, // 让后端直接返回 303 跳转，避开客户端路由
+      }),
+      credentials: "same-origin",
+    });
+    // 303 / 307 / 302 跳转 → fetch 会自动跟随，但我们要手动用 location 跳转以确保 cookie 生效
+    // 这里我们不依赖 redirect 参数让后端返回 303，改为拿到 200 后前端 window.location 硬跳
+    // 因为 fetch 自动跟随重定向后，浏览器的 document.location 不会变。
+    if (!res.ok) {
+      const info = await res.json().catch(() => ({}));
+      throw new Error((info as { error?: string }).error || "写入会话失败");
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
@@ -91,14 +117,22 @@ function LoginForm({ qqEnabled, initialError }: LoginClientProps) {
     setLoading(true);
     try {
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
         if (error) throw error;
+        if (!data.session) {
+          toast.error("登录失败：未返回会话");
+          return;
+        }
+        // 把 session 写入同域 cookie，让 middleware/SSR 能识别登录态
+        await writeSessionCookie(data.session.access_token, data.session.refresh_token);
         toast.success("登录成功");
-        router.replace(redirect);
-        router.refresh();
+        // 注意：这里必须 window.location.href 硬跳转，不要 router.replace()。
+        // 否则 Next 客户端路由发起的 GET /，middleware 返回 307 回 /login 时浏览器不会真的跳转，
+        // 而是原地"看起来没反应"。硬走浏览器顶级导航则不会有这个问题。
+        window.location.href = redirect;
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
@@ -114,9 +148,10 @@ function LoginForm({ qqEnabled, initialError }: LoginClientProps) {
         });
         if (error) throw error;
         if (data.session) {
+          // 新用户免邮件验证、直接签发 session 的情况 → 同样写 cookie 后跳
+          await writeSessionCookie(data.session.access_token, data.session.refresh_token);
           toast.success("注册成功");
-          router.replace(redirect);
-          router.refresh();
+          window.location.href = redirect;
         } else {
           toast.success("注册成功，请前往邮箱确认后登录");
           setMode("signin");
