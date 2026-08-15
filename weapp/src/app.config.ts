@@ -4,6 +4,7 @@ export default defineAppConfig({
     "pages/publish/index",
     "pages/profile/index",
     "pages/login/index",
+    "pages/detail/index",
   ],
   tabBar: {
     color: "#8a8a8a",

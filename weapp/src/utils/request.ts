@@ -31,6 +31,11 @@ interface RequestOptions {
   auth?: boolean;
   /** 出错时不弹 toast（默认弹） */
   silent?: boolean;
+  /**
+   * 跳过 { data } 信封解包，原样返回响应体。
+   * 供需要读取包裹层其他字段的接口使用（如 feed 的 next_cursor）。
+   */
+  raw?: boolean;
 }
 
 interface ApiEnvelope<T> {

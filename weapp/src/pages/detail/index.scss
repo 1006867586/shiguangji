@@ -1,0 +1,150 @@
+.detail-page {
+  min-height: 100vh;
+  background: #f5f6f5;
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+
+  &.state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16rpx;
+    padding-top: 30vh;
+  }
+}
+
+.error {
+  color: #dc2626;
+}
+
+// ---- 评论区 ----
+
+.comment-section {
+  margin: 0 24rpx 24rpx;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+}
+
+.comment-header {
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #f2f2f2;
+  margin-bottom: 8rpx;
+
+  .comment-title {
+    font-size: 30rpx;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+}
+
+.comment-empty {
+  padding: 48rpx 0;
+  display: flex;
+  justify-content: center;
+}
+
+.comment-item {
+  display: flex;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f7f7f7;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .comment-avatar {
+    width: 64rpx;
+    height: 64rpx;
+    border-radius: 50%;
+    background: #eee;
+    flex-shrink: 0;
+  }
+
+  .comment-main {
+    flex: 1;
+    min-width: 0;
+    margin-left: 16rpx;
+  }
+
+  .comment-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .comment-nickname {
+    font-size: 26rpx;
+    color: #16a34a;
+    font-weight: 500;
+  }
+
+  .comment-time {
+    font-size: 22rpx;
+    color: #999;
+  }
+
+  .comment-content {
+    display: block;
+    margin-top: 8rpx;
+    font-size: 28rpx;
+    color: #333;
+    line-height: 1.6;
+    word-break: break-all;
+  }
+}
+
+.reply-list {
+  margin-top: 12rpx;
+  padding: 12rpx 16rpx;
+  background: #f8f8f7;
+  border-radius: 12rpx;
+
+  .reply-item {
+    display: flex;
+    font-size: 24rpx;
+    line-height: 1.6;
+
+    & + .reply-item {
+      margin-top: 8rpx;
+    }
+  }
+
+  .reply-nickname {
+    color: #16a34a;
+    flex-shrink: 0;
+    margin-right: 8rpx;
+  }
+
+  .reply-content {
+    color: #444;
+    word-break: break-all;
+  }
+}
+
+// ---- 底部输入栏 ----
+
+.comment-input-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1rpx solid #eee;
+
+  .comment-input {
+    flex: 1;
+    height: 72rpx;
+    padding: 0 24rpx;
+    background: #f5f5f5;
+    border-radius: 36rpx;
+    font-size: 28rpx;
+  }
+
+  .comment-send {
+    flex-shrink: 0;
+  }
+}
