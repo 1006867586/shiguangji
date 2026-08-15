@@ -1,8 +1,18 @@
-import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { NextResponse, type NextRequest } from "next/server";
 
+/**
+ * 中间件：刷新 Supabase 会话 cookie + 路由保护。
+ *
+ * NEXT_DISABLE_MIDDLEWARE=1 时变为纯透传（不加载任何 Supabase 依赖）：
+ * 用于排查 EdgeOne 等平台对 Next.js middleware / @supabase/ssr 的兼容性问题。
+ * 注意用动态 import，确保禁用时不打包依赖。
+ */
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  if (process.env.NEXT_DISABLE_MIDDLEWARE === "1") {
+    return NextResponse.next();
+  }
+  const { updateSession } = await import("@/lib/supabase/middleware");
+  return updateSession(request);
 }
 
 export const config = {
