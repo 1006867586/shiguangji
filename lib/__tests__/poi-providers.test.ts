@@ -3,6 +3,7 @@ import {
   searchAmapPois,
   searchBaiduPois,
   isPoiProviderConfigured,
+  calculateBaiduSn,
   PoiProviderError,
 } from "@/lib/poi/providers";
 
@@ -29,6 +30,7 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.AMAP_KEY;
   delete process.env.BAIDU_MAP_AK;
+  delete process.env.BAIDU_MAP_SK;
   vi.unstubAllGlobals();
 });
 
@@ -151,6 +153,83 @@ describe("searchBaiduPois", () => {
     await expect(searchBaiduPois({ keyword: "海底捞" })).rejects.toThrow(
       /BAIDU_MAP_AK/
     );
+  });
+
+  it("配了 BAIDU_MAP_SK 时附加 sn 签名参数", async () => {
+    process.env.BAIDU_MAP_SK = "test-baidu-sk";
+    const fn = mockFetchOnce({ status: 0, results: [] });
+    await searchBaiduPois({ keyword: "海底捞", city: "北京" });
+
+    const url = lastCallUrl(fn);
+    const sn = url.searchParams.get("sn");
+    expect(sn).not.toBeNull();
+    expect(sn).toMatch(/^[a-f0-9]{32}$/);
+
+    // 独立重算应一致（验证签名算法一致性）
+    const expected = calculateBaiduSn(
+      "test-baidu-sk",
+      "/place/v2/search",
+      Object.fromEntries(
+        [...url.searchParams.entries()].filter(([k]) => k !== "sn")
+      )
+    );
+    expect(sn).toBe(expected);
+  });
+
+  it("未配 BAIDU_MAP_SK 时不附加 sn（向后兼容旧版免 SN 的 AK）", async () => {
+    const fn = mockFetchOnce({ status: 0, results: [] });
+    await searchBaiduPois({ keyword: "海底捞" });
+    expect(lastCallUrl(fn).searchParams.get("sn")).toBeNull();
+  });
+});
+
+describe("calculateBaiduSn", () => {
+  it("返回 32 位小写 hex（MD5 标准长度）", () => {
+    const sn = calculateBaiduSn("sk", "/place/v2/search", {
+      ak: "ak",
+      query: "海底捞",
+    });
+    expect(sn).toMatch(/^[a-f0-9]{32}$/);
+  });
+
+  it("确定性：相同输入产出相同 SN", () => {
+    const a = calculateBaiduSn("sk", "/place/v2/search", {
+      ak: "ak",
+      query: "海底捞",
+      region: "北京",
+    });
+    const b = calculateBaiduSn("sk", "/place/v2/search", {
+      ak: "ak",
+      query: "海底捞",
+      region: "北京",
+    });
+    expect(a).toBe(b);
+  });
+
+  it("参数顺序不影响 SN（按 key 字典序排序后再签名）", () => {
+    const a = calculateBaiduSn("sk", "/place/v2/search", {
+      query: "海底捞",
+      ak: "ak",
+      region: "北京",
+    });
+    const b = calculateBaiduSn("sk", "/place/v2/search", {
+      ak: "ak",
+      region: "北京",
+      query: "海底捞",
+    });
+    expect(a).toBe(b);
+  });
+
+  it("SK 不同则 SN 不同", () => {
+    const a = calculateBaiduSn("sk1", "/place/v2/search", {
+      ak: "ak",
+      query: "海底捞",
+    });
+    const b = calculateBaiduSn("sk2", "/place/v2/search", {
+      ak: "ak",
+      query: "海底捞",
+    });
+    expect(a).not.toBe(b);
   });
 });
 

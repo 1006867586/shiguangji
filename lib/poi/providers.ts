@@ -5,10 +5,12 @@
 // 两者均需在 .env.local 配置服务端 Key/AK，返回统一 PoiCandidate 结构。
 // ============================================================
 
+import crypto from "node:crypto";
 import type { PoiCandidate } from "./types";
 
 const AMAP_TEXT_URL = "https://restapi.amap.com/v5/place/text";
 const BAIDU_PLACE_URL = "https://api.map.baidu.com/place/v2/search";
+const BAIDU_PLACE_PATH = "/place/v2/search";
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -181,6 +183,7 @@ export async function searchBaiduPois(
       "baidu"
     );
   }
+  const sk = process.env.BAIDU_MAP_SK;
 
   const url = new URL(BAIDU_PLACE_URL);
   url.searchParams.set("ak", ak);
@@ -193,6 +196,16 @@ export async function searchBaiduPois(
   url.searchParams.set("scope", "2");
   url.searchParams.set("output", "json");
   url.searchParams.set("page_size", String(opts.pageSize ?? DEFAULT_PAGE_SIZE));
+
+  // 百度服务端 AK 现强制 SN 校验；配了 SK 则计算签名附加，未配则按旧版 AK-only 发请求
+  if (sk) {
+    const params: Record<string, string> = {};
+    url.searchParams.forEach((v, k) => {
+      params[k] = v;
+    });
+    const sn = calculateBaiduSn(sk, BAIDU_PLACE_PATH, params);
+    url.searchParams.set("sn", sn);
+  }
 
   const data = await fetchJson("baidu", url, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   if (data.status !== 0) {
@@ -221,4 +234,28 @@ export async function searchBaiduPois(
       coordType: "bd09" as const,
     },
   }));
+}
+
+/**
+ * 计算百度地图 SN 签名。
+ * 算法（百度官方 SN 校验规范）：
+ *   1. 取请求 path（不含 host 和 query），如 /place/v2/search
+ *   2. 把所有参数（含 ak，不含 sn）按 key 字典序排序，拼接为 k=v&k=v（值不 URL 编码）
+ *   3. 拼接：sk + path + "?" + sortedQuery
+ *   4. 对上一步字符串做 encodeURIComponent（RFC3986）
+ *   5. 计算 MD5（小写 hex），作为 sn 参数附加到请求 URL
+ */
+export function calculateBaiduSn(
+  sk: string,
+  path: string,
+  params: Record<string, string>
+): string {
+  const sortedQuery = Object.keys(params)
+    .sort()
+    .map((k) => `${k}=${params[k]}`)
+    .join("&");
+
+  const raw = `${sk}${path}?${sortedQuery}`;
+  const encoded = encodeURIComponent(raw);
+  return crypto.createHash("md5").update(encoded).digest("hex");
 }

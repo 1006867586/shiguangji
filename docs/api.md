@@ -355,6 +355,7 @@ import { matchPoi, enrichPlacesWithPoi, enrichLinkWithPoi } from "@/lib/poi";
 | 百度 | `status: 2` | 参数错误（如 region 非法） |
 | 百度 | `status: 200` | AK 无效或被禁用 |
 | 百度 | `status: 302` | 并发/QPS 超限 |
+| 百度 | `sn cal error` / `status: 1` 含 SN 字样 | SK 未配置或签名错误（确认 `BAIDU_MAP_SK` 与 AK 同步生成） |
 
 单平台失败不影响另一平台；匹配错误不阻塞收藏入库主流程。
 
@@ -366,9 +367,24 @@ import { matchPoi, enrichPlacesWithPoi, enrichLinkWithPoi } from "@/lib/poi";
 # .env.local
 AMAP_KEY=your-amap-web-service-key       # 高德 Web 服务 Key
 BAIDU_MAP_AK=your-baidu-map-server-ak    # 百度地图服务端 AK
+BAIDU_MAP_SK=your-baidu-map-server-sk    # 百度 SN 校验密钥（与 AK 配对使用）
 ```
 
 - 高德申请：https://console.amap.com/ （选择「Web 服务」类型 Key）
 - 百度申请：https://lbsyun.baidu.com/ （选择「服务端」类型 AK）
-- 两者配置其一即可启用；均未配置时 POI 功能自动停用，收藏导入不受影响
+- **百度服务端 AK 默认强制 SN 校验**：创建应用时同步生成 SK，必须同时配置 `BAIDU_MAP_AK` 和 `BAIDU_MAP_SK`，否则百度会返回 `sn cal error` 拒绝请求
+- 高德无需 SK，单 `AMAP_KEY` 即可
+- 两个平台配置其一即可启用 POI 功能；均未配置时自动停用，收藏导入/链接解析主流程不受影响
 - 坐标系：高德返回 GCJ-02，百度返回 BD-09；`candidate.location.coordType` 已标注
+
+### 百度 SN 算法
+
+百度 SN 签名计算（`calculateBaiduSn`）已内置，无需手动实现：
+
+1. 提取请求 path（不含 host），如 `/place/v2/search`
+2. 把所有参数（含 `ak`，不含 `sn`）按 key 字典序排序，拼接为 `k=v&k=v`（值不 URL 编码）
+3. 拼接 `sk + path + "?" + sortedQuery`
+4. 对上一步字符串做 `encodeURIComponent`（RFC3986）
+5. 计算 MD5（小写 hex），作为 `sn` 参数附加到请求 URL
+
+配了 `BAIDU_MAP_SK` 时自动计算并附加 SN；未配时按旧版 AK-only 发请求（向后兼容，但百度现版 AK 会被拒绝）。
