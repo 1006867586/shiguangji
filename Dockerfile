@@ -74,40 +74,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# 在 runner 启动前注入一次环境变量兜底：
-# 如果 NEXT_PUBLIC_* 构建时没拿到真实值（仍是 BUILD_PLACEHOLDER_* 或旧版 placeholder.supabase.co），
-# 在 .next/static JS chunk 文件里做全局文本替换，让运行时 env 也能改前端 JS。
-# 这一步不依赖 build-arg，只要 CloudBase 控制台【运行时环境变量】填对了就行。
-RUN printf '%s\n' \
-  '#!/bin/sh' \
-  'set -eu' \
-  'echo "[runtime-env-inject] 检查并替换前端 JS chunks 中的 NEXT_PUBLIC 占位符..."' \
-  'replace_all() {' \
-  '  PATTERN="$1"; VALUE="$2"; TAG="$3";' \
-  '  if [ -z "$VALUE" ] || [ -z "$PATTERN" ]; then return 0; fi' \
-  '  if [ ! -d "./.next/static" ]; then return 0; fi' \
-  '  COUNT=$(grep -rlF "$PATTERN" ./.next/static 2>/dev/null | wc -l)' \
-  '  if [ "$COUNT" -gt 0 ]; then' \
-  '    VAL_SHOW="$(printf "%s" "$VALUE" | cut -c1-20)...$(printf "%s" "$VALUE" | tail -c 6)"' \
-  '    echo "  → [$TAG] 找到 $COUNT 个 chunk 命中，替换为 $VAL_SHOW"' \
-  '    grep -rlF "$PATTERN" ./.next/static 2>/dev/null | xargs sed -i "s|$(echo "$PATTERN" | sed "s/[|\\&]/\\\\&/g")|$(echo "$VALUE" | sed "s/[|\\&]/\\\\&/g")|g"' \
-  '  fi' \
-  '}' \
-  '# Supabase URL（同时匹配新占位符和旧版 placeholder.supabase.co）' \
-  'replace_all "BUILD_PLACEHOLDER_SUPABASE_URL" "$NEXT_PUBLIC_SUPABASE_URL" "SUPABASE_URL-new"' \
-  'replace_all "https://placeholder.supabase.co" "$NEXT_PUBLIC_SUPABASE_URL" "SUPABASE_URL-legacy"' \
-  '# Supabase anon key（同时匹配新占位符和旧版 placeholder-anon-key）' \
-  'replace_all "BUILD_PLACEHOLDER_SUPABASE_ANON_KEY" "$NEXT_PUBLIC_SUPABASE_ANON_KEY" "ANON_KEY-new"' \
-  'replace_all "placeholder-anon-key" "$NEXT_PUBLIC_SUPABASE_ANON_KEY" "ANON_KEY-legacy"' \
-  '# APP URL（新占位符 BUILD_PLACEHOLDER_APP_URL + 旧版 http://localhost:3000 / 0.0.0.0 之类）' \
-  'replace_all "BUILD_PLACEHOLDER_APP_URL" "$NEXT_PUBLIC_APP_URL" "APP_URL-new"' \
-  'replace_all "http://localhost:3000" "$NEXT_PUBLIC_APP_URL" "APP_URL-legacy-localhost"' \
-  'replace_all "http://0.0.0.0" "$NEXT_PUBLIC_APP_URL" "APP_URL-legacy-0000"' \
-  'replace_all "http://127.0.0.1:3000" "$NEXT_PUBLIC_APP_URL" "APP_URL-legacy-127"' \
-  'echo "[runtime-env-inject] 完成，启动 Next.js server.js"' \
-  'exec node server.js "$@"' \
-  > /usr/local/bin/entrypoint.sh \
-  && chmod +x /usr/local/bin/entrypoint.sh
+# 容器启动前置脚本：如果 NEXT_PUBLIC_* 构建时没拿到真实值（仍是占位符），
+# 会在 .next/static JS chunk 文件里做全局文本替换，把 CloudBase 运行时 env 的真实值写进前端 bundle。
+# 脚本放在仓库根目录 entrypoint.sh，不再通过 Dockerfile printf 内联生成，避免多层转义出错。
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 80
 
