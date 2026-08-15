@@ -72,7 +72,12 @@ export function getPublicOrigin(request: NextRequest | Request): string {
     // 可能是逗号分隔的多段（多级反代），取第一段
     const host = fwHost.split(",")[0].trim();
     if (host && !isPrivateHost(host)) {
-      const scheme = fwProto.startsWith("https") ? "https:" : "http:";
+      // CloudBase 网关可能覆盖 X-Forwarded-Proto 为 http（回源是 HTTP），
+      // 生产环境下直接用 https 更安全
+      const scheme =
+        fwProto.startsWith("https") || process.env.NODE_ENV === "production"
+          ? "https:"
+          : "http:";
       return `${scheme}//${host}`;
     }
   }
@@ -81,12 +86,13 @@ export function getPublicOrigin(request: NextRequest | Request): string {
   // （部分反代会把 Host 直接设成自定义域名，不写 X-Forwarded-Host）
   const plainHost = request.headers.get("host") || request.headers.get("Host");
   if (plainHost && !isPrivateHost(plainHost)) {
-    // scheme 推断：有 x-forwarded-proto 就信它，否则默认 https（生产都是 https）
-    const scheme = fwProto.startsWith("https")
-      ? "https:"
-      : fwProto.startsWith("http")
-        ? "http:"
-        : "https:";
+    // scheme 推断：生产环境默认 https（反代层都是 HTTPS 对外）
+    const scheme =
+      fwProto.startsWith("https") || process.env.NODE_ENV === "production"
+        ? "https:"
+        : fwProto.startsWith("http")
+          ? "http:"
+          : "https:";
     return `${scheme}//${plainHost}`;
   }
 

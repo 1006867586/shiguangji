@@ -229,6 +229,13 @@ function fixLocation(location, customDomain, originHostname) {
       return u.toString();
     }
 
+    // 主机名已经是自定义域名，但协议是 http → 升级为 https
+    // （CloudBase 网关会覆盖 X-Forwarded-Proto 为 http，导致 Next.js 回 http origin）
+    if (hostLower === customDomain.toLowerCase() && u.protocol === "http:") {
+      u.protocol = "https:";
+      return u.toString();
+    }
+
     return location;
   } catch {
     // 解析失败（可能是相对路径）就原样返回，相对路径不需要改
