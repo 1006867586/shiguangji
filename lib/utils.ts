@@ -49,17 +49,30 @@ function isPrivateHost(host: string): boolean {
  * 反代部署时（Cloudflare Worker / Nginx / CloudBase 网关）：
  *   - Next.js 收到的 `new URL(request.url).origin` 可能是内网监听地址（0.0.0.0、127.0.0.1、CloudBase 默认域名等），
  *     而不是用户实际访问的自定义域名；
+ *   - Cloudflare Worker → Vercel 回源场景下 X-Forwarded-Host 会是 *.vercel.app；
  *
  * 优先级从高到低（任何一步拿到了"非内网 host"就立即返回）：
- *   1. X-Forwarded-Host + X-Forwarded-Proto（反代层透传的真实 Host/scheme，Worker v5 会注入）
- *   2. 普通 Host 头（如果反代层直接覆盖了 Host 为自定义域名，也能生效）
- *   3. NEXT_PUBLIC_APP_URL 环境变量（人工兜底，需在 CloudBase 构建/运行时正确设置）
+ *   1. NEXT_PUBLIC_APP_URL 环境变量（显式配置，最权威——QQ 回调域名等必须与之一致）
+ *   2. X-Forwarded-Host + X-Forwarded-Proto（反代层透传的真实 Host/scheme）
+ *   3. 普通 Host 头（如果反代层直接覆盖了 Host 为自定义域名，也能生效）
  *   4. request.url / request.nextUrl 的 origin（最后兜底，如果仍是内网地址则强制用 NEXT_PUBLIC_APP_URL，否则用该值）
  *
  * 目前在 `app/api/auth/*` 里用它替换 `new URL(request.url).origin`，避免 OAuth / 邮箱回调跳回错误域名。
  */
 export function getPublicOrigin(request: NextRequest | Request): string {
-  // ---- 1) X-Forwarded-Host + X-Forwarded-Proto（最高优先级）----
+  // ---- 1) NEXT_PUBLIC_APP_URL 环境变量（最高优先级，显式配置）----
+  const env = process.env.NEXT_PUBLIC_APP_URL;
+  if (env) {
+    const normalized = normalizeEnvUrl(env, env);
+    try {
+      const u = new URL(normalized);
+      if (!isPrivateHost(u.hostname)) return normalized;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // ---- 2) X-Forwarded-Host + X-Forwarded-Proto ----
   const fwHost =
     request.headers.get("x-forwarded-host") ||
     request.headers.get("X-Forwarded-Host");
@@ -82,7 +95,7 @@ export function getPublicOrigin(request: NextRequest | Request): string {
     }
   }
 
-  // ---- 2) 普通 Host 头 ----
+  // ---- 3) 普通 Host 头 ----
   // （部分反代会把 Host 直接设成自定义域名，不写 X-Forwarded-Host）
   const plainHost = request.headers.get("host") || request.headers.get("Host");
   if (plainHost && !isPrivateHost(plainHost)) {
@@ -94,18 +107,6 @@ export function getPublicOrigin(request: NextRequest | Request): string {
           ? "http:"
           : "https:";
     return `${scheme}//${plainHost}`;
-  }
-
-  // ---- 3) NEXT_PUBLIC_APP_URL 环境变量 ----
-  const env = process.env.NEXT_PUBLIC_APP_URL;
-  if (env) {
-    const normalized = normalizeEnvUrl(env, env);
-    try {
-      const u = new URL(normalized);
-      if (!isPrivateHost(u.hostname)) return normalized;
-    } catch {
-      /* ignore */
-    }
   }
 
   // ---- 4) request.url / nextUrl 兜底 ----
