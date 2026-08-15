@@ -90,8 +90,8 @@ export async function GET(request: NextRequest) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
-        client_id: appId,
-        client_secret: appKey,
+        client_id: appId!,
+        client_secret: appKey!,
         code,
         redirect_uri: redirectUri,
         fmt: "json",
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
     const userRes = await fetch(
       `https://graph.qq.com/user/get_user_info?access_token=${encodeURIComponent(
         accessToken
-      )}&oauth_consumer_key=${encodeURIComponent(appId)}&openid=${encodeURIComponent(
+      )}&oauth_consumer_key=${encodeURIComponent(appId!)}&openid=${encodeURIComponent(
         openid
       )}`
     );
@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
       qqUser.figureurl_qq_2 || qqUser.figureurl_qq_1 || undefined;
 
     // 4. 用 admin client 生成 magic link（自动处理用户存在/不存在）
-    const admin = createSupabaseClient(supabaseUrl, serviceRoleKey, {
+    const admin = createSupabaseClient(supabaseUrl!, serviceRoleKey!, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     const virtualEmail = `qq_${openid}@qq.local`;
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(`${origin}${redirect}`);
     const sbCookies: CookiesToSet = [];
 
-    const supabase = createServerClient(supabaseUrl, anonKey, {
+    const supabase = createServerClient(supabaseUrl!, anonKey!, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
