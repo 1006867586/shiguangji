@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const appId = process.env.QQ_APP_ID;
   const appKey = process.env.QQ_APP_KEY;
 
@@ -55,8 +56,29 @@ export async function GET(request: NextRequest) {
   if (!code || !state || !cookieState || state !== cookieState) {
     return fail("qq_state_invalid");
   }
-  if (!supabaseUrl || !anonKey || !appId || !appKey) {
+
+  // 占位符检查：不仅检查空值，还要检查 Dockerfile 构建期注入的占位符
+  const isPlaceholder = (v?: string) =>
+    !v ||
+    v.startsWith("BUILD_PLACEHOLDER") ||
+    v.includes("placeholder.supabase.co") ||
+    v === "placeholder-anon-key" ||
+    v === "placeholder-service-role-key-build" ||
+    v === "placeholder-qq-app-id-build" ||
+    v === "placeholder-qq-app-key-build";
+
+  if (isPlaceholder(supabaseUrl) || isPlaceholder(anonKey) || isPlaceholder(appId) || isPlaceholder(appKey)) {
+    console.error("[qq/callback] 环境变量未就绪:", {
+      supabaseUrl: supabaseUrl?.slice(0, 30),
+      anonKey: anonKey ? `${anonKey.slice(0, 10)}...` : "MISSING",
+      appId: appId || "MISSING",
+      appKey: appKey ? "SET" : "MISSING",
+    });
     return fail("qq_not_configured");
+  }
+  if (isPlaceholder(serviceRoleKey)) {
+    console.error("[qq/callback] SUPABASE_SERVICE_ROLE_KEY 未配置或仍是占位符");
+    return fail("qq_service_key_missing");
   }
 
   const redirectUri = `${origin}/api/auth/qq/callback`;
@@ -121,7 +143,7 @@ export async function GET(request: NextRequest) {
       qqUser.figureurl_qq_2 || qqUser.figureurl_qq_1 || undefined;
 
     // 4. 用 admin client 生成 magic link（自动处理用户存在/不存在）
-    const admin = createSupabaseClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    const admin = createSupabaseClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     const virtualEmail = `qq_${openid}@qq.local`;
@@ -181,7 +203,8 @@ export async function GET(request: NextRequest) {
     response.cookies.delete("qq_oauth_state");
     return response;
   } catch (err) {
-    console.error("QQ 登录回调异常:", err);
-    return fail("qq_callback_error");
+    console.error("[qq/callback] 未捕获异常:", err);
+    const reason = err instanceof Error ? err.message : "qq_callback_error";
+    return fail(reason.startsWith("qq_") ? reason : "qq_callback_error");
   }
 }
