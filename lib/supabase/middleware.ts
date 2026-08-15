@@ -40,9 +40,23 @@ export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!url || !anonKey) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("Missing Supabase env");
+  // 如果环境变量里还没拿到真实值（仍是占位符或空），直接放行，
+  // 不要 throw（之前会导致整个站点 500，登录页都打不开）。
+  // 浏览器端登录按钮会在点击时把"Failed to fetch"提示给用户，
+  // 此时运维去 CloudBase 控制台补充环境变量即可，不会完全不可用。
+  const urlOk = url && !url.startsWith("BUILD_PLACEHOLDER") && !url.includes("placeholder");
+  const keyOk = anonKey && !anonKey.startsWith("BUILD_PLACEHOLDER") && !anonKey.includes("placeholder") && anonKey !== "placeholder-anon-key";
+  if (!urlOk || !keyOk) {
+    console.warn(
+      `[middleware] Supabase env 未就绪（URL=${urlOk ? "✓" : "✗"}，KEY=${keyOk ? "✓" : "✗"}），跳过会话刷新，直接放行请求。` +
+      `请检查 CloudBase 运行时环境变量是否设置 NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY。`
+    );
+    // 未登录访问非公开路径 → 仍重定向到 /login，避免暴露受保护页面
+    const pathname = request.nextUrl.pathname;
+    if (!isPublicPath(pathname)) {
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(redirectUrl);
     }
     return supabaseResponse;
   }
