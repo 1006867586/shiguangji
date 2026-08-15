@@ -1,5 +1,10 @@
 import { useCallback, useRef, useState } from "react";
-import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from "@tarojs/taro";
+import Taro, {
+  useDidShow,
+  usePullDownRefresh,
+  useReachBottom,
+  useShareAppMessage,
+} from "@tarojs/taro";
 import { ScrollView, View, Text, Button } from "@tarojs/components";
 import { request, ApiError } from "@/utils/request";
 import { isLoggedIn } from "@/utils/auth";
@@ -33,6 +38,12 @@ export default function IndexPage() {
   const requestingRef = useRef(false); // 防重复请求
   const inviteHandledRef = useRef(false);
   const loggedIn = isLoggedIn();
+
+  // 默认转发卡片（右上角菜单 / 卡片分享按钮未命中详情页时）
+  useShareAppMessage(() => ({
+    title: "想聚 — 和饭搭子一起记录每一顿",
+    path: "/pages/index/index",
+  }));
 
   // ---- 首次加载圈子列表，默认选第一个；处理分享卡邀请码 ----
   const loadGroups = useCallback(async () => {

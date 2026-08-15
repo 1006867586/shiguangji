@@ -85,7 +85,7 @@ function clearSessionAndGoLogin() {
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", data, auth = true, silent = false, timeout } = options;
+  const { method = "GET", data, auth = true, silent = false, timeout, raw } = options;
 
   const doRequest = () =>
     Taro.request<ApiEnvelope<T> | null>({
@@ -115,8 +115,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   if (res.statusCode >= 200 && res.statusCode < 300) {
-    // 后端约定：列表接口直接返回数组，其余多为 { data } 或 { error } 包裹
     const body = res.data;
+    // raw：跳过 { data } 信封解包，原样返回（读 next_cursor 等包裹层字段）
+    if (raw) return body as T;
+    // 后端约定：列表接口直接返回数组，其余多为 { data } 或 { error } 包裹
     if (body && typeof body === "object" && !Array.isArray(body) && "data" in body) {
       return (body as ApiEnvelope<T>).data as T;
     }

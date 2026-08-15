@@ -64,7 +64,7 @@ export default function FavoriteEditPage() {
         // request 层已 toast
       }
     })();
-  }, [place]);
+  });
 
   const handleSave = useCallback(async () => {
     if (!place || saving) return;

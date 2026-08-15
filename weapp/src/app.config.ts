@@ -11,6 +11,10 @@ export default defineAppConfig({
     "pages/favorites/index",
     "pages/favorites-import/index",
     "pages/favorite-edit/index",
+    "pages/poster/index",
+  ],
+  subPackages: [
+    { root: "subpackages/roulette", pages: ["index"] },
   ],
   tabBar: {
     color: "#8a8a8a",

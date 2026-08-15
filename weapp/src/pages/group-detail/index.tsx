@@ -105,6 +105,23 @@ export default function GroupDetailPage() {
             微信拉人
           </Button>
         </View>
+
+        {/* 今天吃什么转盘（分包页面） */}
+        <View
+          className="roulette-entry"
+          onClick={() =>
+            Taro.navigateTo({
+              url: `/subpackages/roulette/index?groupId=${group.id}`,
+            })
+          }
+        >
+          <Text className="roulette-entry-icon">🎡</Text>
+          <View className="roulette-entry-main">
+            <Text className="roulette-entry-title">今天吃什么</Text>
+            <Text className="roulette-entry-sub">转盘选店，告别选择困难</Text>
+          </View>
+          <Text className="arrow">›</Text>
+        </View>
       </View>
 
       {/* 成员列表 */}

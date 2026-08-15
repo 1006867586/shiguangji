@@ -67,6 +67,14 @@
     line-height: 1.5;
   }
 
+  .link-row-tap {
+    align-items: center;
+
+    &:active {
+      opacity: 0.6;
+    }
+  }
+
   .link-row-label {
     color: #999;
     flex-shrink: 0;
@@ -75,11 +83,19 @@
 
   .link-row-value {
     color: #444;
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+  }
+
+  .link-row-icon {
+    flex-shrink: 0;
+    margin-left: 8rpx;
+    font-size: 24rpx;
   }
 
   .link-footer {

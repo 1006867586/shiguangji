@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import Taro, { useDidShow } from "@tarojs/taro";
+import Taro, {
+  useDidShow,
+  useShareAppMessage,
+  useShareTimeline,
+} from "@tarojs/taro";
 import { View, Text, Image, Input, Button } from "@tarojs/components";
 import {
   fetchActivityDetail,
@@ -7,6 +11,7 @@ import {
   postComment,
   toggleLike,
   msgSecCheck,
+  sceneToActivityId,
   type ActivityLite,
   type CommentLite,
 } from "@/utils/api";
@@ -16,6 +21,7 @@ import "./index.scss";
 
 /**
  * 活动详情页：完整卡片 + 评论区（楼中楼展示，回复固定到一级）+ 点赞。
+ * 入口：普通跳转带 id；扫海报小程序码进入带 scene（uuid 去横线）。
  */
 export default function DetailPage() {
   const [id, setId] = useState<string>("");
@@ -25,6 +31,14 @@ export default function DetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [sending, setSending] = useState(false);
+
+  /** 兼容 id 直跳与小程序码 scene 两种入口 */
+  const resolveId = () => {
+    const params = Taro.getCurrentInstance().router?.params ?? {};
+    if (params.id) return params.id;
+    if (params.scene) return sceneToActivityId(decodeURIComponent(params.scene)) ?? "";
+    return "";
+  };
 
   const load = useCallback(async (activityId: string) => {
     setLoading(true);
@@ -44,8 +58,7 @@ export default function DetailPage() {
   }, []);
 
   useDidShow(() => {
-    const params = Taro.getCurrentInstance().router?.params;
-    const activityId = params?.id ?? "";
+    const activityId = resolveId();
     if (activityId && activityId !== id) {
       setId(activityId);
       void load(activityId);
@@ -56,13 +69,43 @@ export default function DetailPage() {
   });
 
   useEffect(() => {
-    const params = Taro.getCurrentInstance().router?.params;
-    const activityId = params?.id ?? "";
+    const activityId = resolveId();
     if (activityId) {
       setId(activityId);
       void load(activityId);
     }
   }, [load]);
+
+  // 转发卡片：店名优先，正文摘要兜底；封面用首图或商家封面
+  useShareAppMessage(() => {
+    if (!activity) {
+      return { title: "想聚 · 聚餐记录", path: "/pages/index/index" };
+    }
+    const store = activity.external_link?.title;
+    const author = activity.author?.nickname || "饭友";
+    const title = store
+      ? `【${store}】${activity.content ? activity.content.slice(0, 24) : "一起去吃？"}`
+      : `${author} 在想聚分享了聚餐记录`;
+    const imageUrl =
+      activity.photos?.[0]?.url ?? activity.external_link?.coverImage ?? undefined;
+    return {
+      title,
+      path: `/pages/detail/index?id=${activity.id}`,
+      imageUrl,
+    };
+  });
+
+  // 朋友圈分享（仅 Android/iOS 主流版本支持）
+  useShareTimeline(() => {
+    if (!activity) return { title: "想聚 · 聚餐记录" };
+    const store = activity.external_link?.title;
+    const title = store
+      ? `【${store}】一起聚餐`
+      : `${activity.author?.nickname || "饭友"} 的聚餐记录`;
+    const imageUrl =
+      activity.photos?.[0]?.url ?? activity.external_link?.coverImage ?? undefined;
+    return { title, query: `id=${activity.id}`, imageUrl };
+  });
 
   // 点赞：乐观更新 + 失败回滚
   const handleLike = async (a: ActivityLite) => {

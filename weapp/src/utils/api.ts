@@ -25,6 +25,8 @@ export interface ExternalLinkLite {
   phone?: string | null;
   price?: string | null;
   category?: string | null;
+  /** POI 补齐的经纬度（GCJ-02），wx.openLocation 用 */
+  location?: { lng: number; lat: number } | null;
 }
 
 export interface ActivityPhotoLite {
@@ -370,4 +372,86 @@ export function msgSecCheck(
     data: { content, scene },
     silent: true,
   });
+}
+
+// ---- 小程序码（M3 分享海报）----
+
+/** 活动 uuid 去横线（32 字符，恰好等于 scene 上限） */
+export function activityIdToScene(id: string): string {
+  return id.replace(/-/g, "");
+}
+
+/** scene（32 位 hex）还原活动 uuid；非该格式返回 null */
+export function sceneToActivityId(scene: string): string | null {
+  if (!/^[0-9a-f]{32}$/i.test(scene)) return null;
+  return [
+    scene.slice(0, 8),
+    scene.slice(8, 12),
+    scene.slice(12, 16),
+    scene.slice(16, 20),
+    scene.slice(20, 32),
+  ].join("-");
+}
+
+/**
+ * POST /api/weapp/wxacode — 生成小程序码（getwxacodeunlimit）。
+ * @returns PNG 的 base64（不含 data: 前缀）
+ */
+export async function fetchWxacode(scene: string, page?: string): Promise<string> {
+  const data = await request<{ base64: string }>("/api/weapp/wxacode", {
+    method: "POST",
+    data: { scene, page },
+    silent: true,
+  });
+  return data.base64;
+}
+
+// ---- 今天吃什么转盘（M3）----
+
+export interface MealRouletteItem {
+  id: string;
+  group_id: string;
+  title: string;
+  address: string | null;
+  phone: string | null;
+  signature_dishes: string[];
+  added_by: string;
+  created_at: string;
+  adder?: { id: string; nickname: string; avatar_url: string | null } | null;
+}
+
+/** GET /api/groups/[id]/meal-roulette — 圈子转盘候选列表 */
+export function fetchMealRoulette(groupId: string): Promise<MealRouletteItem[]> {
+  return request(`/api/groups/${groupId}/meal-roulette`, { silent: true });
+}
+
+/** POST 单条新增：返回 { data: item, inserted, duplicated } */
+export function addMealRouletteItem(
+  groupId: string,
+  body: { title: string; address?: string | null; phone?: string | null; signatureDishes?: string[] }
+): Promise<MealRouletteItem> {
+  return request(`/api/groups/${groupId}/meal-roulette`, {
+    method: "POST",
+    data: body,
+  });
+}
+
+/** POST 批量导入（收藏夹）：返回 raw 信封读 inserted/duplicated */
+export function importMealRouletteItems(
+  groupId: string,
+  items: Array<{ title: string; address?: string | null; phone?: string | null; signatureDishes?: string[] }>
+): Promise<{ data: MealRouletteItem[]; inserted: number; duplicated: number }> {
+  return request(`/api/groups/${groupId}/meal-roulette`, {
+    method: "POST",
+    data: { items },
+    raw: true,
+  });
+}
+
+/** DELETE /api/groups/[id]/meal-roulette?itemId= */
+export function deleteMealRouletteItem(groupId: string, itemId: string): Promise<unknown> {
+  return request(
+    `/api/groups/${groupId}/meal-roulette?itemId=${itemId}`,
+    { method: "DELETE" }
+  );
 }
