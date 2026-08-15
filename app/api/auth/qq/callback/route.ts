@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
-import { randomBytes } from "crypto";
 import type { CookiesToSet } from "@/lib/supabase/cookies";
 import { getPublicOrigin, safeRedirectPath } from "@/lib/utils";
 

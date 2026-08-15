@@ -48,8 +48,8 @@ export default async function GroupFeedPage({ params }: Params) {
 
   const supabase = await createServerClient();
 
-  // 校验圈子存在且用户是成员；与 getServerGroups 无依赖，并行执行
-  const [membershipRes, { groups }] = await Promise.all([
+  // 校验圈子存在且用户是成员；与 getServerGroups 无依赖，并行执行（groups 供 GroupSelector 使用，此处不直接消费）
+  const [membershipRes] = await Promise.all([
     supabase
       .from("group_members")
       .select("role, group:groups!inner(*)")

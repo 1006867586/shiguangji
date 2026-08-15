@@ -37,7 +37,7 @@ export async function GET() {
         });
       });
     }
-  } catch (err) {
+  } catch (err: unknown) {
     results.dns = { ok: false, error: String(err) };
   }
 
@@ -61,7 +61,7 @@ export async function GET() {
     } else {
       results.curlPath = "(curl not available)";
     }
-  } catch (err) {
+  } catch (err: unknown) {
     results.curl = { ok: false, error: String(err) };
   }
 
@@ -90,7 +90,7 @@ export async function GET() {
         clearTimeout(timer);
       }
     }
-  } catch (err) {
+  } catch (err: unknown) {
     const maybeCause = (err as { cause?: unknown })?.cause;
     results.fetchRoot = {
       ok: false,
@@ -119,15 +119,13 @@ export async function GET() {
           ok: resp.ok,
           status: resp.status,
           elapsedMs: Date.now() - start,
+          bodyPreview: !resp.ok ? (await resp.text()).slice(0, 200) : undefined,
         };
-        if (!resp.ok) {
-          results.fetchAuthSettings.bodyPreview = (await resp.text()).slice(0, 200);
-        }
       } finally {
         clearTimeout(timer);
       }
     }
-  } catch (err) {
+  } catch (err: unknown) {
     const maybeCause = (err as { cause?: unknown })?.cause;
     results.fetchAuthSettings = {
       ok: false,
