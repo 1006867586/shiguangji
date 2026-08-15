@@ -11,7 +11,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { buildMapLinks, isApplePlatform } from "@/lib/map-links";
+import {
+  buildMapLinks,
+  isApplePlatform,
+  openMapApp,
+  type MapProvider,
+} from "@/lib/map-links";
 
 interface MapLauncherProps {
   name?: string | null;
@@ -25,9 +30,8 @@ interface MapLauncherProps {
 /**
  * 点击地址唤起地图 App（安卓/鸿蒙/iOS 三平台）。
  *
- * 采用官方 Web URI API：已装 App 时浏览器自动唤起（安卓 intent /
- * 鸿蒙 app linking / iOS Universal Link），未装时降级网页版。
- * Apple 地图入口仅在苹果移动设备显示（非苹果设备打开是错误页）。
+ * 优先通过原生 scheme / intent 直接唤起 App（安卓 intent 自带未装降级、
+ * iOS 失焦检测 + 网页版兜底）；微信内 scheme 被屏蔽，提示用浏览器打开；
  * 名称地址均缺时不渲染菜单，直接透传 children。
  */
 export function MapLauncher({
@@ -47,6 +51,17 @@ export function MapLauncher({
       isApplePlatform(navigator.userAgent, navigator.maxTouchPoints ?? 0),
     []
   );
+
+  const handleOpen = (provider: MapProvider) => {
+    const result = openMapApp(provider, { name, address, city });
+    if (result === "wechat") {
+      toast.info(
+        "微信内无法直接唤起地图App，已打开网页版；如需唤起App，请点右上角『···』选择「在浏览器打开」"
+      );
+    } else if (result === "app") {
+      toast.info("正在唤起地图App，未安装将打开网页版");
+    }
+  };
 
   if (!links) return <>{children}</>;
 
@@ -84,15 +99,11 @@ export function MapLauncher({
           <Navigation className="mr-1 inline h-3 w-3" aria-hidden="true" />
           选择地图打开
         </DropdownMenuLabel>
-        <DropdownMenuItem asChild>
-          <a href={links.amap} target="_blank" rel="noopener noreferrer">
-            高德地图
-          </a>
+        <DropdownMenuItem onSelect={() => handleOpen("amap")}>
+          高德地图
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <a href={links.baidu} target="_blank" rel="noopener noreferrer">
-            百度地图
-          </a>
+        <DropdownMenuItem onSelect={() => handleOpen("baidu")}>
+          百度地图
         </DropdownMenuItem>
         {showApple ? (
           <DropdownMenuItem asChild>

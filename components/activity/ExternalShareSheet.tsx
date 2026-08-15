@@ -68,7 +68,7 @@ const CHANNELS: ShareChannel[] = [
     label: "微信",
     color: "#07c160",
     icon: <BrandIcon path={ICONS.wechat} />,
-    // 微信不提供网页跳转分享网关，提示复制链接后在微信内粘贴
+    // 微信不提供网页跳转分享网关，点击后复制链接引导去微信粘贴
     buildUrl: () => null,
   },
   {
@@ -175,11 +175,12 @@ export function ExternalShareSheet({
     }
   }, [shareUrl]);
 
-  const handleChannel = (channel: ShareChannel) => {
+  const handleChannel = async (channel: ShareChannel) => {
     if (channel.key === "wechat") {
-      // 微信内无法直接跳转网关，海报是最优分享路径
-      setShowPoster(true);
-      toast.info("推荐生成海报分享到微信/朋友圈");
+      // 微信无网页分享网关：复制链接引导用户粘贴发送（链接分享），
+      // 海报分享只走上方「生成海报分享」入口
+      await handleCopyLink();
+      toast.info("链接已复制，请打开微信粘贴发送给好友或朋友圈");
       return;
     }
     const target = channel.buildUrl(shareUrl, shareText);
@@ -217,35 +218,40 @@ export function ExternalShareSheet({
                   生成海报分享
                 </div>
                 <div className="text-[11px] text-amber-800/80">
-                  带二维码，可直接分享到各社交平台
+                  生成后可分享到社交平台，或长按海报发送给朋友
                 </div>
               </div>
             </div>
             <span className="text-xs font-medium text-amber-700/80">立即生成 →</span>
           </button>
 
-          {/* 渠道网格 */}
-          <div className="grid grid-cols-5 gap-2">
-            {CHANNELS.map((ch) => (
-              <button
-                key={ch.key}
-                type="button"
-                onClick={() => handleChannel(ch)}
-                aria-label={`分享到${ch.label}`}
-                className="flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors hover:bg-muted touch-manipulation active:scale-[0.95] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-white"
-                  style={{ backgroundColor: ch.color }}
-                  aria-hidden="true"
+          {/* 渠道网格（链接分享） */}
+          <div className="space-y-1.5">
+            <div className="text-xs font-medium text-muted-foreground">
+              链接分享
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              {CHANNELS.map((ch) => (
+                <button
+                  key={ch.key}
+                  type="button"
+                  onClick={() => handleChannel(ch)}
+                  aria-label={`分享到${ch.label}`}
+                  className="flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors hover:bg-muted touch-manipulation active:scale-[0.95] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {ch.icon}
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  {ch.label}
-                </span>
-              </button>
-            ))}
+                  <span
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-white"
+                    style={{ backgroundColor: ch.color }}
+                    aria-hidden="true"
+                  >
+                    {ch.icon}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {ch.label}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* 复制链接 */}

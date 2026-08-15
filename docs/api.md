@@ -371,16 +371,26 @@ import { MapLauncher } from "@/components/common/MapLauncher";
 
 ### 平台兼容策略
 
-采用官方 **Web URI API**（https 链接）而非 native scheme：
+双通道唤起：**原生 scheme / intent 直接唤起 App（第一优先级）**，Web URI API（https）作为兜底。
 
-| 平台 | 已装 App | 未装 App |
+| 平台 | 唤起方式 | 未装 App |
 |------|---------|---------|
-| 安卓 | 浏览器经 intent 自动唤起 App | 降级打开网页版 |
-| 鸿蒙 | app linking 唤起（高德/百度均有鸿蒙版） | 降级打开网页版 |
-| iOS | Universal Link 唤起 | 降级打开网页版 |
+| 安卓 | `intent://` URL（含 package + browser_fallback_url），浏览器直接唤起 | 浏览器自动打开 fallback 网页版，无报错弹窗 |
+| 鸿蒙 2-4（Android 内核） | 同安卓 intent 路径 | 同上 |
+| 鸿蒙 NEXT（OpenHarmony UA） | 网页版（uri.amap.com 页面自带「打开App」引导） | 网页版 |
+| iOS | `iosamap://` / `baidumap://` scheme 直接唤起；页面失焦即成功 | 1.8s 超时后自动跳网页版 |
+| 微信内置浏览器 | scheme 被微信屏蔽，直接打开网页版，并提示「用浏览器打开本页后可唤起App」 | 网页版 |
+| 桌面 | 网页版 | — |
 
-选择 Web URI 的原因：native scheme（`androidamap://` 等）在未装 App 时直接报错且鸿蒙不兼容，Web URI 可优雅降级。
+官方 scheme 协议（详见 `lib/map-links.ts`）：
 
+| 提供商 | 平台 | scheme | 说明 |
+|--------|------|--------|------|
+| 高德 | Android | `androidamap://keywordNavi?sourceApplication=&keyword=` | 关键词搜索（官方 V5.0.0+） |
+| 高德 | iOS | `iosamap://poi?sourceApplication=&name=` | POI 名称搜索（官方 V5.1.0+） |
+| 百度 | 双端 | `baidumap://map/place/search?query=&region=&src=` | 地点检索 |
+
+- iOS 失焦检测：scheme 唤起成功时页面触发 `visibilitychange`/`pagehide`，取消网页版兜底；超时仍可见则跳转兜底
 - Apple 地图入口仅在苹果移动设备显示（`isApplePlatform()` UA + 触点检测，兼容 iPadOS 13+ 桌面 UA）
 - 菜单另提供「复制名称与地址」兜底操作
 - 触发器阻止事件冒泡，嵌在可点击卡片内不会误触卡片跳转
@@ -388,21 +398,28 @@ import { MapLauncher } from "@/components/common/MapLauncher";
 ### 链接生成（`lib/map-links.ts`）
 
 ```ts
-import { buildMapLinks } from "@/lib/map-links";
+import { buildMapLinks, openMapApp } from "@/lib/map-links";
 
+// Web URI 链接（兜底/桌面/微信用）
 buildMapLinks({ name: "海底捞", address: "xx路1号", city: "上海" });
 // {
 //   amap:   "https://uri.amap.com/search?keyword=海底捞&city=上海&src=xiangke",
 //   baidu:  "https://api.map.baidu.com/place/search?query=海底捞&region=上海&output=html&src=xiangke",
 //   apple:  "https://maps.apple.com/?q=海底捞 xx路1号",
 // }
+
+// App 唤起编排（仅客户端）：自动检测平台 → scheme/intent/网页版
+// 返回 "app" | "wechat" | "web"，"wechat" 时 UI 层提示用浏览器打开
+openMapApp("amap", { name: "海底捞", address: "xx路1号", city: "上海" });
 ```
 
-| 提供商 | 端点 | 说明 |
-|--------|------|------|
-| 高德 | `https://uri.amap.com/search` | `keyword`/`city`/`src` |
-| 百度 | `https://api.map.baidu.com/place/search` | `query`/`region`（必填，缺城市退化为全国）/`output=html`/`src` |
-| Apple | `https://maps.apple.com/` | `q` 为「名称 + 地址」组合 |
+| 函数 | 说明 |
+|------|------|
+| `buildMapLinks(input)` | 生成三平台 Web URI 链接 |
+| `detectMapPlatform(ua, touchPoints)` | 识别 ios / android / harmony / other |
+| `buildAmapAndroidScheme` / `buildAmapIosScheme` / `buildBaiduScheme` | 构造官方原生 scheme |
+| `toAndroidIntent(scheme, package, fallback)` | scheme 转 `intent://`（含未装降级） |
+| `openMapApp(provider, input)` | 唤起编排：scheme 优先 + 微信/鸿蒙/桌面降级 |
 
 纯前端功能，无需服务端 Key；未配置任何地图 Key 也可正常使用。
 
