@@ -121,6 +121,52 @@ function buildShareText(activity: Activity): string {
   return content ? `${prefix}：${content}` : prefix;
 }
 
+/**
+ * Web Share API 能力诊断。
+ * navigator.share 只在「安全上下文（HTTPS/localhost）+ 完整内核浏览器」可用：
+ * - insecure：站点经 HTTP 访问，浏览器禁用分享 API
+ * - inApp：微信/QQ/微博等内置浏览器阉割了分享 API
+ * - unsupported：国产浏览器（UC/夸克/小米等）未实现该 API
+ */
+type ShareCapability =
+  | { supported: true }
+  | { supported: false; reason: "insecure" | "inApp" | "unsupported" };
+
+function detectShareCapability(): ShareCapability {
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    return { supported: true };
+  }
+  if (typeof window !== "undefined" && window.isSecureContext === false) {
+    return { supported: false, reason: "insecure" };
+  }
+  if (typeof navigator !== "undefined") {
+    const ua = navigator.userAgent;
+    if (/MicroMessenger|WeChat|Mobile.*QQ\/|QQ\/[\d.]+.*Mobile|WeiBo/i.test(ua)) {
+      return { supported: false, reason: "inApp" };
+    }
+  }
+  return { supported: false, reason: "unsupported" };
+}
+
+/** 不可用时展示给用户的原因与建议 */
+const SHARE_UNSUPPORTED_HINT: Record<
+  Exclude<ShareCapability, { supported: true }>["reason"],
+  { desc: string; tip: string }
+> = {
+  insecure: {
+    desc: "站点未启用 HTTPS，浏览器禁用了分享面板",
+    tip: "已复制链接；站点升级 HTTPS 后即可唤起App分享",
+  },
+  inApp: {
+    desc: "微信/QQ 内置浏览器不支持唤起系统分享",
+    tip: "已复制链接；点右上角用系统浏览器打开本页，即可唤起App分享",
+  },
+  unsupported: {
+    desc: "当前浏览器未提供系统分享面板",
+    tip: "已复制链接；建议用 Chrome/Safari/华为浏览器打开本页唤起App分享",
+  },
+};
+
 export function ExternalShareSheet({
   activity,
   open,
@@ -131,18 +177,19 @@ export function ExternalShareSheet({
   const [copying, setCopying] = useState(false);
   const [showPoster, setShowPoster] = useState(false);
   /**
-   * 是否支持 Web Share API（安卓 Chrome / iOS Safari / 鸿蒙 ArkWeb /
-   * 桌面 Chrome 均支持；微信内置浏览器不支持）。
-   * 支持时唤起系统分享面板，用户可直接选择微信/QQ/微博等 App 完成分享——
-   * 这是网页唤起 App 分享的唯一官方通道（各平台 scheme 直跳分享面板
-   * 均被封禁或要求签名）。
+   * Web Share API 能力（挂载时诊断一次）。
+   * 支持时「系统分享」直接唤起系统分享面板（选微信/QQ/微博即 App 分享）；
+   * 不支持时该入口仍然展示，但降级为「复制链接 + 原因说明」，
+   * 让用户明确知道为什么网页唤不起 App 分享（HTTP / 内置浏览器 / 内核阉割）。
    */
-  const [systemShareSupported, setSystemShareSupported] = useState(false);
+  const [shareCapability, setShareCapability] = useState<ShareCapability>({
+    supported: true,
+  });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
-      setSystemShareSupported(typeof navigator.share === "function");
+      setShareCapability(detectShareCapability());
     }
   }, []);
 
@@ -207,6 +254,23 @@ export function ExternalShareSheet({
     }
   }, [shareUrl, shareText, onOpenChange]);
 
+  /**
+   * 点击「系统分享」卡片：
+   * - 支持 → 直接唤起系统分享面板
+   * - 不支持 → 复制链接 + 说明原因与解决办法
+   */
+  const handleShareCardClick = useCallback(async () => {
+    if (shareCapability.supported) {
+      if (await handleSystemShare()) return;
+      // 极少数：诊断为支持但调用失败，走复制兜底
+    }
+    const reason = shareCapability.supported
+      ? "unsupported"
+      : shareCapability.reason;
+    await handleCopyLink();
+    toast.info(SHARE_UNSUPPORTED_HINT[reason].tip);
+  }, [shareCapability, handleSystemShare, handleCopyLink]);
+
   const handleChannel = async (channel: ShareChannel) => {
     if (channel.key === "wechat") {
       // 微信无网页分享网关：优先系统分享面板（面板里选微信即为 App 分享），
@@ -258,29 +322,50 @@ export function ExternalShareSheet({
             <span className="text-xs font-medium text-amber-700/80">立即生成 →</span>
           </button>
 
-          {/* 系统分享（唤起App）：Web Share API 可用时展示 */}
-          {systemShareSupported ? (
-            <button
-              type="button"
-              onClick={() => void handleSystemShare()}
-              className="flex w-full items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3.5 text-left transition-colors hover:bg-primary/10 touch-manipulation active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-                  <Share2 className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <div className="text-sm font-semibold text-foreground">
-                    系统分享（唤起App）
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    打开系统分享面板，可直接选微信、QQ、微博等App分享
-                  </div>
+          {/* 系统分享（唤起App）：始终展示；不支持时降级为复制链接并说明原因 */}
+          <button
+            type="button"
+            onClick={() => void handleShareCardClick()}
+            className={
+              shareCapability.supported
+                ? "flex w-full items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3.5 text-left transition-colors hover:bg-primary/10 touch-manipulation active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                : "flex w-full items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-3.5 text-left transition-colors hover:bg-muted/50 touch-manipulation active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            }
+          >
+            <div className="flex items-center gap-2.5">
+              <span
+                className={
+                  shareCapability.supported
+                    ? "flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm"
+                    : "flex h-10 w-10 items-center justify-center rounded-lg bg-muted-foreground/20 text-muted-foreground"
+                }
+                aria-hidden="true"
+              >
+                <Share2 className="h-5 w-5" />
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-foreground">
+                  {shareCapability.supported
+                    ? "系统分享（唤起App）"
+                    : "系统分享不可用"}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {shareCapability.supported
+                    ? "打开系统分享面板，可直接选微信、QQ、微博等App分享"
+                    : SHARE_UNSUPPORTED_HINT[shareCapability.reason].desc}
                 </div>
               </div>
-              <span className="text-xs font-medium text-primary/80">分享 →</span>
-            </button>
-          ) : null}
+            </div>
+            <span
+              className={
+                shareCapability.supported
+                  ? "text-xs font-medium text-primary/80"
+                  : "text-xs font-medium text-muted-foreground/80"
+              }
+            >
+              {shareCapability.supported ? "分享 →" : "复制链接 →"}
+            </span>
+          </button>
 
           {/* 渠道网格（链接分享） */}
           <div className="space-y-1.5">
