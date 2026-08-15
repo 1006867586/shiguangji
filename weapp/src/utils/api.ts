@@ -339,3 +339,35 @@ export function parseFavoritesScreenshot(body: {
     timeout: 60_000,
   });
 }
+
+// ---- 内容安全（M3）----
+
+export type SecCheckScene = 1 | 2 | 3 | 4;
+
+export interface SecCheckResult {
+  pass: boolean;
+  suggest?: "pass" | "review" | "risky";
+  label?: number;
+  /** 拦截时的提示文案 */
+  reason?: string;
+  /** 服务端跳过检测（未配置密钥 / 无 openid） */
+  skipped?: boolean;
+  /** 微信侧故障降级放行 */
+  fallback?: boolean;
+}
+
+/**
+ * POST /api/weapp/security/msg-sec-check — 微信内容安全文本检测。
+ * @param scene 1 资料 2 评论 3 论坛 4 社交日志（动态）
+ * @returns pass=false 时应拦截提交并展示 reason
+ */
+export function msgSecCheck(
+  content: string,
+  scene: SecCheckScene
+): Promise<SecCheckResult> {
+  return request("/api/weapp/security/msg-sec-check", {
+    method: "POST",
+    data: { content, scene },
+    silent: true,
+  });
+}

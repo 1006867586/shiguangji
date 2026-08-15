@@ -6,6 +6,7 @@ import {
   fetchComments,
   postComment,
   toggleLike,
+  msgSecCheck,
   type ActivityLite,
   type CommentLite,
 } from "@/utils/api";
@@ -84,6 +85,20 @@ export default function DetailPage() {
     if (!text || !id || sending) return;
     setSending(true);
     try {
+      // 内容安全前置检测（scene 2 评论）
+      try {
+        const sec = await msgSecCheck(text, 2);
+        if (!sec.pass) {
+          Taro.showModal({
+            title: "评论无法发送",
+            content: sec.reason ?? "评论包含违规信息，请修改后重试",
+            showCancel: false,
+          });
+          return;
+        }
+      } catch {
+        // 检测接口不可达：放行（服务端入库校验兜底）
+      }
       await postComment(id, text);
       setCommentText("");
       Taro.hideKeyboard();
