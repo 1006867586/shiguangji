@@ -15,6 +15,8 @@ COPY . .
 
 # 关掉 Next.js 遥测，加快构建
 ENV NEXT_TELEMETRY_DISABLED=1
+# CloudBase 容器运行需要 standalone 自包含产物（next.config.ts 读取此变量）
+ENV NEXT_OUTPUT=standalone
 
 # 构建期需要的 NEXT_PUBLIC_* 变量（必须在 docker build 阶段拿到真实值，
 # 因为它们会被内联进前端 JS bundle，运行时改不了）

@@ -2,8 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // standalone 仅用于自托管/容器部署（CloudBase 云托管、Docker）；
-  // Vercel 平台自带构建产物处理，VERCEL 环境变量存在时跳过该选项
-  output: process.env.VERCEL ? undefined : "standalone",
+  // Vercel / EdgeOne Pages 平台自行处理构建产物，保持默认。
+  // Dockerfile 里会显式设置 NEXT_OUTPUT=standalone 启用它。
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   poweredByHeader: false,
   images: {
     // 保持未优化：QQ 头像等第三方域名无法穷举 remotePatterns，
