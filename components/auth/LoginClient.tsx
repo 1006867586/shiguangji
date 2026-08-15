@@ -95,13 +95,11 @@ function LoginForm({ qqEnabled, initialError }: LoginClientProps) {
       body: JSON.stringify({
         accessToken: access,
         refreshToken: refresh,
-        redirect, // 让后端直接返回 303 跳转，避开客户端路由
+        // 不发 redirect，让后端返回 200 JSON + Set-Cookie
+        // 前端拿到 200 后再 window.location.href 硬跳，避免 fetch 跟随 303 时 cookie 处理的歧义
       }),
       credentials: "same-origin",
     });
-    // 303 / 307 / 302 跳转 → fetch 会自动跟随，但我们要手动用 location 跳转以确保 cookie 生效
-    // 这里我们不依赖 redirect 参数让后端返回 303，改为拿到 200 后前端 window.location 硬跳
-    // 因为 fetch 自动跟随重定向后，浏览器的 document.location 不会变。
     if (!res.ok) {
       const info = await res.json().catch(() => ({}));
       throw new Error((info as { error?: string }).error || "写入会话失败");
