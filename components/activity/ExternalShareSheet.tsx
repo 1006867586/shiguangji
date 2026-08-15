@@ -130,10 +130,19 @@ export function ExternalShareSheet({
   const [copied, setCopied] = useState(false);
   const [copying, setCopying] = useState(false);
   const [showPoster, setShowPoster] = useState(false);
+  /**
+   * 是否支持 Web Share API（安卓 Chrome / iOS Safari / 鸿蒙 ArkWeb /
+   * 桌面 Chrome 均支持；微信内置浏览器不支持）。
+   * 支持时唤起系统分享面板，用户可直接选择微信/QQ/微博等 App 完成分享——
+   * 这是网页唤起 App 分享的唯一官方通道（各平台 scheme 直跳分享面板
+   * 均被封禁或要求签名）。
+   */
+  const [systemShareSupported, setSystemShareSupported] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
+      setSystemShareSupported(typeof navigator.share === "function");
     }
   }, []);
 
@@ -175,10 +184,34 @@ export function ExternalShareSheet({
     }
   }, [shareUrl]);
 
+  /**
+   * 唤起系统分享面板（Web Share API）。
+   * 移动端面板包含微信/QQ/微博/短信等所有已装 App，选中即进入该 App
+   * 的分享流程；桌面 Chrome 打开系统级分享菜单。
+   * @returns true 表示已发起（含用户取消），false 表示不支持/失败
+   */
+  const handleSystemShare = useCallback(async (): Promise<boolean> => {
+    if (typeof navigator.share !== "function" || !shareUrl) return false;
+    try {
+      await navigator.share({
+        title: `${APP_NAME} · 聚餐记录`,
+        text: shareText,
+        url: shareUrl,
+      });
+      onOpenChange(false);
+      return true;
+    } catch (err) {
+      // 用户主动取消面板：静默处理
+      if (err instanceof DOMException && err.name === "AbortError") return true;
+      return false;
+    }
+  }, [shareUrl, shareText, onOpenChange]);
+
   const handleChannel = async (channel: ShareChannel) => {
     if (channel.key === "wechat") {
-      // 微信无网页分享网关：复制链接引导用户粘贴发送（链接分享），
-      // 海报分享只走上方「生成海报分享」入口
+      // 微信无网页分享网关：优先系统分享面板（面板里选微信即为 App 分享），
+      // 不支持（微信内置浏览器/旧内核）时复制链接引导粘贴
+      if (await handleSystemShare()) return;
       await handleCopyLink();
       toast.info("链接已复制，请打开微信粘贴发送给好友或朋友圈");
       return;
@@ -224,6 +257,30 @@ export function ExternalShareSheet({
             </div>
             <span className="text-xs font-medium text-amber-700/80">立即生成 →</span>
           </button>
+
+          {/* 系统分享（唤起App）：Web Share API 可用时展示 */}
+          {systemShareSupported ? (
+            <button
+              type="button"
+              onClick={() => void handleSystemShare()}
+              className="flex w-full items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3.5 text-left transition-colors hover:bg-primary/10 touch-manipulation active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+                  <Share2 className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <div className="text-sm font-semibold text-foreground">
+                    系统分享（唤起App）
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    打开系统分享面板，可直接选微信、QQ、微博等App分享
+                  </div>
+                </div>
+              </div>
+              <span className="text-xs font-medium text-primary/80">分享 →</span>
+            </button>
+          ) : null}
 
           {/* 渠道网格（链接分享） */}
           <div className="space-y-1.5">
