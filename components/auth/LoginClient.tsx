@@ -82,30 +82,6 @@ function LoginForm({ qqEnabled, initialError }: LoginClientProps) {
     };
   }, [supabase, router, redirect]);
 
-  /**
-   * 将浏览器端 signInWithPassword / signUp 拿到的会话，
-   * 写入同域 cookie（自家 /api/auth/session 接口负责）。
-   * 必须这么做：Supabase API 返回的 Set-Cookie 因为跨域（m.zykh.top ↔ supabase.co）
-   * 浏览器不会写入，导致 middleware 读不到 session → 再次 307 回 login。
-   */
-  const writeSessionCookie = async (access: string, refresh: string) => {
-    const res = await fetch("/api/auth/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        accessToken: access,
-        refreshToken: refresh,
-        // 不发 redirect，让后端返回 200 JSON + Set-Cookie
-        // 前端拿到 200 后再 window.location.href 硬跳，避免 fetch 跟随 303 时 cookie 处理的歧义
-      }),
-      credentials: "same-origin",
-    });
-    if (!res.ok) {
-      const info = await res.json().catch(() => ({}));
-      throw new Error((info as { error?: string }).error || "写入会话失败");
-    }
-  };
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
@@ -115,44 +91,62 @@ function LoginForm({ qqEnabled, initialError }: LoginClientProps) {
     setLoading(true);
     try {
       if (mode === "signin") {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
+        // 走自家同域 /api/auth/signin：
+        // 服务端 createServerClient().auth.signInWithPassword() 返回 cookies.setAll()，
+        // NextResponse.cookies.set() 写 sb-* 到响应（同源 Set-Cookie，浏览器必收）
+        const res = await fetch("/api/auth/signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+            redirect,
+          }),
         });
-        if (error) throw error;
-        if (!data.session) {
-          toast.error("登录失败：未返回会话");
-          return;
+        const info = await res.json().catch(() => ({})) as {
+          ok?: boolean;
+          error?: string;
+          redirect?: string;
+        };
+        if (!info.ok) {
+          throw new Error(info.error || "登录失败");
         }
-        // 把 session 写入同域 cookie，让 middleware/SSR 能识别登录态
-        await writeSessionCookie(data.session.access_token, data.session.refresh_token);
         toast.success("登录成功");
-        // 注意：这里必须 window.location.href 硬跳转，不要 router.replace()。
-        // 否则 Next 客户端路由发起的 GET /，middleware 返回 307 回 /login 时浏览器不会真的跳转，
-        // 而是原地"看起来没反应"。硬走浏览器顶级导航则不会有这个问题。
-        window.location.href = redirect;
+        // 必须 window.location.href 硬跳转，不能 router.replace()
+        // 否则客户端导航的 307 回 /login 不会真的触发浏览器顶级导航
+        window.location.href = info.redirect ?? redirect;
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              nickname: nickname.trim() || email.split("@")[0],
-            },
-            emailRedirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(
-              redirect
-            )}`,
-          },
+        // 注册：同样走自家同域 /api/auth/signup
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+            nickname: nickname.trim(),
+            redirect,
+          }),
         });
-        if (error) throw error;
-        if (data.session) {
-          // 新用户免邮件验证、直接签发 session 的情况 → 同样写 cookie 后跳
-          await writeSessionCookie(data.session.access_token, data.session.refresh_token);
-          toast.success("注册成功");
-          window.location.href = redirect;
-        } else {
-          toast.success("注册成功，请前往邮箱确认后登录");
+        const info = await res.json().catch(() => ({})) as {
+          ok?: boolean;
+          error?: string;
+          redirect?: string;
+          needVerify?: boolean;
+          message?: string;
+        };
+        if (!info.ok) {
+          throw new Error(info.error || "注册失败");
+        }
+        if (info.needVerify) {
+          // Supabase 配置了「邮箱必须确认」，不返回 session → 切回登录模式
+          toast.success(info.message || "注册成功，请前往邮箱确认后登录");
           setMode("signin");
+        } else {
+          // 免邮件验证的新用户，会话已写 cookie → 硬跳
+          toast.success("注册成功");
+          window.location.href = info.redirect ?? redirect;
         }
       }
     } catch (err) {
