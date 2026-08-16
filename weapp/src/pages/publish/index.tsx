@@ -232,11 +232,7 @@ export default function PublishPage() {
   };
 
   if (!isLoggedIn()) {
-    return (
-      <View className="publish-page">
-        <LoginGuide subtitle="登录后即可发布饭局" />
-      </View>
-    );
+    return <LoginGuide subtitle="登录后即可发布饭局" />;
   }
 
   return (

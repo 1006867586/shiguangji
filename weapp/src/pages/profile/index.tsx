@@ -117,11 +117,7 @@ export default function ProfilePage() {
     Taro.navigateTo({ url: "/pages/favorites/index" });
 
   if (!logged) {
-    return (
-      <View className="profile-page">
-        <LoginGuide subtitle="登录后开启你的聚餐社交" />
-      </View>
-    );
+    return <LoginGuide subtitle="登录后开启你的聚餐社交" />;
   }
 
   return (

@@ -210,11 +210,7 @@ export default function IndexPage() {
 
   // ---- 未登录 ----
   if (!loggedIn) {
-    return (
-      <View className="page">
-        <LoginGuide subtitle="登录后查看你的饭局动态" />
-      </View>
-    );
+    return <LoginGuide subtitle="登录后查看你的饭局动态" />;
   }
 
   // ---- 加载圈子中 ----

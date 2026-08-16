@@ -114,11 +114,7 @@ export default function GroupsPage() {
   };
 
   if (!isLoggedIn()) {
-    return (
-      <View className="groups-page">
-        <LoginGuide subtitle="登录后管理你的圈子" />
-      </View>
-    );
+    return <LoginGuide subtitle="登录后管理你的圈子" />;
   }
 
   return (
