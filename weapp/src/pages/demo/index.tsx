@@ -21,18 +21,18 @@ import "./index.scss";
 
 const APP_NAME = "飨刻";
 
-const SLOGAN = "属于你们小团体的私密饭局记录";
+const SLOGAN = "属于你们小团体的聚餐记录";
 
 const DESCRIPTION =
-  "飨刻是一款为 3–20 人小团体打造的私密聚餐记录应用。在这里，每一顿饭都是值得珍藏的时光。" +
+  "飨刻是一款为 3–20 人小团体打造的聚餐记录应用。在这里，每一顿饭都是值得珍藏的时光。" +
   "创建属于你的饭局圈，邀请好友加入，记录打卡、分享店铺、追加照片、留下评论；" +
   "让友谊的味道，比食物更长久。";
 
 const FEATURES: Array<{ emoji: string; title: string; desc: string }> = [
   {
     emoji: "👥",
-    title: "私密饭局圈",
-    desc: "邀请码加入，仅圈内成员可见，主界面类似朋友圈",
+    title: "小团体饭局圈",
+    desc: "邀请码加入，仅圈内成员可见",
   },
   {
     emoji: "📝",
