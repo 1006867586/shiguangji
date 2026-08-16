@@ -24,10 +24,11 @@ export function getAccessToken(): string | null {
 
 const B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-/** 纯 JS base64url 解码（小程序无 atob，JWT payload 为 base64url） */
+/** 纯 JS base64url → UTF-8 字符串（小程序无 atob/TextDecoder，需手工解码；
+ * 逐字节 fromCharCode 会破坏中文等非 ASCII 字符导致 JSON.parse 失败） */
 function decodeB64Url(s: string): string {
   const cleaned = s.replace(/-/g, "+").replace(/_/g, "/");
-  let out = "";
+  const bytes: number[] = [];
   let buffer = 0;
   let bits = 0;
   for (const ch of cleaned) {
@@ -38,7 +39,23 @@ function decodeB64Url(s: string): string {
     bits += 6;
     if (bits >= 8) {
       bits -= 8;
-      out += String.fromCharCode((buffer >> bits) & 0xff);
+      bytes.push((buffer >> bits) & 0xff);
+    }
+  }
+  // UTF-8 解码（2/3 字节序列）
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) {
+    const b = bytes[i];
+    if (b < 0x80) {
+      out += String.fromCharCode(b);
+    } else if (b >= 0xc0 && b < 0xe0 && i + 1 < bytes.length) {
+      out += String.fromCharCode(((b & 0x1f) << 6) | (bytes[++i] & 0x3f));
+    } else if (b >= 0xe0 && b < 0xf0 && i + 2 < bytes.length) {
+      out += String.fromCharCode(
+        ((b & 0x0f) << 12) | ((bytes[++i] & 0x3f) << 6) | (bytes[++i] & 0x3f)
+      );
+    } else {
+      out += "?";
     }
   }
   return out;

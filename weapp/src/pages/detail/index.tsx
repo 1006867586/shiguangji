@@ -500,14 +500,9 @@ export default function DetailPage() {
       <View className="photo-wall">
         <View className="photo-wall-head">
           <Text className="photo-wall-title">照片墙</Text>
-          <View className="photo-wall-actions">
-            {isAuthor && (
-              <Text className="wall-link edit" onClick={openEdit}>编辑</Text>
-            )}
-            <Text className="wall-link add" onClick={() => void addPhotos()}>
-              {addingPhotos ? "上传中…" : "补充照片"}
-            </Text>
-          </View>
+          <Text className="wall-link add" onClick={() => void addPhotos()}>
+            {addingPhotos ? "上传中…" : "补充照片"}
+          </Text>
         </View>
 
         {activity.photos?.length ? (
