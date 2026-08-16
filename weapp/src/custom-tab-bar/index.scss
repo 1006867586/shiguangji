@@ -1,19 +1,24 @@
-/* 自定义底栏：还原画布「珊瑚色图标 + 选中发光 + 中间凸起发布键」效果 */
+/* 自定义底栏：悬浮白色胶囊（设计稿 2:608），选中橙色实心圆 + 居中凸起发布键 */
 .custom-tab-bar {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: calc(24rpx + env(safe-area-inset-bottom));
   z-index: 999;
   display: flex;
-  align-items: flex-start;
-  height: calc(110rpx + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
-  background: rgba(255, 255, 255, 0.92);
+  align-items: center;
+  justify-content: space-between;
+  width: 670rpx;
+  height: 124rpx;
+  margin: 0 auto;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1rpx solid #f0ede8;
+  border-radius: 72rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(20rpx);
   -webkit-backdrop-filter: blur(20rpx);
-  border-top: 1rpx solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 -6rpx 24rpx rgba(0, 0, 0, 0.06);
 }
 
 .tab-item {
@@ -22,8 +27,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-top: 16rpx;
-  height: 110rpx;
+  height: 124rpx;
   position: relative;
 }
 
@@ -31,16 +35,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 48rpx;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
   transition: transform 0.15s ease;
 }
 
 .tab-label {
-  margin-top: 6rpx;
+  margin-top: 4rpx;
   font-size: 20rpx;
   color: #9ca3af;
   line-height: 1;
   transition: color 0.15s ease;
+}
+
+/* 选中态：橙色实心圆 + 橙色标签 */
+.tab-item.active .tab-icon {
+  background: #ff6b35;
+  box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.35);
+  transform: translateY(-2rpx);
 }
 
 .tab-item.active .tab-label {
@@ -48,36 +61,27 @@
   font-weight: 600;
 }
 
-.tab-item.active .tab-icon {
-  /* 选中发光 */
-  filter: drop-shadow(0 0 8rpx rgba(255, 107, 53, 0.5));
-  transform: translateY(-2rpx);
-}
-
-/* 中间凸起发布键 */
+/* 居中凸起发布键：渐变圆底 + 白色 + 号 */
 .tab-center {
-  position: relative;
   flex: 0 0 120rpx;
 }
 
 .tab-center .tab-icon {
   position: absolute;
-  top: -28rpx;
+  top: -40rpx;
   left: 50%;
   transform: translateX(-50%);
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #ff6b35 0%, #ffa940 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   box-shadow: 0 8rpx 20rpx rgba(255, 107, 53, 0.4);
 }
 
 .tab-center.active .tab-icon {
-  filter: none;
+  background: linear-gradient(135deg, #ff6b35 0%, #ffa940 100%);
   transform: translateX(-50%) scale(1.04);
+  box-shadow: 0 8rpx 20rpx rgba(255, 107, 53, 0.4);
 }
 
 .tab-center .tab-label {
