@@ -394,6 +394,8 @@ describe("sanitizeExternalLink", () => {
       address: "北京",
       phone: "123",
       price: "100",
+      category: null,
+      location: null,
     });
   });
 
@@ -421,6 +423,8 @@ describe("sanitizeExternalLink", () => {
       address: null,
       phone: null,
       price: null,
+      category: null,
+      location: null,
     });
   });
 

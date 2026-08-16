@@ -371,7 +371,19 @@ export function sanitizeExternalLink(link: unknown): ExternalLink | null {
     address: typeof obj.address === "string" ? obj.address : null,
     phone: typeof obj.phone === "string" ? obj.phone : null,
     price: typeof obj.price === "string" ? obj.price : null,
+    category: typeof obj.category === "string" ? obj.category : null,
+    location: sanitizeLinkLocation(obj.location),
   };
+}
+
+/** 校验经纬度对象（GCJ-02）：必须是 { lng, lat } 且均为有限数值 */
+function sanitizeLinkLocation(raw: unknown): ExternalLink["location"] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const lng = typeof r.lng === "number" && Number.isFinite(r.lng) ? r.lng : null;
+  const lat = typeof r.lat === "number" && Number.isFinite(r.lat) ? r.lat : null;
+  if (lng === null || lat === null) return null;
+  return { lng, lat };
 }
 
 /**
