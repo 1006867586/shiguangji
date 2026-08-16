@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Taro from "@tarojs/taro";
 import { View, Text, Image, Button, Input, Textarea } from "@tarojs/components";
+import { ApiError } from "@/utils/request";
 import {
   parseFavoritesScreenshot,
   createFavoritePlaces,
@@ -81,9 +82,16 @@ export default function FavoritesImportPage() {
       setPlatform(result.platform ?? "unknown");
       setDrafts(result.places);
       setStep("review");
-    } catch {
+    } catch (err) {
       Taro.hideLoading();
-      // request 层已 toast（配额/超时/识别失败）
+      // request 层（ApiError）已 toast（配额/超时/识别失败）；
+      // 其余错误（R2 直传失败等）这里补 toast，避免静默失败看起来"没反应"
+      if (!(err instanceof ApiError)) {
+        Taro.showToast({
+          title: err instanceof Error ? err.message.slice(0, 30) : "识别失败，请重试",
+          icon: "none",
+        });
+      }
       setStep("pick");
     }
   };
