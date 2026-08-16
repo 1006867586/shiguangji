@@ -17,7 +17,7 @@ import "./index.scss";
 
 /**
  * 饭搭子详情：基本信息 + 邀请码（复制 / 转发拉人）+ 成员列表。
- * 圈主可转让管理员 / 移除成员；所有成员可退出饭搭子。
+ * 组长可转让管理员 / 移除成员；所有成员可退出饭搭子。
  */
 export default function GroupDetailPage() {
   const [groupId, setGroupId] = useState("");
@@ -26,7 +26,7 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  // 编辑饭搭子（圈主）
+  // 编辑饭搭子（组长）
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editAvatarUrl, setEditAvatarUrl] = useState("");
@@ -72,7 +72,7 @@ export default function GroupDetailPage() {
     Taro.setClipboardData({ data: group.invite_code });
   };
 
-  // ---- 编辑饭搭子（圈主）----
+  // ---- 编辑饭搭子（组长）----
   const openEdit = () => {
     if (!group) return;
     setEditName(group.name);
@@ -145,8 +145,8 @@ export default function GroupDetailPage() {
   const handleTransfer = async (member: GroupMemberLite) => {
     if (busy || !groupId) return;
     const m = await Taro.showModal({
-      title: "转让圈主",
-      content: `确定将圈主转让给「${member.profile?.nickname || "该成员"}」？转让后你将成为普通成员。`,
+      title: "转让组长",
+      content: `确定将组长转让给「${member.profile?.nickname || "该成员"}」？转让后你将成为普通成员。`,
       confirmColor: "#ff6b35",
     });
     if (!m.confirm) return;
@@ -212,7 +212,7 @@ export default function GroupDetailPage() {
           <View className="info-text">
             <View className="name-row">
               <Text className="gd-name">{group.name}</Text>
-              {group.role === "admin" && <Text className="role-badge">圈主</Text>}
+              {group.role === "admin" && <Text className="role-badge">组长</Text>}
             </View>
             {group.description && (
               <Text className="gd-desc">{group.description}</Text>
@@ -224,7 +224,7 @@ export default function GroupDetailPage() {
           )}
         </View>
 
-        {/* 编辑饭搭子面板（圈主） */}
+        {/* 编辑饭搭子面板（组长） */}
         {editing && (
           <View className="gd-edit-panel">
             <View className="gd-edit-head">
@@ -324,8 +324,8 @@ export default function GroupDetailPage() {
                 {m.profile?.nickname || "饭友"}
                 {isSelf ? "（我）" : ""}
               </Text>
-              {m.role === "admin" && <Text className="role-badge">圈主</Text>}
-              {/* 圈主对非圈主成员的管理操作 */}
+              {m.role === "admin" && <Text className="role-badge">组长</Text>}
+              {/* 组长对非组长成员的管理操作 */}
               {isAdmin && m.role !== "admin" && (
                 <View className="member-actions">
                   <Text

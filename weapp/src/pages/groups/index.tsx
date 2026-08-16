@@ -29,7 +29,7 @@ async function promptText(title: string, placeholder: string): Promise<string | 
 
 /** 饭搭子首字母渐变头像 fallback */
 function getInitial(name: string): string {
-  return name?.[0] || "圈";
+  return name?.[0] || "饭";
 }
 
 export default function GroupsPage() {
@@ -164,7 +164,7 @@ export default function GroupsPage() {
               <View className="circle-info">
                 <View className="circle-name-row">
                   <Text className="circle-name">{g.name}</Text>
-                  {g.role === "admin" && <Text className="role-badge">圈主</Text>}
+                  {g.role === "admin" && <Text className="role-badge">组长</Text>}
                 </View>
                 <Text className="circle-members">
                   {g.invite_code ? `邀请码 ${g.invite_code}` : "点击查看详情"}

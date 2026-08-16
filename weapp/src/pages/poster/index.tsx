@@ -415,7 +415,7 @@ export default function PosterPage() {
         className="poster-canvas"
       />
       <View className="poster-tip">
-        <Text>保存海报分享到朋友圈 / 群聊</Text>
+        <Text>保存海报分享给好友 / 群聊</Text>
       </View>
       <View className="poster-actions">
         <Button type="primary" onClick={() => void saveToAlbum()}>
