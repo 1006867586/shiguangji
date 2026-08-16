@@ -89,6 +89,15 @@ export default function GroupDetailPage() {
     try {
       const url = await uploadToR2(path);
       setEditAvatarUrl(url);
+      // 即时落库：圈子头像选择/上传即 PATCH，避免丢失
+      if (groupId) {
+        try {
+          await updateGroup(groupId, { avatarUrl: url });
+          await load(groupId);
+        } catch {
+          // request 层已 toast，可点"保存"重试
+        }
+      }
     } catch {
       // upload 层已提示
     } finally {

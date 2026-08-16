@@ -78,6 +78,13 @@ export default function ProfilePage() {
     try {
       const url = await uploadToR2(path);
       setEditAvatarUrl(url);
+      // 即时落库：头像选择/上传即 PATCH，避免用户上传后未点"保存"导致丢失
+      try {
+        const updated = await updateMyProfile({ avatarUrl: url });
+        setProfile(updated);
+      } catch {
+        // PATCH 失败由 request 层 toast，用户可点"保存"重试
+      }
     } catch {
       // upload 层已提示
     } finally {
