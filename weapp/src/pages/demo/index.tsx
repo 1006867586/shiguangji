@@ -37,7 +37,7 @@ const FEATURES: Array<{ emoji: string; title: string; desc: string }> = [
   {
     emoji: "📝",
     title: "活动发布",
-    desc: "纯文字或粘贴美团/点评链接，AI 自动解析店铺信息",
+    desc: "纯文字或粘贴美团/点评链接，智能解析店铺信息",
   },
   {
     emoji: "📸",

@@ -266,7 +266,7 @@ export interface FavoritePlace {
   store_url: string | null;
 }
 
-/** AI 识别出的店铺（入库前草稿） */
+/** 智能识别出的店铺（入库前草稿） */
 export interface ParsedPlaceDraft {
   title: string;
   address: string | null;
@@ -328,7 +328,7 @@ export function createFavoritePlaces(body: {
 }
 
 /**
- * POST /api/ai/parse-favorites-screenshot — AI 识别收藏夹截图。
+ * POST /api/ai/parse-favorites-screenshot — 智能识别收藏夹截图。
  * 后端 MiniMax-M3 视觉识别通常 15-30s，timeout 放宽到 60s。
  */
 export function parseFavoritesScreenshot(body: {

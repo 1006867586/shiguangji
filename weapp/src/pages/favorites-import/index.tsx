@@ -15,7 +15,7 @@ import "./index.scss";
  * 截图导入收藏流程：
  * 1. chooseImage 选收藏页截图（可预览重选）
  * 2. R2 直传拿 publicUrl
- * 3. AI 视觉识别（15-30s，loading 提示）
+ * 3. 智能识别（15-30s，loading 提示）
  * 4. 结果可编辑（店名/地址/电话），可删行
  * 5. 确认入库（enrichPoi: true 自动补齐电话/地址/品类）
  */
@@ -55,7 +55,7 @@ export default function FavoritesImportPage() {
     }
   };
 
-  // ---- 2+3. 上传 + AI 识别 ----
+  // ---- 2+3. 上传 + 智能识别 ----
   const startRecognize = async () => {
     if (!screenshotPath || step === "recognizing") return;
     setStep("recognizing");
@@ -63,7 +63,7 @@ export default function FavoritesImportPage() {
       Taro.showLoading({ title: "上传截图中…", mask: true });
       const uploadedUrl = await uploadToR2(screenshotPath);
       setScreenshotUrl(uploadedUrl);
-      Taro.showLoading({ title: "AI 识别中（15-30s）…", mask: true });
+      Taro.showLoading({ title: "智能识别中（15-30s）…", mask: true });
       const result = await parseFavoritesScreenshot({
         imageUrl: uploadedUrl,
         platform: platform === "unknown" ? undefined : platform,
@@ -83,7 +83,7 @@ export default function FavoritesImportPage() {
       setStep("review");
     } catch {
       Taro.hideLoading();
-      // request 层已 toast（配额/超时/AI 失败）
+      // request 层已 toast（配额/超时/识别失败）
       setStep("pick");
     }
   };
@@ -190,7 +190,7 @@ export default function FavoritesImportPage() {
             disabled={!screenshotPath}
             onClick={startRecognize}
           >
-            开始 AI 识别
+            开始智能识别
           </Button>
         </View>
       )}

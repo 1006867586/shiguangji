@@ -31,7 +31,7 @@ interface RequestOptions {
   auth?: boolean;
   /** 出错时不弹 toast（默认弹） */
   silent?: boolean;
-  /** 请求超时毫秒数（默认 15s；AI 识别等慢接口需 45s+） */
+  /** 请求超时毫秒数（默认 15s；智能识别等慢接口需 45s+） */
   timeout?: number;
   /**
    * 跳过 { data } 信封解包，原样返回响应体。

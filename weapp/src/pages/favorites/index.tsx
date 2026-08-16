@@ -105,7 +105,7 @@ export default function FavoritesPage() {
         <View className="state">
           <Text className="title-sm">收藏夹还是空的</Text>
           <Text className="text-muted">
-            截一张美团/点评收藏页，AI 自动帮你整理进来
+            截一张美团/点评收藏页，智能帮你整理进来
           </Text>
         </View>
       )}
