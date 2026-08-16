@@ -21,10 +21,6 @@ export default defineConfig(async (merge) => {
     plugins: [],
     framework: "react",
     compiler: "webpack5",
-    copy: {
-      patterns: [{ from: "agent-skills", to: "dist/agent-skills" }],
-      options: {},
-    },
     alias: {
       "@": path.resolve(__dirname, "..", "src"),
       "@shared": path.resolve(__dirname, "..", "..", "types"),
