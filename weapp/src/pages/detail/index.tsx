@@ -25,6 +25,7 @@ import { uploadToR2 } from "@/utils/upload";
 import { getCurrentUserId } from "@/utils/auth";
 import { formatRelativeTime } from "@/utils/time";
 import ActivityCard from "@/components/ActivityCard";
+import PhotoGrid from "@/components/PhotoGrid";
 import "./index.scss";
 
 const MAX_ADD_PHOTOS = 9;
@@ -373,8 +374,8 @@ export default function DetailPage() {
 
   return (
     <View className="detail-page">
-      {/* 编辑表单（作者） */}
-      {editing ? (
+      {/* 编辑表单（作者，置于顶部） */}
+      {editing && (
         <View className="edit-panel">
           <View className="edit-head">
             <Text className="edit-title">编辑动态</Text>
@@ -439,38 +440,10 @@ export default function DetailPage() {
             </Button>
           </View>
         </View>
-      ) : (
-        <>
-          {/* 操作区：补充照片（所有人）+ 编辑（仅作者） */}
-          <View className="detail-actions">
-            <Button
-              size="mini"
-              className="action-btn add-photo"
-              loading={addingPhotos}
-              disabled={addingPhotos}
-              onClick={() => void addPhotos()}
-            >
-              ＋ 补充照片
-            </Button>
-            {isAuthor && (
-              <Button
-                size="mini"
-                className="action-btn edit-btn"
-                onClick={openEdit}
-              >
-                编辑
-              </Button>
-            )}
-          </View>
-
-          {/* 详情主体：复用动态卡片（照片可删） */}
-          <ActivityCard
-            activity={activity}
-            onLike={handleLike}
-            onDeletePhoto={handleDeletePhoto}
-          />
-        </>
       )}
+
+      {/* 详情主体：复用动态卡片（只读图集） */}
+      <ActivityCard activity={activity} onLike={handleLike} />
 
       {/* 评论区 */}
       <View className="comment-section">
@@ -512,6 +485,43 @@ export default function DetailPage() {
             </View>
           </View>
         ))}
+      </View>
+
+      {/* 照片墙（web 同款：补充照片 + 编辑 + 可删图集） */}
+      <View className="photo-wall">
+        <View className="photo-wall-head">
+          <Text className="photo-wall-title">
+            照片墙 {activity.photos?.length ? `(${activity.photos.length})` : ""}
+          </Text>
+          <View className="photo-wall-actions">
+            {isAuthor && (
+              <Button
+                size="mini"
+                className="wall-btn edit"
+                onClick={openEdit}
+              >
+                编辑
+              </Button>
+            )}
+            <Button
+              size="mini"
+              className="wall-btn add"
+              loading={addingPhotos}
+              disabled={addingPhotos}
+              onClick={() => void addPhotos()}
+            >
+              ＋ 补充照片
+            </Button>
+          </View>
+        </View>
+
+        {activity.photos?.length ? (
+          <PhotoGrid photos={activity.photos} onDeletePhoto={handleDeletePhoto} />
+        ) : (
+          <View className="photo-wall-empty">
+            <Text className="text-muted">还没有照片，点击「补充照片」上传</Text>
+          </View>
+        )}
       </View>
 
       {/* 底部评论输入框 */}

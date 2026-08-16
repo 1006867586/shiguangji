@@ -16,30 +16,59 @@
   color: #dc2626;
 }
 
-// ---- 操作区：补充照片 / 编辑 ----
-.detail-actions {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 24rpx 24rpx 0;
+// ---- 照片墙（web 同款）----
+.photo-wall {
+  margin: 24rpx;
+  padding: 28rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+  border: 1rpx solid #f5f2ed;
 
-  .action-btn {
-    border-radius: 999rpx;
+  .photo-wall-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8rpx;
 
-    &::after {
-      border: none;
+    .photo-wall-title {
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1a1a2e;
     }
 
-    &.add-photo {
-      background: #ff6b35;
-      color: #ffffff;
-    }
+    .photo-wall-actions {
+      display: flex;
+      align-items: center;
+      gap: 12rpx;
 
-    &.edit-btn {
-      background: #ffffff;
-      color: #ff6b35;
-      border: 1rpx solid #f0ede8;
+      .wall-btn {
+        border-radius: 999rpx;
+        font-size: 24rpx;
+        padding: 0 24rpx;
+        height: 56rpx;
+        line-height: 56rpx;
+
+        &::after {
+          border: none;
+        }
+
+        &.add {
+          background: #ff6b35;
+          color: #ffffff;
+        }
+
+        &.edit {
+          background: #f5f2ed;
+          color: #ff6b35;
+        }
+      }
     }
+  }
+
+  .photo-wall-empty {
+    padding: 48rpx 0 24rpx;
+    text-align: center;
   }
 }
 
