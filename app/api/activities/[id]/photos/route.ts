@@ -1,11 +1,25 @@
 import { NextRequest } from "next/server";
 import { createServerClient, requireUser, UnauthorizedError } from "@/lib/supabase/server";
 import { jsonResponse, isAllowedImageUrl, isAllowedMediaUrl, isUuid, safeErrorMessage } from "@/lib/utils";
+import { checkImageContent, isWeappConfigured } from "@/lib/wechat";
 import type { AddPhotoBody, MediaKind } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
+
+/** 图片内容安全 label → 中文（命中 risky 时用于提示用户） */
+const MEDIA_RISK_LABELS: Record<number, string> = {
+  100: "违规",
+  10001: "广告",
+  20001: "时政敏感",
+  20002: "色情",
+  20003: "辱骂",
+  20006: "违法犯罪",
+  20008: "欺诈",
+  20012: "低俗",
+  20013: "版权",
+};
 
 /** POST /api/activities/[id]/photos — 追加活动照片/视频（仅记录 URL + kind） */
 export async function POST(request: NextRequest, { params }: Params) {
@@ -59,6 +73,33 @@ export async function POST(request: NextRequest, { params }: Params) {
     // Live Photo 的主记录 kind 必须为 image（视频本身不需要再配对视频）
     const finalPairedVideoUrl =
       pairedVideoUrl && kind === "image" ? pairedVideoUrl : null;
+
+    // ---- 图片内容安全（UGC，运营规范 10.2/5.18）----
+    // 服务端在入库前检测，命中违规（risky）直接拒绝；视频暂无可用的官方检测接口，跳过。
+    // 降级策略（同文本检测）：未配置 WEAPP 密钥 / 微信侧故障 / 超时 → 放行并记录日志，
+    // 避免微信侧故障阻塞正常发布。
+    if (kind === "image" && isWeappConfigured()) {
+      const openid = (user.user_metadata as Record<string, unknown> | undefined)
+        ?.weapp_openid;
+      if (typeof openid === "string" && openid) {
+        try {
+          const check = await checkImageContent(body.url, openid);
+          if (!check.pass) {
+            const reason =
+              (check.label !== undefined &&
+                MEDIA_RISK_LABELS[check.label]) ||
+              "违规";
+            return jsonResponse(
+              { error: `照片包含${reason}内容，请更换后重试` },
+              { status: 400 }
+            );
+          }
+        } catch (err) {
+          // 微信侧故障 / 超时：放行，避免阻塞业务
+          console.error("[photos] 图片内容安全检测失败（放行）:", err);
+        }
+      }
+    }
 
     const { data: photo, error } = await supabase
       .from("activity_photos")
