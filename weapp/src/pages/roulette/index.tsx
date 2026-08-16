@@ -184,9 +184,13 @@ export default function RoulettePage() {
     []
   );
 
-  // ---- 切换候选池 ----
+  // ---- 切换候选池（旋转中禁止，避免中奖错乱）----
   const onSourceChange = useCallback(
     (e: { detail: { value: number } }) => {
+      if (spinning) {
+        Taro.showToast({ title: "转盘转动中，请稍候", icon: "none" });
+        return;
+      }
       const idx = e.detail.value;
       setSourceIdx(idx);
       setWinner(null);
@@ -194,7 +198,7 @@ export default function RoulettePage() {
       setSource(src);
       void loadItems(src);
     },
-    [localPools, groups, loadItems, resolveSource]
+    [localPools, groups, loadItems, resolveSource, spinning]
   );
 
   // ---- 首次进入 / 分享链接进入 / 登录态刷新 ----
@@ -282,6 +286,10 @@ export default function RoulettePage() {
 
   // ---- 添加候选 ----
   const addItem = async () => {
+    if (spinning) {
+      Taro.showToast({ title: "转盘转动中，请稍候", icon: "none" });
+      return;
+    }
     const input = await promptText("添加候选", "输入店名");
     if (input === null) return;
     const title = input.trim();
@@ -337,6 +345,10 @@ export default function RoulettePage() {
   // ---- 圈子池专属：导入收藏 ----
   const importFavorites = async () => {
     if (source.type !== "group") return;
+    if (spinning) {
+      Taro.showToast({ title: "转盘转动中，请稍候", icon: "none" });
+      return;
+    }
     Taro.showLoading({ title: "导入中…", mask: true });
     try {
       const places = await fetchFavoritePlaces();
