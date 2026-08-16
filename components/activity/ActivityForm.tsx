@@ -252,7 +252,7 @@ export function ActivityForm({
     }
     setSubmitting(true);
     try {
-      const result = await createActivity({
+      await createActivity({
         groupId,
         content: content.trim() || undefined,
         externalLink: externalLink ?? undefined,
