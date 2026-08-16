@@ -3,11 +3,17 @@
 -- get_group_feed 新增返回列：
 --   repost_comment text —— 转发附言（此前 feed 流不返回，详情页有）
 --   group_id        uuid —— 所属圈子（此前 feed 流不返回，恒为空）
--- 说明：create or replace 可直接在线上 Supabase SQL Editor 执行，
--- 或通过 supabase db push 应用本迁移。
+--
+-- 注意：CREATE OR REPLACE 不能修改函数的返回类型（42P13），
+-- 必须先 DROP 再 CREATE。整体包在事务里，避免线上出现函数缺失窗口。
+-- 在 Supabase SQL Editor 直接执行本文件即可。
 -- ============================================================
 
-create or replace function public.get_group_feed(
+begin;
+
+drop function if exists public.get_group_feed(uuid, timestamptz, int, uuid);
+
+create function public.get_group_feed(
   p_group_id uuid,
   p_cursor timestamptz default null,
   p_limit int default 20,
@@ -66,3 +72,5 @@ as $$
   order by a.created_at desc
   limit p_limit;
 $$;
+
+commit;
