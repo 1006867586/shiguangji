@@ -79,7 +79,9 @@ export default function FavoritesPage() {
     ]
       .filter(Boolean)
       .join("&");
-    Taro.navigateTo({ url: `/pages/publish/index?${query}` });
+    // publish 是 tabBar 页：navigateTo 无法打开 tab 页，switchTab 不能带参，
+    // 用 reLaunch（可带参数打开 tab 页）
+    Taro.reLaunch({ url: `/pages/publish/index?${query}` });
   };
 
   const callStore = (p: FavoritePlace) => {

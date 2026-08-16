@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Taro from "@tarojs/taro";
 import { WebView } from "@tarojs/components";
+import { safeDecodeURIComponent } from "@/utils/url";
 import "./index.scss";
 
 /**
@@ -17,8 +18,8 @@ export default function WebViewPage() {
 
   useEffect(() => {
     const params = Taro.getCurrentInstance().router?.params ?? {};
-    const targetUrl = params.url ? decodeURIComponent(params.url) : "";
-    const targetTitle = params.title ? decodeURIComponent(params.title) : "外部页面";
+    const targetUrl = safeDecodeURIComponent(params.url);
+    const targetTitle = safeDecodeURIComponent(params.title) || "外部页面";
     setUrl(targetUrl);
     setTitle(targetTitle);
     Taro.setNavigationBarTitle({ title: targetTitle });

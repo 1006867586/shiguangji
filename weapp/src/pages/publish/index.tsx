@@ -14,6 +14,7 @@ import {
   type LinkPreviewResult,
 } from "@/utils/api";
 import { uploadToR2 } from "@/utils/upload";
+import { safeDecodeURIComponent } from "@/utils/url";
 import LoginGuide from "@/components/LoginGuide";
 import "./index.scss";
 
@@ -63,8 +64,9 @@ export default function PublishPage() {
     if (prefillApplied.current) return;
     prefillApplied.current = true;
     const params = Taro.getCurrentInstance().router?.params ?? {};
-    const title = params.title ? decodeURIComponent(params.title) : "";
-    const address = params.address ? decodeURIComponent(params.address) : "";
+    // Taro params 可能已自动 decode，这里用安全解码（含 % 的店名不会崩）
+    const title = safeDecodeURIComponent(params.title);
+    const address = safeDecodeURIComponent(params.address);
     if (title) {
       setContent(
         [`【${title}】`, address ? `📍 ${address}` : "", "", "打算去吃，有人一起吗？"]
