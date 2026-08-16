@@ -189,7 +189,7 @@ export default function RoulettePage() {
     []
   );
 
-  // ---- 切换候选池（旋转中禁止，避免中奖错乱）----
+  // ---- 切换候选池（旋转中禁止，避免结果错乱）----
   const onSourceChange = useCallback(
     (e: { detail: { value: number } }) => {
       if (spinning) {
@@ -619,7 +619,7 @@ export default function RoulettePage() {
         ></View>
       </View>
 
-      {/* 中奖结果 */}
+      {/* 选择结果 */}
       {winner && (
         <View className="winner-card">
           <Text className="winner-title">今天就吃「{winner.title}」</Text>

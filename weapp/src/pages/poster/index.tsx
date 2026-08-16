@@ -248,7 +248,7 @@ export default function PosterPage() {
       ctx.font = "bold 44px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("想聚", W / 2, COVER_H / 2 - 16);
+      ctx.fillText("飨刻", W / 2, COVER_H / 2 - 16);
       ctx.font = "16px sans-serif";
       ctx.fillText("记录我们吃的每一顿", W / 2, COVER_H / 2 + 26);
       ctx.textAlign = "left";
@@ -332,12 +332,12 @@ export default function PosterPage() {
     const brandX = PAD + QR_SIZE + 18;
     ctx.font = "bold 20px sans-serif";
     ctx.fillStyle = "#1a1a1a";
-    ctx.fillText("想聚", brandX, qrY + 26);
+    ctx.fillText("飨刻", brandX, qrY + 26);
     ctx.font = "12px sans-serif";
     ctx.fillStyle = "#999999";
     ctx.fillText("和饭搭子一起记录每一顿", brandX, qrY + 50);
     ctx.fillText(
-      qrPath ? "长按识别小程序码，查看完整聚餐记录" : "扫码搜索小程序「想聚」查看",
+      qrPath ? "长按识别小程序码，查看完整聚餐记录" : "扫码搜索小程序「飨刻」查看",
       brandX,
       qrY + 72
     );

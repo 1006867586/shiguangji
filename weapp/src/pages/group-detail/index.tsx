@@ -60,7 +60,7 @@ export default function GroupDetailPage() {
 
   // 转发卡片：标题带圈子名，path 指向动态页并带邀请码参数
   useShareAppMessage(() => {
-    const name = group?.name ?? "想聚";
+    const name = group?.name ?? "飨刻";
     return {
       title: `邀请你加入「${name}」一起记录饭局`,
       path: `/pages/index/index?inviteCode=${group?.invite_code ?? ""}`,

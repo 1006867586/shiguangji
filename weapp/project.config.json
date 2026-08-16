@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "dist/",
   "projectname": "xiangke-weapp",
-  "description": "想聚 · 微信小程序端",
+  "description": "飨刻 · 微信小程序端",
   "appid": "wx389e7f6c479bcdba",
   "setting": {
     "urlCheck": false,

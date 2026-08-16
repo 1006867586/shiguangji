@@ -33,7 +33,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: "light",
     navigationBarBackgroundColor: "#ffffff",
-    navigationBarTitleText: "想聚",
+    navigationBarTitleText: "飨刻",
     navigationBarTextStyle: "black",
   },
 });

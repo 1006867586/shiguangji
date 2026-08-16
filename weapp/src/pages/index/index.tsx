@@ -52,7 +52,7 @@ export default function IndexPage() {
 
   // 默认转发卡片（右上角菜单 / 卡片分享按钮未命中详情页时）
   useShareAppMessage(() => ({
-    title: "想聚 — 和饭搭子一起记录每一顿",
+    title: "飨刻 — 和饭搭子一起记录每一顿",
     path: "/pages/index/index",
   }));
 

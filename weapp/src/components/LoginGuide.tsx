@@ -25,6 +25,12 @@ export default function LoginGuide({
       >
         微信一键登录
       </Button>
+      <View
+        className="login-guide-try"
+        onClick={() => Taro.switchTab({ url: "/pages/roulette/index" })}
+      >
+        <Text>暂不登录，先体验美食转盘 →</Text>
+      </View>
     </View>
   );
 }

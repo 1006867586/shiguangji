@@ -108,13 +108,13 @@ export default function DetailPage() {
   // 转发卡片：店名优先，正文摘要兜底；封面用首图或商家封面
   useShareAppMessage(() => {
     if (!activity) {
-      return { title: "想聚 · 聚餐记录", path: "/pages/index/index" };
+      return { title: "飨刻 · 聚餐记录", path: "/pages/index/index" };
     }
     const store = activity.external_link?.title;
     const author = activity.author?.nickname || "饭友";
     const title = store
       ? `【${store}】${activity.content ? activity.content.slice(0, 24) : "一起去吃？"}`
-      : `${author} 在想聚分享了聚餐记录`;
+      : `${author} 在飨刻分享了聚餐记录`;
     const imageUrl =
       activity.photos?.[0]?.url ?? activity.external_link?.coverImage ?? undefined;
     return {
@@ -126,7 +126,7 @@ export default function DetailPage() {
 
   // 朋友圈分享（仅 Android/iOS 主流版本支持）
   useShareTimeline(() => {
-    if (!activity) return { title: "想聚 · 聚餐记录" };
+    if (!activity) return { title: "飨刻 · 聚餐记录" };
     const store = activity.external_link?.title;
     const title = store
       ? `【${store}】一起聚餐`
