@@ -255,8 +255,11 @@ export default function PublishPage() {
           取消
         </Text>
         <Text className="topbar-title">发布</Text>
-        <View className="topbar-submit" onClick={() => void submit()}>
-          发布
+        <View
+          className={`topbar-submit${submitting || groups.length === 0 ? " disabled" : ""}`}
+          onClick={() => void submit()}
+        >
+          {submitting ? "发布中…" : "发布"}
         </View>
       </View>
 
@@ -358,19 +361,6 @@ export default function PublishPage() {
             </View>
           </View>
         )}
-      </View>
-
-      {/* 提交 */}
-      <View className="submit-area">
-        <Button
-          className="submit-btn"
-          type="primary"
-          loading={submitting}
-          disabled={submitting || groups.length === 0}
-          onClick={submit}
-        >
-          发布
-        </Button>
       </View>
     </View>
   );
