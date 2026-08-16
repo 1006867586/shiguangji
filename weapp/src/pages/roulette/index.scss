@@ -84,6 +84,40 @@
       line-height: 1;
     }
   }
+
+  .selector-extra {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+    margin-top: 16rpx;
+
+    .pool-create-btn {
+      background: #fff0e8;
+      color: $color-primary;
+      border-radius: $radius-pill;
+
+      &::after {
+        border: none;
+      }
+    }
+
+    .pool-share-btn {
+      background: $color-primary;
+      color: #ffffff;
+      border-radius: $radius-pill;
+
+      &::after {
+        border: none;
+      }
+    }
+  }
+}
+
+/* ---- 未登录提示 ---- */
+.login-hint {
+  margin-top: 24rpx;
+  text-align: center;
+  padding: 16rpx;
 }
 
 /* ---- 转盘 ---- */

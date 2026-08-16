@@ -551,3 +551,61 @@ export function deleteMealRouletteItem(groupId: string, itemId: string): Promise
     { method: "DELETE" }
   );
 }
+
+// ---- 转盘可分享池（免登录）----
+
+export interface RoulettePool {
+  id: string;
+  code: string;
+  name: string | null;
+  created_at: string;
+}
+
+export interface RoulettePoolItem {
+  id: string;
+  title: string;
+  address: string | null;
+  phone: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+/** POST /api/roulette/pools — 创建分享池（免登录） */
+export function createRoulettePool(name?: string): Promise<RoulettePool> {
+  return request(`/api/roulette/pools`, {
+    method: "POST",
+    data: name ? { name } : {},
+    auth: false,
+    silent: true,
+  });
+}
+
+/** GET /api/roulette/pool?code= — 分享池信息 + 候选列表（免登录） */
+export function fetchRoulettePool(
+  code: string
+): Promise<{ pool: RoulettePool; items: RoulettePoolItem[] }> {
+  return request(
+    `/api/roulette/pool?code=${encodeURIComponent(code)}`,
+    { auth: false, silent: true }
+  );
+}
+
+/** POST /api/roulette/pool — 添加候选（免登录，createdBy=设备匿名 ID） */
+export function addRoulettePoolItem(
+  code: string,
+  body: { title: string; address?: string; phone?: string; createdBy: string }
+): Promise<RoulettePoolItem> {
+  return request(`/api/roulette/pool`, {
+    method: "POST",
+    data: { code, ...body },
+    auth: false,
+  });
+}
+
+/** DELETE /api/roulette/pool/items/[id]?createdBy= — 删除候选（仅自己添加的） */
+export function deleteRoulettePoolItem(itemId: string, createdBy: string): Promise<unknown> {
+  return request(
+    `/api/roulette/pool/items/${itemId}?createdBy=${encodeURIComponent(createdBy)}`,
+    { method: "DELETE", auth: false }
+  );
+}

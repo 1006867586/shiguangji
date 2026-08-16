@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import Taro, { useDidShow } from "@tarojs/taro";
+import Taro, { useDidShow, useShareAppMessage } from "@tarojs/taro";
 import { View, Text, Canvas, Button, Picker } from "@tarojs/components";
 import { isLoggedIn } from "@/utils/auth";
 import { setSelectedTab } from "@/custom-tab-bar/tabStore";
@@ -7,23 +7,18 @@ import {
   fetchGroups,
   fetchMealRoulette,
   addMealRouletteItem,
-  importMealRouletteItems,
   deleteMealRouletteItem,
+  importMealRouletteItems,
   fetchFavoritePlaces,
+  createRoulettePool,
+  fetchRoulettePool,
+  addRoulettePoolItem,
+  deleteRoulettePoolItem,
   type GroupLite,
   type MealRouletteItem,
+  type RoulettePool,
 } from "@/utils/api";
 import "./index.scss";
-
-/**
- * 转盘页（TabBar）：今天吃啥？
- *
- * 两种模式：
- * 1. 默认菜系 — 内置 6 大菜系（火锅/日料/烧烤/川菜/粤菜/西餐），无需圈子
- * 2. 圈子店铺池 — 选择圈子后加载该圈子的候选店铺
- *
- * Canvas 2D 绘制扇形，外层 View CSS transition 旋转 4s ease-out。
- */
 
 const SPIN_MS = 4000;
 const EASE = "cubic-bezier(0.17, 0.67, 0.12, 0.99)";
@@ -38,7 +33,7 @@ const SLICE_COLORS = [
   "#4A4AE8", // 西餐 紫
 ];
 
-/** 默认菜系候选（本地转盘模式，不绑定圈子） */
+/** 本地默认菜系候选（免登录模式） */
 const DEFAULT_CUISINES: MealRouletteItem[] = [
   { id: "c1", group_id: "", title: "火锅", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
   { id: "c2", group_id: "", title: "日料", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
@@ -47,6 +42,48 @@ const DEFAULT_CUISINES: MealRouletteItem[] = [
   { id: "c5", group_id: "", title: "粤菜", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
   { id: "c6", group_id: "", title: "西餐", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
 ];
+
+/** 转盘条目统一形态（圈子池 / 分享池 / 本地） */
+interface WheelItem {
+  id: string;
+  title: string;
+  address: string | null;
+  phone: string | null;
+  signature_dishes?: string[];
+  added_by?: string;
+  created_by?: string;
+}
+
+/** 本地已进入的分享池 */
+interface LocalPool {
+  code: string;
+  name: string;
+}
+
+const POOLS_KEY = "roulette_local_pools";
+const ANON_KEY = "roulette_anon_id";
+
+function loadLocalPools(): LocalPool[] {
+  try {
+    return Taro.getStorageSync<LocalPool[]>(POOLS_KEY) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalPools(pools: LocalPool[]) {
+  Taro.setStorageSync(POOLS_KEY, pools);
+}
+
+/** 设备匿名 ID（免登录标识，用于分享池「仅删自己」） */
+function getAnonId(): string {
+  let id = Taro.getStorageSync<string>(ANON_KEY);
+  if (!id) {
+    id = `anon_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+    Taro.setStorageSync(ANON_KEY, id);
+  }
+  return id;
+}
 
 async function promptText(title: string, placeholder: string): Promise<string | null> {
   const res = await Taro.showModal({
@@ -64,68 +101,250 @@ interface Canvas2DNode {
   getContext: (type: "2d") => CanvasRenderingContext2D;
 }
 
+type Source =
+  | { type: "local" }
+  | { type: "pool"; code: string; name: string }
+  | { type: "group"; group: GroupLite };
+
 export default function RoulettePage() {
   const [groups, setGroups] = useState<GroupLite[]>([]);
-  const [groupIdx, setGroupIdx] = useState(0); // 0 = 默认菜系
-  const [items, setItems] = useState<MealRouletteItem[]>(DEFAULT_CUISINES);
+  const [localPools, setLocalPools] = useState<LocalPool[]>(loadLocalPools());
+  const [source, setSource] = useState<Source>({ type: "local" });
+  const [sourceIdx, setSourceIdx] = useState(0);
+  const [items, setItems] = useState<WheelItem[]>(DEFAULT_CUISINES);
   const [loading, setLoading] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const [winner, setWinner] = useState<MealRouletteItem | null>(null);
-  const [history, setHistory] = useState<MealRouletteItem[]>([]);
+  const [winner, setWinner] = useState<WheelItem | null>(null);
+  const [history, setHistory] = useState<WheelItem[]>([]);
 
   const accRef = useRef(0);
   const canvasRef = useRef<Canvas2DNode | null>(null);
-  const itemsRef = useRef<MealRouletteItem[]>(DEFAULT_CUISINES);
+  const itemsRef = useRef<WheelItem[]>(DEFAULT_CUISINES);
 
-  // ---- 加载圈子列表 ----
-  useDidShow(() => {
-    setSelectedTab(3);
-    if (!isLoggedIn()) return;
-    fetchGroups()
-      .then((list) => {
-        setGroups(list ?? []);
-      })
-      .catch(() => {});
-  });
+  const loggedIn = isLoggedIn();
+  const anonId = getAnonId();
+
+  // ---- 候选池选择列表：默认菜系 / 分享池 / 圈子池 ----
+  const pickerList = [
+    "默认菜系",
+    ...localPools.map((p) => (p.name || "分享池") + "（分享）"),
+    ...groups.map((g) => g.name),
+  ];
+
+  const resolveSource = (idx: number): Source => {
+    const poolCount = localPools.length;
+    if (idx <= 0) return { type: "local" };
+    if (idx <= poolCount) {
+      const p = localPools[idx - 1];
+      return { type: "pool", code: p.code, name: p.name };
+    }
+    const g = groups[idx - 1 - poolCount];
+    return g ? { type: "group", group: g } : { type: "local" };
+  };
 
   // ---- 加载候选池 ----
-  const loadItems = useCallback(async (gid: string | null) => {
-    if (!gid) {
-      // 默认菜系模式
-      itemsRef.current = DEFAULT_CUISINES;
-      setItems(DEFAULT_CUISINES);
-      return;
-    }
-    setLoading(true);
-    try {
-      const list = await fetchMealRoulette(gid);
-      const finalList = list?.length ? list : DEFAULT_CUISINES;
-      itemsRef.current = finalList;
-      setItems(finalList);
-    } catch {
-      itemsRef.current = DEFAULT_CUISINES;
-      setItems(DEFAULT_CUISINES);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // 圈子切换
-  const onGroupChange = useCallback(
-    (e: { detail: { value: number } }) => {
-      const idx = e.detail.value;
-      setGroupIdx(idx);
-      setWinner(null);
-      if (idx === 0) {
-        void loadItems(null);
-      } else {
-        const g = groups[idx - 1];
-        if (g) void loadItems(g.id);
+  const loadItems = useCallback(
+    async (src: Source) => {
+      if (src.type === "local") {
+        itemsRef.current = DEFAULT_CUISINES;
+        setItems(DEFAULT_CUISINES);
+        return;
+      }
+      setLoading(true);
+      try {
+        if (src.type === "pool") {
+          const res = await fetchRoulettePool(src.code);
+          const list = res?.items ?? [];
+          itemsRef.current = list.length ? list : DEFAULT_CUISINES;
+          setItems(list.length ? list : DEFAULT_CUISINES);
+        } else {
+          const list = await fetchMealRoulette(src.group.id);
+          const finalList = list?.length ? list : DEFAULT_CUISINES;
+          itemsRef.current = finalList;
+          setItems(finalList);
+        }
+      } catch {
+        itemsRef.current = DEFAULT_CUISINES;
+        setItems(DEFAULT_CUISINES);
+      } finally {
+        setLoading(false);
       }
     },
-    [groups, loadItems]
+    []
   );
+
+  // ---- 切换候选池 ----
+  const onSourceChange = useCallback(
+    (e: { detail: { value: number } }) => {
+      const idx = e.detail.value;
+      setSourceIdx(idx);
+      setWinner(null);
+      const src = resolveSource(idx);
+      setSource(src);
+      void loadItems(src);
+    },
+    [localPools, groups, loadItems, resolveSource]
+  );
+
+  // ---- 首次进入 / 分享链接进入 ----
+  useDidShow(() => {
+    setSelectedTab(3);
+    const params = Taro.getCurrentInstance().router?.params ?? {};
+    // 分享卡片进入：?pool=<code>
+    const poolCode = (params.pool ?? "").toString().trim().toUpperCase();
+    if (poolCode) {
+      void enterPool(poolCode);
+      return;
+    }
+    if (loggedIn && groups.length === 0) {
+      fetchGroups()
+        .then((list) => setGroups(list ?? []))
+        .catch(() => {});
+    }
+  });
+
+  const enterPool = async (code: string) => {
+    try {
+      const res = await fetchRoulettePool(code);
+      const pool: RoulettePool = res?.pool;
+      if (!pool) {
+        Taro.showToast({ title: "分享池不存在", icon: "none" });
+        return;
+      }
+      // 记录到本地已进入列表（去重）
+      const pools = loadLocalPools();
+      if (!pools.some((p) => p.code === pool.code)) {
+        const next = [{ code: pool.code, name: pool.name ?? "" }, ...pools].slice(0, 20);
+        saveLocalPools(next);
+        setLocalPools(next);
+      }
+      const idx = Math.max(0, loadLocalPools().findIndex((p) => p.code === pool.code));
+      setSourceIdx(idx + 1);
+      setSource({ type: "pool", code: pool.code, name: pool.name ?? "" });
+      void loadItems({ type: "pool", code: pool.code, name: pool.name ?? "" });
+    } catch {
+      // request 层已 toast
+    }
+  };
+
+  // ---- 新建分享池 ----
+  const createPool = async () => {
+    const input = await promptText("新建分享池", "给分享池起个名字（可选）");
+    if (input === null) return;
+    try {
+      const pool = await createRoulettePool(input.trim() || undefined);
+      const pools = loadLocalPools();
+      const next = [{ code: pool.code, name: pool.name ?? "" }, ...pools].slice(0, 20);
+      saveLocalPools(next);
+      setLocalPools(next);
+      setSourceIdx(1);
+      setSource({ type: "pool", code: pool.code, name: pool.name ?? "" });
+      void loadItems({ type: "pool", code: pool.code, name: pool.name ?? "" });
+      Taro.showToast({ title: `分享池已创建，码 ${pool.code}`, icon: "none" });
+    } catch {
+      // request 层已 toast
+    }
+  };
+
+  // ---- 分享：池模式下分享池，否则分享转盘页 ----
+  useShareAppMessage(() => {
+    if (source.type === "pool") {
+      return {
+        title: "来一起选今天吃什么！分享池已就绪",
+        path: `/pages/roulette/index?pool=${source.code}`,
+      };
+    }
+    return { title: "今天吃啥？转一转，告别选择困难", path: "/pages/roulette/index" };
+  });
+
+  // ---- 添加候选 ----
+  const addItem = async () => {
+    const input = await promptText("添加候选", "输入店名");
+    if (input === null) return;
+    const title = input.trim();
+    if (!title) {
+      Taro.showToast({ title: "名称不能为空", icon: "none" });
+      return;
+    }
+    try {
+      if (source.type === "pool") {
+        await addRoulettePoolItem(source.code, { title, createdBy: anonId });
+      } else if (source.type === "group") {
+        await addMealRouletteItem(source.group.id, { title });
+      } else {
+        Taro.showToast({ title: "默认菜系不可编辑", icon: "none" });
+        return;
+      }
+      setWinner(null);
+      void loadItems(source);
+    } catch {
+      // request 层已 toast
+    }
+  };
+
+  // ---- 删除候选（分享池仅删自己的；圈子池成员可删） ----
+  const removeItem = async (item: WheelItem) => {
+    if (spinning) return;
+    if (source.type === "pool" && item.created_by !== anonId) {
+      Taro.showToast({ title: "只能删除自己添加的候选", icon: "none" });
+      return;
+    }
+    if (source.type === "local") {
+      Taro.showToast({ title: "默认菜系不可编辑", icon: "none" });
+      return;
+    }
+    const m = await Taro.showModal({
+      title: "移除候选",
+      content: `确定把「${item.title}」移出？`,
+    });
+    if (!m.confirm) return;
+    try {
+      if (source.type === "pool") {
+        await deleteRoulettePoolItem(item.id, anonId);
+      } else if (source.type === "group") {
+        await deleteMealRouletteItem(source.group.id, item.id);
+      }
+      if (winner?.id === item.id) setWinner(null);
+      void loadItems(source);
+    } catch {
+      // request 层已 toast
+    }
+  };
+
+  // ---- 圈子池专属：导入收藏 ----
+  const importFavorites = async () => {
+    if (source.type !== "group") return;
+    Taro.showLoading({ title: "导入中…", mask: true });
+    try {
+      const places = await fetchFavoritePlaces();
+      const valid = places.filter((p) => p.title);
+      if (valid.length === 0) {
+        Taro.hideLoading();
+        Taro.showToast({ title: "收藏夹还是空的", icon: "none" });
+        return;
+      }
+      const res = await importMealRouletteItems(
+        source.group.id,
+        valid.map((p) => ({
+          title: p.title,
+          address: p.address ?? undefined,
+          phone: p.phone ?? undefined,
+          signatureDishes: p.signature_dishes ?? [],
+        }))
+      );
+      Taro.hideLoading();
+      Taro.showToast({
+        title: `导入 ${res.inserted} 家${res.duplicated ? `，${res.duplicated} 家已存在` : ""}`,
+        icon: "none",
+        duration: 2500,
+      });
+      setWinner(null);
+      void loadItems(source);
+    } catch {
+      Taro.hideLoading();
+    }
+  };
 
   // ---- 转盘绘制 ----
   const drawWheel = useCallback(() => {
@@ -260,98 +479,12 @@ export default function RoulettePage() {
     }, SPIN_MS + 100);
   };
 
-  // ---- 候选管理（仅圈子模式）----
-  const currentGroupId = groupIdx > 0 ? groups[groupIdx - 1]?.id : null;
-
-  const addItem = async () => {
-    if (!currentGroupId) return;
-    const input = await promptText("添加候选", "输入店名");
-    if (input === null) return;
-    const title = input.trim();
-    if (!title) {
-      Taro.showToast({ title: "名称不能为空", icon: "none" });
-      return;
-    }
-    try {
-      await addMealRouletteItem(currentGroupId, { title });
-      setWinner(null);
-      void loadItems(currentGroupId);
-    } catch {
-      // request 层已 toast
-    }
-  };
-
-  const importFavorites = async () => {
-    if (!currentGroupId) return;
-    Taro.showLoading({ title: "导入中…", mask: true });
-    try {
-      const places = await fetchFavoritePlaces();
-      const valid = places.filter((p) => p.title);
-      if (valid.length === 0) {
-        Taro.hideLoading();
-        Taro.showToast({ title: "收藏夹还是空的", icon: "none" });
-        return;
-      }
-      const res = await importMealRouletteItems(
-        currentGroupId,
-        valid.map((p) => ({
-          title: p.title,
-          address: p.address ?? undefined,
-          phone: p.phone ?? undefined,
-          signatureDishes: p.signature_dishes ?? [],
-        }))
-      );
-      Taro.hideLoading();
-      Taro.showToast({
-        title: `导入 ${res.inserted} 家${res.duplicated ? `，${res.duplicated} 家已存在` : ""}`,
-        icon: "none",
-        duration: 2500,
-      });
-      setWinner(null);
-      void loadItems(currentGroupId);
-    } catch {
-      Taro.hideLoading();
-    }
-  };
-
-  const removeItem = async (item: MealRouletteItem) => {
-    if (!currentGroupId || spinning) return;
-    const m = await Taro.showModal({
-      title: "移除候选",
-      content: `确定把「${item.title}」移出转盘？`,
-    });
-    if (!m.confirm) return;
-    try {
-      await deleteMealRouletteItem(currentGroupId, item.id);
-      if (winner?.id === item.id) setWinner(null);
-      void loadItems(currentGroupId);
-    } catch {
-      // request 层已 toast
-    }
-  };
-
   const callPhone = (phone?: string | null) => {
     if (!phone) return;
     Taro.makePhoneCall({ phoneNumber: phone }).catch(() => {});
   };
 
-  // ---- 未登录 ----
-  if (!isLoggedIn()) {
-    return (
-      <View className="roulette-page placeholder">
-        <View className="placeholder-emoji">🎲</View>
-        <Text className="text-muted">登录后使用转盘功能</Text>
-        <Button
-          className="btn-login"
-          onClick={() => Taro.navigateTo({ url: "/pages/login/index" })}
-        >
-          微信一键登录
-        </Button>
-      </View>
-    );
-  }
-
-  const groupPickerList = ["默认菜系", ...groups.map((g) => g.name)];
+  const currentGroupId = source.type === "group" ? source.group.id : null;
 
   return (
     <View className="roulette-page has-tabbar">
@@ -361,23 +494,37 @@ export default function RoulettePage() {
         <Text className="roulette-subtitle">转一转，告别选择困难</Text>
       </View>
 
-      {/* 圈子选择器 */}
-      {groups.length > 0 && (
-        <View className="group-selector">
-          <Picker
-            mode="selector"
-            range={groupPickerList}
-            value={groupIdx}
-            onChange={onGroupChange as never}
+      {/* 候选池选择器 + 新建分享池 */}
+      <View className="group-selector">
+        <Picker
+          mode="selector"
+          range={pickerList}
+          value={sourceIdx}
+          onChange={onSourceChange as never}
+        >
+          <View className="selector-display">
+            <Text className="selector-label">候选池</Text>
+            <Text className="selector-value">
+              {pickerList[sourceIdx] ?? "默认菜系"}
+            </Text>
+            <Text className="selector-arrow">›</Text>
+          </View>
+        </Picker>
+        <View className="selector-extra">
+          <Button
+            size="mini"
+            className="pool-create-btn"
+            onClick={() => void createPool()}
           >
-            <View className="selector-display">
-              <Text className="selector-label">候选池</Text>
-              <Text className="selector-value">{groupPickerList[groupIdx]}</Text>
-              <Text className="selector-arrow">›</Text>
-            </View>
-          </Picker>
+            ＋ 新建分享池
+          </Button>
+          {source.type === "pool" && (
+            <Button size="mini" type="primary" openType="share" className="pool-share-btn">
+              邀请好友
+            </Button>
+          )}
         </View>
-      )}
+      </View>
 
       {/* 转盘 */}
       <View className="wheel-box">
@@ -447,22 +594,28 @@ export default function RoulettePage() {
         </View>
       )}
 
-      {/* 候选池管理（仅圈子模式）*/}
-      {currentGroupId && (
+      {/* 候选池管理（默认菜系不可编辑；分享池/圈子池可增删） */}
+      {source.type !== "local" && (
         <View className="pool-card">
           <View className="pool-header">
-            <Text className="pool-title">候选池（{items.length}）</Text>
+            <Text className="pool-title">
+              {source.type === "pool"
+                ? `分享池（${items.length}）· 码 ${source.code}`
+                : `候选池（${items.length}）`}
+            </Text>
             <View className="pool-actions">
               <Button size="mini" onClick={() => void addItem()}>
                 ＋ 添加
               </Button>
-              <Button
-                size="mini"
-                type="primary"
-                onClick={() => void importFavorites()}
-              >
-                导入收藏
-              </Button>
+              {source.type === "group" && (
+                <Button
+                  size="mini"
+                  type="primary"
+                  onClick={() => void importFavorites()}
+                >
+                  导入收藏
+                </Button>
+              )}
             </View>
           </View>
 
@@ -470,7 +623,7 @@ export default function RoulettePage() {
             <Text className="pool-empty">加载中…</Text>
           )}
           {!loading && items.length === 0 && (
-            <Text className="pool-empty">还没有候选，添加几家或从收藏夹导入</Text>
+            <Text className="pool-empty">还没有候选，添加几家吧</Text>
           )}
 
           {items.map((it) => (
@@ -478,10 +631,11 @@ export default function RoulettePage() {
               <View className="pool-item-main">
                 <View className="pool-item-title-row">
                   <Text className="pool-item-title">{it.title}</Text>
-                  {it.adder?.nickname && (
-                    <Text className="pool-item-adder">
-                      {it.adder.nickname} 添加
-                    </Text>
+                  {it.added_by && (
+                    <Text className="pool-item-adder">成员添加</Text>
+                  )}
+                  {source.type === "pool" && it.created_by === anonId && (
+                    <Text className="pool-item-adder">我添加的</Text>
                   )}
                 </View>
                 {(it.address || it.phone) && (
@@ -498,6 +652,15 @@ export default function RoulettePage() {
               </Text>
             </View>
           ))}
+        </View>
+      )}
+
+      {/* 未登录提示（不影响默认菜系/分享池使用） */}
+      {!loggedIn && source.type !== "pool" && (
+        <View className="login-hint">
+          <Text className="text-muted">
+            登录后可使用圈子候选池；分享池免登录即可用
+          </Text>
         </View>
       )}
     </View>
