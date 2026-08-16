@@ -201,6 +201,29 @@ export function fetchGroupMembers(groupId: string): Promise<GroupMemberLite[]> {
   });
 }
 
+/** POST /api/groups/[id]/leave — 退出圈子（唯一管理员会被后端拦截） */
+export function leaveGroup(groupId: string): Promise<unknown> {
+  return request(`/api/groups/${groupId}/leave`, { method: "POST" });
+}
+
+/** POST /api/groups/[id]/transfer-admin — 转让管理员（仅圈主） */
+export function transferGroupAdmin(
+  groupId: string,
+  newAdminId: string
+): Promise<unknown> {
+  return request(`/api/groups/${groupId}/transfer-admin`, {
+    method: "POST",
+    data: { newAdminId },
+  });
+}
+
+/** DELETE /api/groups/[id]/members/[userId] — 移除成员（仅圈主） */
+export function removeGroupMember(groupId: string, userId: string): Promise<unknown> {
+  return request(`/api/groups/${groupId}/members/${userId}`, {
+    method: "DELETE",
+  });
+}
+
 // ---- 通知 ----
 
 export interface NotificationLite {

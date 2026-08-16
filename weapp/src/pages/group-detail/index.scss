@@ -1,6 +1,6 @@
 .gd-page {
   min-height: 100vh;
-  background: #f5f6f5;
+  background: #faf7f2;
   padding: 24rpx 24rpx calc(48rpx + env(safe-area-inset-bottom));
 
   &.state {
@@ -180,5 +180,47 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .member-actions {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+    margin-left: 12rpx;
+    flex-shrink: 0;
+
+    .member-action {
+      font-size: 24rpx;
+      padding: 8rpx 20rpx;
+      border-radius: 999rpx;
+
+      &.transfer {
+        background: #fff0e8;
+        color: #ff6b35;
+      }
+
+      &.remove {
+        background: #fef2f2;
+        color: #ef4444;
+      }
+    }
+  }
+}
+
+// ---- 退出圈子 ----
+.gd-leave {
+  margin-top: 24rpx;
+
+  .leave-btn {
+    width: 100%;
+    background: #ffffff;
+    color: #ef4444;
+    border-radius: 999rpx;
+    border: 1rpx solid #fecaca;
+    font-size: 28rpx;
+
+    &::after {
+      border: none;
+    }
   }
 }
