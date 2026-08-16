@@ -54,6 +54,11 @@
     overflow: hidden;
     border: 4rpx solid rgba(255, 255, 255, 0.6);
     background: rgba(255, 255, 255, 0.25);
+
+    .hero-avatar-img {
+      width: 100%;
+      height: 100%;
+    }
   }
 
   .hero-name {
@@ -93,6 +98,76 @@
       height: 48rpx;
       background: rgba(255, 255, 255, 0.3);
     }
+  }
+}
+
+// ---- 编辑资料面板 ----
+.edit-panel {
+  margin: 32rpx 24rpx 0;
+  padding: 28rpx;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  border: 1rpx solid $border-color-light;
+
+  .edit-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20rpx;
+
+    .edit-title {
+      font-size: 32rpx;
+      font-weight: 600;
+      color: $color-text;
+    }
+
+    .edit-close {
+      font-size: 26rpx;
+      color: $color-text-muted;
+    }
+  }
+
+  .edit-avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 24rpx;
+    margin-bottom: 20rpx;
+
+    .edit-avatar {
+      width: 120rpx;
+      height: 120rpx;
+      border-radius: 50%;
+      background: $color-bg-muted;
+    }
+  }
+
+  .edit-field {
+    display: flex;
+    align-items: center;
+
+    .edit-label {
+      font-size: 28rpx;
+      color: $color-text-secondary;
+      margin-right: 20rpx;
+      flex-shrink: 0;
+    }
+
+    .edit-input {
+      flex: 1;
+      padding: 16rpx 20rpx;
+      background: $color-bg-muted;
+      border-radius: $radius-md;
+      font-size: 28rpx;
+      color: $color-text;
+    }
+  }
+
+  .edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16rpx;
+    margin-top: 24rpx;
   }
 }
 

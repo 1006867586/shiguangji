@@ -15,6 +15,27 @@ export interface GroupLite {
   role?: "admin" | "member";
 }
 
+/** 当前用户资料（GET/PATCH /api/profile） */
+export interface ProfileLite {
+  id: string;
+  nickname: string;
+  avatar_url: string | null;
+  created_at: string | null;
+}
+
+/** GET /api/profile — 当前用户资料 */
+export function fetchMyProfile(): Promise<ProfileLite> {
+  return request<ProfileLite>("/api/profile", { silent: true });
+}
+
+/** PATCH /api/profile — 修改昵称/头像 */
+export function updateMyProfile(body: {
+  nickname?: string;
+  avatarUrl?: string | null;
+}): Promise<ProfileLite> {
+  return request<ProfileLite>("/api/profile", { method: "PATCH", data: body });
+}
+
 export interface ExternalLinkLite {
   platform: string;
   url: string;
@@ -168,6 +189,14 @@ export function postComment(activityId: string, content: string, parentId?: stri
 
 export function fetchGroups(): Promise<GroupLite[]> {
   return request<GroupLite[]>("/api/groups", { silent: true });
+}
+
+/** PATCH /api/groups/[id] — 修改圈子信息（仅圈主：名称/描述/头像） */
+export function updateGroup(
+  groupId: string,
+  body: { name?: string; description?: string | null; avatarUrl?: string | null }
+): Promise<GroupLite> {
+  return request(`/api/groups/${groupId}`, { method: "PATCH", data: body });
 }
 
 /** POST /api/groups — 创建圈子 */

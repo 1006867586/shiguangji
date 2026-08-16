@@ -1,16 +1,18 @@
 import { useCallback, useState } from "react";
 import Taro, { useDidShow, useShareAppMessage } from "@tarojs/taro";
-import { View, Text, Image, Button } from "@tarojs/components";
+import { View, Text, Image, Button, Input } from "@tarojs/components";
 import {
   fetchGroups,
   fetchGroupMembers,
   leaveGroup,
   transferGroupAdmin,
   removeGroupMember,
+  updateGroup,
   type GroupLite,
   type GroupMemberLite,
 } from "@/utils/api";
 import { getCurrentUserId } from "@/utils/auth";
+import { uploadToR2 } from "@/utils/upload";
 import "./index.scss";
 
 /**
@@ -23,6 +25,13 @@ export default function GroupDetailPage() {
   const [members, setMembers] = useState<GroupMemberLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+
+  // 编辑圈子（圈主）
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editAvatarUrl, setEditAvatarUrl] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const currentUserId = getCurrentUserId();
   const isAdmin = group?.role === "admin";
@@ -61,6 +70,59 @@ export default function GroupDetailPage() {
   const copyInviteCode = () => {
     if (!group?.invite_code) return;
     Taro.setClipboardData({ data: group.invite_code });
+  };
+
+  // ---- 编辑圈子（圈主）----
+  const openEdit = () => {
+    if (!group) return;
+    setEditName(group.name);
+    setEditAvatarUrl(group.avatar_url ?? "");
+    setEditing(true);
+  };
+
+  const chooseAvatar = async () => {
+    if (uploadingAvatar) return;
+    try {
+      const res = await Taro.chooseImage({
+        count: 1,
+        sizeType: ["compressed"],
+        sourceType: ["album", "camera"],
+      });
+      const path = res.tempFilePaths[0];
+      if (!path) return;
+      setUploadingAvatar(true);
+      Taro.showLoading({ title: "上传中…", mask: true });
+      const url = await uploadToR2(path);
+      setEditAvatarUrl(url);
+      Taro.hideLoading();
+    } catch {
+      Taro.hideLoading();
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (savingEdit || !groupId) return;
+    const name = editName.trim();
+    if (!name) {
+      Taro.showToast({ title: "圈子名称不能为空", icon: "none" });
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await updateGroup(groupId, {
+        name,
+        avatarUrl: editAvatarUrl || null,
+      });
+      Taro.showToast({ title: "已保存", icon: "success" });
+      setEditing(false);
+      await load(groupId);
+    } catch {
+      // request 层已 toast
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   // ---- 退出圈子 ----
@@ -162,7 +224,61 @@ export default function GroupDetailPage() {
             )}
             <Text className="gd-member-count">{members.length} 位成员</Text>
           </View>
+          {isAdmin && (
+            <Text className="info-edit" onClick={openEdit}>编辑</Text>
+          )}
         </View>
+
+        {/* 编辑圈子面板（圈主） */}
+        {editing && (
+          <View className="gd-edit-panel">
+            <View className="gd-edit-head">
+              <Text className="gd-edit-title">编辑圈子</Text>
+              <Text className="gd-edit-close" onClick={() => setEditing(false)}>关闭</Text>
+            </View>
+            <View className="gd-edit-avatar-row">
+              <Image
+                className="gd-edit-avatar"
+                src={
+                  editAvatarUrl ||
+                  group.avatar_url ||
+                  "https://img.example.com/group-default.png"
+                }
+                mode="aspectFill"
+              />
+              <Button
+                size="mini"
+                loading={uploadingAvatar}
+                disabled={uploadingAvatar}
+                onClick={() => void chooseAvatar()}
+              >
+                更换头像
+              </Button>
+            </View>
+            <View className="gd-edit-field">
+              <Text className="gd-edit-label">名称</Text>
+              <Input
+                className="gd-edit-input"
+                value={editName}
+                placeholder="圈子名称"
+                maxlength={50}
+                onInput={(e) => setEditName(e.detail.value)}
+              />
+            </View>
+            <View className="gd-edit-actions">
+              <Button size="mini" onClick={() => setEditing(false)}>取消</Button>
+              <Button
+                size="mini"
+                type="primary"
+                loading={savingEdit}
+                disabled={savingEdit}
+                onClick={() => void saveEdit()}
+              >
+                保存
+              </Button>
+            </View>
+          </View>
+        )}
 
         <View className="invite-row">
           <View className="invite-code-box">
