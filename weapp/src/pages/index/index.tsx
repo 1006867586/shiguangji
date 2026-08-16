@@ -7,7 +7,7 @@ import Taro, {
 } from "@tarojs/taro";
 import { ScrollView, View, Text, Button } from "@tarojs/components";
 import { request, ApiError } from "@/utils/request";
-import { isLoggedIn } from "@/utils/auth";
+import { isLoggedIn, getCurrentUserId } from "@/utils/auth";
 import { setSelectedTab } from "@/custom-tab-bar/tabStore";
 import {
   fetchGroups,
@@ -297,6 +297,13 @@ export default function IndexPage() {
             activity={a}
             onLike={handleLike}
             onTap={goDetail}
+            currentUserId={getCurrentUserId() ?? undefined}
+            onEdit={(act) =>
+              Taro.navigateTo({ url: `/pages/detail/index?id=${act.id}` })
+            }
+            onDeleted={(act) =>
+              setFeed((prev) => prev.filter((x) => x.id !== act.id))
+            }
           />
         ))}
 

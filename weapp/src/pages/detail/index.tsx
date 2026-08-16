@@ -443,7 +443,16 @@ export default function DetailPage() {
       )}
 
       {/* 详情主体：复用动态卡片（只读图集） */}
-      <ActivityCard activity={activity} onLike={handleLike} />
+      <ActivityCard
+        activity={activity}
+        onLike={handleLike}
+        currentUserId={currentUserId ?? undefined}
+        onEdit={() => openEdit()}
+        onDeleted={() => {
+          Taro.showToast({ title: "已删除", icon: "success" });
+          setTimeout(() => Taro.navigateBack(), 600);
+        }}
+      />
 
       {/* 评论区 */}
       <View className="comment-section">

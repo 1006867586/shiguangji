@@ -22,7 +22,10 @@ export default defineConfig(async (merge) => {
     framework: "react",
     compiler: "webpack5",
     copy: {
-      patterns: [{ from: "assets/tab-icons", to: "dist/assets/tab-icons" }],
+      patterns: [
+        { from: "assets/tab-icons", to: "dist/assets/tab-icons" },
+        { from: "assets/card-icons", to: "dist/assets/card-icons" },
+      ],
       options: {},
     },
     alias: {

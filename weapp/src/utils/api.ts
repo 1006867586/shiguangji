@@ -117,6 +117,33 @@ export function deleteActivityPhoto(activityId: string, photoId: string): Promis
   });
 }
 
+/** DELETE /api/activities/[id] — 删除活动（仅作者） */
+export function deleteActivity(id: string): Promise<unknown> {
+  return request(`/api/activities/${id}`, { method: "DELETE" });
+}
+
+/** POST /api/activities/[id]/repost — 转发到其他圈子（附言可选） */
+export function repostActivity(
+  id: string,
+  body: { groupId: string; comment?: string }
+): Promise<unknown> {
+  return request(`/api/activities/${id}/repost`, {
+    method: "POST",
+    data: { groupId: body.groupId, comment: body.comment },
+  });
+}
+
+/** POST /api/reports — 举报（activity/comment/photo） */
+export function createReport(body: {
+  targetType: "activity" | "comment" | "photo";
+  targetId: string;
+  groupId: string;
+  reason: "spam" | "abuse" | "porn" | "illegal" | "other";
+  detail?: string;
+}): Promise<unknown> {
+  return request(`/api/reports`, { method: "POST", data: body });
+}
+
 /** POST /api/activities/[id]/like — 点赞 / 取消（toggle） */
 export function toggleLike(id: string): Promise<{ liked: boolean; like_count: number }> {
   return request(`/api/activities/${id}/like`, { method: "POST" });
