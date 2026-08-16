@@ -48,6 +48,7 @@ export default function IndexPage() {
   const keywordRef = useRef(""); // 给异步回调读最新搜索词
   const activeGroupIdRef = useRef("");
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const feedSeqRef = useRef(0); // feed 请求序号，用于「最新请求优先」
 
   // 默认转发卡片（右上角菜单 / 卡片分享按钮未命中详情页时）
   useShareAppMessage(() => ({
@@ -98,17 +99,22 @@ export default function IndexPage() {
   }, [activeGroupId]);
 
   // ---- 加载 feed（refresh=true 重置；false 追加）。kw 传入本次搜索词 ----
+  // 采用「最新请求优先」：refresh 类请求（搜索/切圈子/刷新）不因 in-flight 被丢弃，
+  // 而是递增序号接管；旧请求的响应回来后发现序号过期则作废，避免结果回跳/串台。
   const loadFeed = useCallback(
     async (groupId: string, refresh: boolean, kw = "") => {
-      if (requestingRef.current) return;
-      requestingRef.current = true;
+      const seq = ++feedSeqRef.current;
       if (refresh) {
         setLoading(true);
         setFinished(false);
+        setError(null);
       } else {
+        // 触底追加仍需防重
+        if (requestingRef.current) return;
         setLoadingMore(true);
+        setError(null);
       }
-      setError(null);
+      requestingRef.current = true;
       try {
         const res = await fetchFeed({
           groupId,
@@ -116,16 +122,21 @@ export default function IndexPage() {
           limit: PAGE_SIZE,
           keyword: kw || undefined,
         });
+        if (seq !== feedSeqRef.current) return; // 已有更新的请求，丢弃过期结果
         const list = res?.data ?? [];
         cursorRef.current = res?.next_cursor ?? null;
         setFeed((prev) => (refresh ? list : [...prev, ...list]));
         if (!res?.next_cursor) setFinished(true);
       } catch (err) {
+        if (seq !== feedSeqRef.current) return;
         setError(err instanceof ApiError ? err.message : "加载动态失败");
       } finally {
-        requestingRef.current = false;
-        setLoading(false);
-        setLoadingMore(false);
+        // 仅最新请求负责解锁/收尾，避免清掉后发请求的状态
+        if (seq === feedSeqRef.current) {
+          requestingRef.current = false;
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
     []
@@ -149,7 +160,7 @@ export default function IndexPage() {
     prevGroupRef.current = activeGroupId;
     activeGroupIdRef.current = activeGroupId;
     cursorRef.current = null;
-    if (!requestingRef.current && loggedIn) {
+    if (loggedIn) {
       void loadFeed(activeGroupId, true, keywordRef.current);
     }
   }
