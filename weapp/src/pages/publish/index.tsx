@@ -246,6 +246,20 @@ export default function PublishPage() {
 
   return (
     <View className="publish-page has-tabbar">
+      {/* 顶栏：取消 / 发布 */}
+      <View className="publish-topbar">
+        <Text
+          className="topbar-cancel"
+          onClick={() => Taro.switchTab({ url: "/pages/index/index" })}
+        >
+          取消
+        </Text>
+        <Text className="topbar-title">发布</Text>
+        <View className="topbar-submit" onClick={() => void submit()}>
+          发布
+        </View>
+      </View>
+
       {/* 圈子选择 */}
       <View className="form-card">
         <Text className="form-label">发布到</Text>
@@ -271,7 +285,7 @@ export default function PublishPage() {
         <Textarea
           className="content-input"
           value={content}
-          placeholder="这一顿有什么想说的…"
+          placeholder="分享你的聚餐故事…"
           maxlength={2000}
           onInput={(e) => setContent(e.detail.value)}
         />

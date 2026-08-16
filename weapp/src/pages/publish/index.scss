@@ -14,6 +14,34 @@
   }
 }
 
+/* 顶栏：取消 / 发布 */
+.publish-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 8rpx 24rpx;
+
+  .topbar-cancel {
+    font-size: 30rpx;
+    color: $color-text-secondary;
+  }
+
+  .topbar-title {
+    font-size: 34rpx;
+    font-weight: 600;
+    color: $color-text;
+  }
+
+  .topbar-submit {
+    padding: 12rpx 36rpx;
+    border-radius: $radius-pill;
+    background: $color-primary;
+    color: #ffffff;
+    font-size: 28rpx;
+    font-weight: 500;
+  }
+}
+
 .form-card {
   background: $color-bg-card;
   border-radius: $radius-md;
