@@ -263,14 +263,32 @@
   .gd-edit-avatar-row {
     display: flex;
     align-items: center;
-    gap: 20rpx;
     margin-bottom: 16rpx;
 
-    .gd-edit-avatar {
-      width: 96rpx;
-      height: 96rpx;
-      border-radius: 16rpx;
-      background: #f0f0f0;
+    .avatar-choose-btn {
+      display: flex;
+      align-items: center;
+      gap: 20rpx;
+      padding: 0;
+      background: transparent;
+      border: none;
+      line-height: 1;
+
+      &::after {
+        border: none;
+      }
+
+      .gd-edit-avatar {
+        width: 96rpx;
+        height: 96rpx;
+        border-radius: 16rpx;
+        background: #f0f0f0;
+      }
+
+      .avatar-choose-tip {
+        font-size: 26rpx;
+        color: #ff6b35;
+      }
     }
   }
 

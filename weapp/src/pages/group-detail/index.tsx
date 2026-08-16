@@ -80,24 +80,19 @@ export default function GroupDetailPage() {
     setEditing(true);
   };
 
-  const chooseAvatar = async () => {
-    if (uploadingAvatar) return;
+  /** 微信原生头像选择器：e.detail.avatarUrl 为临时文件路径 */
+  const onChooseAvatar = async (e: { detail: { avatarUrl: string } }) => {
+    const path = e.detail.avatarUrl;
+    if (!path || uploadingAvatar) return;
+    setUploadingAvatar(true);
+    Taro.showLoading({ title: "上传中…", mask: true });
     try {
-      const res = await Taro.chooseImage({
-        count: 1,
-        sizeType: ["compressed"],
-        sourceType: ["album", "camera"],
-      });
-      const path = res.tempFilePaths[0];
-      if (!path) return;
-      setUploadingAvatar(true);
-      Taro.showLoading({ title: "上传中…", mask: true });
       const url = await uploadToR2(path);
       setEditAvatarUrl(url);
-      Taro.hideLoading();
     } catch {
-      Taro.hideLoading();
+      // upload 层已提示
     } finally {
+      Taro.hideLoading();
       setUploadingAvatar(false);
     }
   };
@@ -237,22 +232,21 @@ export default function GroupDetailPage() {
               <Text className="gd-edit-close" onClick={() => setEditing(false)}>关闭</Text>
             </View>
             <View className="gd-edit-avatar-row">
-              <Image
-                className="gd-edit-avatar"
-                src={
-                  editAvatarUrl ||
-                  group.avatar_url ||
-                  "https://img.example.com/group-default.png"
-                }
-                mode="aspectFill"
-              />
               <Button
-                size="mini"
-                loading={uploadingAvatar}
-                disabled={uploadingAvatar}
-                onClick={() => void chooseAvatar()}
+                className="avatar-choose-btn"
+                openType="chooseAvatar"
+                onChooseAvatar={onChooseAvatar}
               >
-                更换头像
+                <Image
+                  className="gd-edit-avatar"
+                  src={
+                    editAvatarUrl ||
+                    group.avatar_url ||
+                    "https://img.example.com/group-default.png"
+                  }
+                  mode="aspectFill"
+                />
+                <Text className="avatar-choose-tip">更换头像</Text>
               </Button>
             </View>
             <View className="gd-edit-field">

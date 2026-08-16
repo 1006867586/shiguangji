@@ -68,25 +68,19 @@ export default function ProfilePage() {
     setEditing(true);
   };
 
-  const chooseAvatar = async () => {
-    if (uploading) return;
+  /** 微信原生头像选择器：e.detail.avatarUrl 为临时文件路径 */
+  const onChooseAvatar = async (e: { detail: { avatarUrl: string } }) => {
+    const path = e.detail.avatarUrl;
+    if (!path || uploading) return;
+    setUploading(true);
+    Taro.showLoading({ title: "上传中…", mask: true });
     try {
-      const res = await Taro.chooseImage({
-        count: 1,
-        sizeType: ["compressed"],
-        sourceType: ["album", "camera"],
-      });
-      const path = res.tempFilePaths[0];
-      if (!path) return;
-      setUploading(true);
-      Taro.showLoading({ title: "上传中…", mask: true });
       const url = await uploadToR2(path);
       setEditAvatarUrl(url);
-      Taro.hideLoading();
     } catch {
-      Taro.hideLoading();
-      // 用户取消或上传失败
+      // upload 层已提示
     } finally {
+      Taro.hideLoading();
       setUploading(false);
     }
   };
@@ -175,23 +169,21 @@ export default function ProfilePage() {
           </View>
 
           <View className="edit-avatar-row">
-            <Image
-              className="edit-avatar"
-              src={
-                editAvatarUrl ||
-                (hasProfile && profile?.avatar_url) ||
-                "https://img.example.com/avatar-default.png"
-              }
-              mode="aspectFill"
-            />
             <Button
-              size="mini"
-              className="edit-avatar-btn"
-              loading={uploading}
-              disabled={uploading}
-              onClick={() => void chooseAvatar()}
+              className="avatar-choose-btn"
+              openType="chooseAvatar"
+              onChooseAvatar={onChooseAvatar}
             >
-              更换头像
+              <Image
+                className="edit-avatar"
+                src={
+                  editAvatarUrl ||
+                  (hasProfile && profile?.avatar_url) ||
+                  "https://img.example.com/avatar-default.png"
+                }
+                mode="aspectFill"
+              />
+              <Text className="avatar-choose-tip">更换头像</Text>
             </Button>
           </View>
 
@@ -199,6 +191,7 @@ export default function ProfilePage() {
             <Text className="edit-label">昵称</Text>
             <Input
               className="edit-input"
+              type="nickname"
               value={editNickname}
               placeholder="输入昵称"
               maxlength={20}

@@ -131,14 +131,32 @@
   .edit-avatar-row {
     display: flex;
     align-items: center;
-    gap: 24rpx;
     margin-bottom: 20rpx;
 
-    .edit-avatar {
-      width: 120rpx;
-      height: 120rpx;
-      border-radius: 50%;
-      background: $color-bg-muted;
+    .avatar-choose-btn {
+      display: flex;
+      align-items: center;
+      gap: 20rpx;
+      padding: 0;
+      background: transparent;
+      border: none;
+      line-height: 1;
+
+      &::after {
+        border: none;
+      }
+
+      .edit-avatar {
+        width: 120rpx;
+        height: 120rpx;
+        border-radius: 50%;
+        background: $color-bg-muted;
+      }
+
+      .avatar-choose-tip {
+        font-size: 26rpx;
+        color: $color-primary;
+      }
     }
   }
 
