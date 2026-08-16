@@ -33,7 +33,7 @@ interface PhotoGridProps {
   onEditCaption?: (photoId: string, currentCaption: string | null) => void;
 }
 
-/** 朋友圈风格照片网格：1 张大图、2 张并排、3-9 张九宫格 */
+/** 九宫格照片网格：1 张大图、2 张并排、3-9 张九宫格 */
 export function PhotoGrid({
   photos,
   onPhotoClick,

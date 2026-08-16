@@ -1,7 +1,7 @@
 {
   "name": "飨刻 - 圈子聚餐记录",
   "short_name": "飨刻",
-  "description": "面向小圈子的私密聚餐记录应用",
+  "description": "面向小团体的聚餐记录应用",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
