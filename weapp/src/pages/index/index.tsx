@@ -18,6 +18,7 @@ import {
   type ActivityLite,
 } from "@/utils/api";
 import ActivityCard from "@/components/ActivityCard";
+import LoginGuide from "@/components/LoginGuide";
 import "./index.scss";
 
 const PAGE_SIZE = 20;
@@ -210,16 +211,8 @@ export default function IndexPage() {
   // ---- 未登录 ----
   if (!loggedIn) {
     return (
-      <View className="page placeholder">
-        <Text className="title">欢迎使用「想聚」</Text>
-        <Text className="text-muted">登录后查看你的饭局动态</Text>
-        <Button
-          className="btn-primary"
-          type="primary"
-          onClick={() => Taro.navigateTo({ url: "/pages/login/index" })}
-        >
-          去登录
-        </Button>
+      <View className="page">
+        <LoginGuide subtitle="登录后查看你的饭局动态" />
       </View>
     );
   }

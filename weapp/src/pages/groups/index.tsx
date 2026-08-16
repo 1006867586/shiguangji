@@ -3,6 +3,7 @@ import Taro, { useDidShow } from "@tarojs/taro";
 import { View, Text, Image, Button } from "@tarojs/components";
 import { isLoggedIn } from "@/utils/auth";
 import { setSelectedTab } from "@/custom-tab-bar/tabStore";
+import LoginGuide from "@/components/LoginGuide";
 import {
   fetchGroups,
   createGroup,
@@ -114,15 +115,8 @@ export default function GroupsPage() {
 
   if (!isLoggedIn()) {
     return (
-      <View className="groups-page placeholder">
-        <View className="placeholder-logo">🍜</View>
-        <Text className="text-muted">登录后管理你的圈子</Text>
-        <Button
-          className="btn-login"
-          onClick={() => Taro.navigateTo({ url: "/pages/login/index" })}
-        >
-          微信一键登录
-        </Button>
+      <View className="groups-page">
+        <LoginGuide subtitle="登录后管理你的圈子" />
       </View>
     );
   }

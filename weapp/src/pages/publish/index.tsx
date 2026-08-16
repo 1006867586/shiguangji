@@ -14,6 +14,7 @@ import {
   type LinkPreviewResult,
 } from "@/utils/api";
 import { uploadToR2 } from "@/utils/upload";
+import LoginGuide from "@/components/LoginGuide";
 import "./index.scss";
 
 const MAX_IMAGES = 9;
@@ -232,14 +233,8 @@ export default function PublishPage() {
 
   if (!isLoggedIn()) {
     return (
-      <View className="publish-page placeholder">
-        <Text className="text-muted">登录后即可发布饭局</Text>
-        <Button
-          type="primary"
-          onClick={() => Taro.navigateTo({ url: "/pages/login/index" })}
-        >
-          去登录
-        </Button>
+      <View className="publish-page">
+        <LoginGuide subtitle="登录后即可发布饭局" />
       </View>
     );
   }

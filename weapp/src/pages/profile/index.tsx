@@ -11,6 +11,7 @@ import {
   type ProfileLite,
 } from "@/utils/api";
 import { uploadToR2 } from "@/utils/upload";
+import LoginGuide from "@/components/LoginGuide";
 import "./index.scss";
 
 /**
@@ -117,13 +118,8 @@ export default function ProfilePage() {
 
   if (!logged) {
     return (
-      <View className="profile-page placeholder">
-        <View className="placeholder-logo">🍜</View>
-        <Text className="placeholder-title">欢迎使用「飨刻」</Text>
-        <Text className="text-muted">登录后开启你的聚餐社交</Text>
-        <Button className="btn-login" onClick={goLogin}>
-          微信一键登录
-        </Button>
+      <View className="profile-page">
+        <LoginGuide subtitle="登录后开启你的聚餐社交" />
       </View>
     );
   }
