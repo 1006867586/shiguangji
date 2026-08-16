@@ -56,8 +56,8 @@ export default function LoginPage() {
             <Text className="logo-emoji">🍜</Text>
           </View>
         </View>
-        <Text className="brand-name">想聚</Text>
-        <Text className="brand-slogan">聚餐不纠结，点餐更轻松</Text>
+        <Text className="brand-name">飨刻</Text>
+        <Text className="brand-slogan">聚餐不将就，点餐更轻松</Text>
       </View>
 
       {/* 底部操作区 */}
