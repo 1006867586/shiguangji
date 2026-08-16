@@ -90,6 +90,7 @@ export async function fetchFeed(opts: {
   cursor?: string | null;
   limit?: number;
   userId: string;
+  keyword?: string | null;
 }): Promise<{ data: Activity[]; next_cursor: string | null }> {
   const supabase = await createServerClient();
   const limit = opts.limit ?? 20;
@@ -99,6 +100,7 @@ export async function fetchFeed(opts: {
     p_cursor: opts.cursor ?? null,
     p_limit: limit,
     p_user_id: opts.userId,
+    p_keyword: opts.keyword?.trim() ? opts.keyword.trim() : null,
   });
 
   if (error) {
