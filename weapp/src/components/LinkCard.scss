@@ -1,11 +1,13 @@
+@import "../../styles/_tokens.scss";
+
 .link-card {
   display: flex;
   flex-wrap: wrap;
   margin-top: 16rpx;
   padding: 20rpx;
-  background: #f8f8f7;
-  border-radius: 16rpx;
-  border: 1rpx solid #eee;
+  background: $color-bg-muted;
+  border-radius: $radius-md;
+  border: 1rpx solid $border-color;
 
   .link-body {
     flex: 1;
@@ -17,15 +19,15 @@
   .link-cover {
     width: 160rpx;
     height: 160rpx;
-    border-radius: 12rpx;
+    border-radius: $radius-sm;
     margin-left: 16rpx;
-    background: #eee;
+    background: $color-bg-muted;
   }
 
   .link-title {
     font-size: 30rpx;
     font-weight: 600;
-    color: #1a1a1a;
+    color: $color-text;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -42,22 +44,22 @@
   }
 
   .link-rating {
-    color: #f59e0b;
+    color: $color-star;
     font-size: 26rpx;
     font-weight: 600;
   }
 
   .link-tag {
     font-size: 22rpx;
-    color: #16a34a;
-    background: rgba(22, 163, 74, 0.1);
+    color: $color-primary;
+    background: $color-primary-bg;
     padding: 2rpx 12rpx;
-    border-radius: 8rpx;
+    border-radius: $radius-sm;
   }
 
   .link-price {
     font-size: 24rpx;
-    color: #666;
+    color: $color-text-secondary;
   }
 
   .link-row {
@@ -68,13 +70,13 @@
   }
 
   .link-row-label {
-    color: #999;
+    color: $color-text-muted;
     flex-shrink: 0;
     margin-right: 12rpx;
   }
 
   .link-row-value {
-    color: #444;
+    color: $color-text-secondary;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -89,16 +91,16 @@
     align-items: center;
     margin-top: 16rpx;
     padding-top: 12rpx;
-    border-top: 1rpx solid #eee;
+    border-top: 1rpx solid $border-color;
   }
 
   .link-platform {
     font-size: 22rpx;
-    color: #16a34a;
+    color: $color-primary;
   }
 
   .link-copy-hint {
     font-size: 22rpx;
-    color: #bbb;
+    color: $color-text-muted;
   }
 }

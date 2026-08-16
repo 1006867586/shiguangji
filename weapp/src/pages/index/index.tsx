@@ -28,11 +28,13 @@ export default function IndexPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [finished, setFinished] = useState(false); // 没有更多
   const [error, setError] = useState<string | null>(null);
+  // 关键：用 state 而不是 const，useDidShow 时重新读 storage
+  // （登录页 setStorageSync 后 switchTab 切回动态 tab，需要刷新登录态）
+  const [loggedIn, setLoggedIn] = useState<boolean>(isLoggedIn());
 
   const cursorRef = useRef<string | null>(null);
   const requestingRef = useRef(false); // 防重复请求
   const inviteHandledRef = useRef(false);
-  const loggedIn = isLoggedIn();
 
   // ---- 首次加载圈子列表，默认选第一个；处理分享卡邀请码 ----
   const loadGroups = useCallback(async () => {
@@ -111,7 +113,10 @@ export default function IndexPage() {
 
   // 首次进入 / 圈子切换
   useDidShow(() => {
-    if (!loggedIn) return;
+    // 每次显示都重新读登录态：从登录页 setStorageSync 后 switchTab 回来时才不会卡在「去登录」
+    const cur = isLoggedIn();
+    if (cur !== loggedIn) setLoggedIn(cur);
+    if (!cur) return;
     if (groups === null) {
       void loadGroups();
     }

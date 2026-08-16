@@ -1,8 +1,11 @@
+@import "../../styles/_tokens.scss";
+
 .activity-card {
   margin: 16rpx 24rpx;
   padding: 24rpx;
-  background: #fff;
-  border-radius: 20rpx;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  box-shadow: $shadow-card;
 
   .card-header {
     display: flex;
@@ -12,7 +15,7 @@
       width: 80rpx;
       height: 80rpx;
       border-radius: 50%;
-      background: #eee;
+      background: $color-bg-muted;
       flex-shrink: 0;
     }
 
@@ -27,20 +30,20 @@
     .nickname {
       font-size: 30rpx;
       font-weight: 600;
-      color: #1a1a1a;
+      color: $color-text;
     }
 
     .time {
       font-size: 22rpx;
-      color: #999;
+      color: $color-text-muted;
       margin-top: 4rpx;
     }
 
     .repost-badge {
       font-size: 20rpx;
-      color: #f59e0b;
-      border: 1rpx solid #f59e0b;
-      border-radius: 8rpx;
+      color: $color-warning;
+      border: 1rpx solid $color-warning;
+      border-radius: $radius-sm;
       padding: 2rpx 10rpx;
     }
   }
@@ -49,7 +52,7 @@
     display: block;
     margin-top: 16rpx;
     font-size: 28rpx;
-    color: #333;
+    color: $color-text;
     line-height: 1.6;
   }
 
@@ -57,7 +60,7 @@
     display: block;
     margin-top: 16rpx;
     font-size: 28rpx;
-    color: #333;
+    color: $color-text;
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-all;
@@ -66,13 +69,13 @@
   .repost-quote {
     margin-top: 16rpx;
     padding: 16rpx;
-    border-left: 6rpx solid #e5e5e5;
-    background: #fafafa;
-    border-radius: 8rpx;
+    border-left: 6rpx solid $color-primary;
+    background: $color-bg-muted;
+    border-radius: $radius-sm;
 
     .quote-author {
       font-size: 26rpx;
-      color: #16a34a;
+      color: $color-primary;
       font-weight: 600;
     }
 
@@ -80,7 +83,7 @@
       display: block;
       margin-top: 8rpx;
       font-size: 26rpx;
-      color: #555;
+      color: $color-text-secondary;
       line-height: 1.5;
       white-space: pre-wrap;
       word-break: break-all;
@@ -92,7 +95,7 @@
     align-items: center;
     margin-top: 20rpx;
     padding-top: 16rpx;
-    border-top: 1rpx solid #f2f2f2;
+    border-top: 1rpx solid $border-color-light;
 
     .action-btn {
       display: flex;
@@ -102,17 +105,17 @@
 
     .action-icon {
       font-size: 32rpx;
-      color: #666;
+      color: $color-text-secondary;
       line-height: 1;
 
       &.liked {
-        color: #ef4444;
+        color: $color-error;
       }
     }
 
     .action-count {
       font-size: 24rpx;
-      color: #666;
+      color: $color-text-secondary;
       margin-left: 8rpx;
       min-width: 32rpx;
     }

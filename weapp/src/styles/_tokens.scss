@@ -1,0 +1,68 @@
+/**
+ * 想聚 — 设计令牌（Design Tokens）
+ * 从 Ardot 设计稿提取，所有页面/组件统一引用。
+ * rpx 单位基于 designWidth=750。
+ */
+
+// ---- 品牌色 ----
+$color-primary: #ff6b35;        // 暖珊瑚 — 主品牌色
+$color-primary-light: #ffa940;  // 暖橙 — 辅助/渐变终点
+$color-primary-bg: #fff0e8;     // 珊瑚浅底 — 标签/按钮浅色背景
+$color-primary-dark: #e55a2b;   // 深珊瑚 — 按压态
+
+// ---- 微信绿（仅登录按钮）----
+$color-wechat: #07c160;
+
+// ---- 背景色 ----
+$color-bg: #faf7f2;             // 暖米色 — 页面背景
+$color-bg-card: #ffffff;        // 白色 — 卡片背景
+$color-bg-muted: #f5f2ed;       // 暖灰 — 次级背景/未选中标签
+$color-bg-hover: #f0ede8;       // 悬浮态
+
+// ---- 文字色 ----
+$color-text: #1a1a2e;           // 主文字
+$color-text-secondary: #6b7280; // 次要文字
+$color-text-muted: #9ca3af;     // 辅助/占位
+$color-text-inverse: #ffffff;   // 反白文字
+
+// ---- 功能色 ----
+$color-star: #ff6b35;           // 评分星标
+$color-error: #ef4444;          // 错误/删除
+$color-success: #07c160;        // 成功
+$color-warning: #f59e0b;        // 警告
+
+// ---- 渐变 ----
+$gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ffa940 100%);
+
+// ---- 圆角 ----
+$radius-sm: 8rpx;
+$radius-md: 16rpx;
+$radius-lg: 24rpx;
+$radius-xl: 32rpx;
+$radius-pill: 999rpx;
+
+// ---- 卡片阴影 ----
+$shadow-card: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+$shadow-tabbar: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+$shadow-float: 0 4rpx 20rpx rgba(0, 0, 0, 0.12);
+
+// ---- 间距 ----
+$spacing-xs: 8rpx;
+$spacing-sm: 12rpx;
+$spacing-md: 16rpx;
+$spacing-lg: 24rpx;
+$spacing-xl: 32rpx;
+$spacing-2xl: 48rpx;
+
+// ---- 字号 ----
+$font-xs: 20rpx;
+$font-sm: 24rpx;
+$font-base: 28rpx;
+$font-md: 30rpx;
+$font-lg: 32rpx;
+$font-xl: 40rpx;
+$font-2xl: 48rpx;
+
+// ---- 边框 ----
+$border-color: #f0ede8;
+$border-color-light: #f5f2ed;

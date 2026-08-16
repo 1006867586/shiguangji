@@ -2,21 +2,37 @@
  * 全局样式：仅放通用的 reset / 主题变量，页面样式写在各自 .scss 里。
  * px 单位在编译期按 designWidth=750 换算为 rpx。
  */
+@import "./styles/_tokens.scss";
+
 page {
-  background-color: #f6f6f7;
-  font-size: 28rpx;
-  color: #1f2937;
+  background-color: $color-bg;
+  font-size: $font-base;
+  color: $color-text;
 }
 
 /* 通用小工具类 */
 .text-muted {
-  color: #9ca3af;
-  font-size: 24rpx;
+  color: $color-text-muted;
+  font-size: $font-sm;
 }
 
 .card {
-  background: #ffffff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  margin: 16rpx 24rpx;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-lg;
+  margin: $spacing-md $spacing-lg;
+  box-shadow: $shadow-card;
+}
+
+/* 通用按钮 */
+.btn-primary {
+  background: $color-primary;
+  color: $color-text-inverse;
+  border-radius: $radius-pill;
+  font-size: $font-md;
+  border: none;
+
+  &::after {
+    border: none;
+  }
 }

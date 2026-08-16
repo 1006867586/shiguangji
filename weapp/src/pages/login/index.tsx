@@ -1,19 +1,19 @@
 import { useState } from "react";
 import Taro from "@tarojs/taro";
-import { View, Text, Button, OpenData } from "@tarojs/components";
+import { View, Text, Button } from "@tarojs/components";
 import { weappLogin } from "@/utils/auth";
 import { ApiError } from "@/utils/request";
 import "./index.scss";
 
 /**
- * 登录页 — M1 核心链路：
- * Taro.login() 拿微信 code → POST /api/auth/weapp/login
- * → 服务端 code2Session + Supabase 会话 → 本地存 token → 回首页。
- *
- * 注意：项目真实运行前需把 weapp/project.config.json 的 appid
- * 从 "touristappid" 换成小程序后台的真实 AppID，且服务端已配置
- * WEAPP_APPID / WEAPP_SECRET。
+ * 登录页 — 暖珊瑚渐变全屏 Hero 布局：
+ * 顶部 Logo + AppName + Tagline
+ * 底部微信一键登录按钮 + 协议文本
  */
+
+const PRIVACY_URL = "https://m.zykh.top/privacy";
+const AGREEMENT_URL = "https://m.zykh.top/agreement";
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
@@ -39,33 +39,56 @@ export default function LoginPage() {
     }
   };
 
+  const openWebview = (url: string, title: string) => {
+    Taro.navigateTo({
+      url: `/pages/webview/index?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`,
+    });
+  };
+
   return (
     <View className="login-page">
-      <View className="brand">
+      {/* 顶部品牌区 */}
+      <View className="brand-section">
+        <View className="logo">
+          {/* 碗 + 蒸汽 图标 */}
+          <View className="logo-icon">
+            <Text className="logo-emoji">🍜</Text>
+          </View>
+        </View>
         <Text className="brand-name">想聚</Text>
-        <Text className="brand-slogan">组个饭局，就这么简单</Text>
+        <Text className="brand-slogan">聚餐不纠结，点餐更轻松</Text>
       </View>
 
-      <Button
-        className="btn-wechat"
-        type="primary"
-        loading={loading}
-        disabled={loading}
-        onClick={() => void handleLogin()}
-      >
-        微信一键登录
-      </Button>
+      {/* 底部操作区 */}
+      <View className="action-section">
+        {hint && <Text className="hint">{hint}</Text>}
 
-      <View className="avatar-row">
-        <OpenData type="userAvatarUrl" />
-        <OpenData type="userNickName" />
+        <Button
+          className="btn-wechat"
+          loading={loading}
+          disabled={loading}
+          onClick={() => void handleLogin()}
+        >
+          微信一键登录
+        </Button>
+
+        <View className="privacy">
+          登录即同意
+          <Text
+            className="privacy-link"
+            onClick={() => openWebview(AGREEMENT_URL, "用户协议")}
+          >
+            《用户协议》
+          </Text>
+          和
+          <Text
+            className="privacy-link"
+            onClick={() => openWebview(PRIVACY_URL, "隐私政策")}
+          >
+            《隐私政策》
+          </Text>
+        </View>
       </View>
-
-      {hint && <Text className="hint">{hint}</Text>}
-
-      <Text className="privacy text-muted">
-        登录即代表同意用户协议与隐私政策（提审前需补充真实链接）
-      </Text>
     </View>
   );
 }

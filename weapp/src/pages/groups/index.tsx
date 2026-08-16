@@ -11,8 +11,8 @@ import {
 import "./index.scss";
 
 /**
- * 带输入框的确认弹窗（wx.showModal editable，Taro 4 类型未收录，需断言）。
- * resolve(content)；用户取消 resolve(null)。
+ * 圈子页（TabBar）：我的圈子列表 + 创建 + 邀请码加入。
+ * 卡片式布局，右上角悬浮 + 按钮快速创建。
  */
 async function promptText(title: string, placeholder: string): Promise<string | null> {
   const res = await Taro.showModal({
@@ -24,10 +24,11 @@ async function promptText(title: string, placeholder: string): Promise<string | 
   return r.confirm ? (r.content ?? "") : null;
 }
 
-/**
- * 圈子管理页：我的圈子列表 + 创建 + 邀请码加入。
- * 创建成功后自动跳转该圈子详情（可复制邀请码拉人）。
- */
+/** 圈子首字母渐变头像 fallback */
+function getInitial(name: string): string {
+  return name?.[0] || "圈";
+}
+
 export default function GroupsPage() {
   const [groups, setGroups] = useState<GroupLite[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,7 +48,6 @@ export default function GroupsPage() {
     if (isLoggedIn()) void load();
   });
 
-  // ---- 创建圈子（promptText 输入名称） ----
   const handleCreate = async () => {
     if (creating) return;
     const input = await promptText("创建圈子", "给圈子起个名字（如：周五饭搭子）");
@@ -74,7 +74,6 @@ export default function GroupsPage() {
     }
   };
 
-  // ---- 邀请码加入 ----
   const handleJoin = async () => {
     const input = await promptText("加入圈子", "输入 6 位邀请码");
     if (input === null) return;
@@ -88,7 +87,7 @@ export default function GroupsPage() {
       Taro.showToast({ title: "加入成功", icon: "success" });
       await load();
     } catch {
-      // request 层已 toast（邀请码无效等）
+      // request 层已 toast
     }
   };
 
@@ -99,12 +98,13 @@ export default function GroupsPage() {
   if (!isLoggedIn()) {
     return (
       <View className="groups-page placeholder">
+        <View className="placeholder-logo">🍜</View>
         <Text className="text-muted">登录后管理你的圈子</Text>
         <Button
-          type="primary"
+          className="btn-login"
           onClick={() => Taro.navigateTo({ url: "/pages/login/index" })}
         >
-          去登录
+          微信一键登录
         </Button>
       </View>
     );
@@ -112,17 +112,20 @@ export default function GroupsPage() {
 
   return (
     <View className="groups-page">
-      {/* 操作区 */}
-      <View className="action-bar">
-        <Button size="mini" type="primary" onClick={handleCreate} loading={creating}>
-          ＋ 创建圈子
-        </Button>
-        <Button size="mini" onClick={handleJoin}>
-          邀请码加入
-        </Button>
+      {/* 顶部操作栏 */}
+      <View className="top-bar">
+        <Text className="page-title">圈子</Text>
+        <View className="top-actions">
+          <View className="action-btn join-btn" onClick={handleJoin}>
+            <Text>邀请码</Text>
+          </View>
+          <View className="action-btn create-btn" onClick={handleCreate}>
+            <Text className="create-icon">＋</Text>
+          </View>
+        </View>
       </View>
 
-      {/* 列表 */}
+      {/* 圈子列表 */}
       {loading && groups === null && (
         <View className="state">
           <Text className="text-muted">加载中…</Text>
@@ -131,32 +134,52 @@ export default function GroupsPage() {
 
       {groups && groups.length === 0 && (
         <View className="state">
+          <Text className="state-emoji">🍽️</Text>
           <Text className="text-muted">还没有圈子，创建一个或用邀请码加入</Text>
         </View>
       )}
 
-      {groups?.map((g) => (
-        <View key={g.id} className="group-card" onClick={() => goDetail(g)}>
-          <Image
-            className="group-avatar"
-            src={g.avatar_url || "https://img.example.com/group-default.png"}
-            mode="aspectFill"
-          />
-          <View className="group-info">
-            <View className="group-name-row">
-              <Text className="group-name">{g.name}</Text>
-              {g.role === "admin" && <Text className="role-badge">圈主</Text>}
+      <View className="circle-list">
+        {groups?.map((g) => (
+          <View key={g.id} className="circle-card" onClick={() => goDetail(g)}>
+            <View className="card-head">
+              {g.avatar_url ? (
+                <Image
+                  className="circle-icon"
+                  src={g.avatar_url}
+                  mode="aspectFill"
+                />
+              ) : (
+                <View className="circle-icon gradient-icon">
+                  <Text className="icon-text">{getInitial(g.name)}</Text>
+                </View>
+              )}
+              <View className="circle-info">
+                <View className="circle-name-row">
+                  <Text className="circle-name">{g.name}</Text>
+                  {g.role === "admin" && <Text className="role-badge">圈主</Text>}
+                </View>
+                <Text className="circle-members">
+                  {g.invite_code ? `邀请码 ${g.invite_code}` : "点击查看详情"}
+                </Text>
+              </View>
             </View>
             {g.description && (
-              <Text className="group-desc">{g.description}</Text>
+              <Text className="circle-desc">{g.description}</Text>
             )}
-            {g.invite_code && (
-              <Text className="group-code">邀请码 {g.invite_code}</Text>
-            )}
+            <View className="circle-enter">
+              <Text className="enter-text">进入圈子</Text>
+              <Text className="enter-arrow">›</Text>
+            </View>
           </View>
-          <Text className="arrow">›</Text>
+        ))}
+      </View>
+
+      {creating && (
+        <View className="loading-mask">
+          <Text className="text-muted">创建中…</Text>
         </View>
-      ))}
+      )}
     </View>
   );
 }

@@ -339,3 +339,59 @@ export function parseFavoritesScreenshot(body: {
     timeout: 60_000,
   });
 }
+
+// ---- 转盘（Meal Roulette）----
+
+export interface MealRouletteItem {
+  id: string;
+  title: string;
+  address?: string | null;
+  phone?: string | null;
+  signature_dishes?: string[] | null;
+  adder?: { id: string; nickname: string } | null;
+}
+
+/** GET /api/groups/[id]/roulette-items — 获取圈子转盘候选池 */
+export function fetchMealRoulette(groupId: string): Promise<MealRouletteItem[]> {
+  return request<MealRouletteItem[]>(`/api/groups/${groupId}/roulette-items`, {
+    silent: true,
+  });
+}
+
+/** POST /api/groups/[id]/roulette-items — 添加单个候选 */
+export function addMealRouletteItem(
+  groupId: string,
+  body: { title: string; address?: string; phone?: string }
+): Promise<MealRouletteItem> {
+  return request(`/api/groups/${groupId}/roulette-items`, {
+    method: "POST",
+    data: body,
+  });
+}
+
+/** POST /api/groups/[id]/roulette-items/import — 批量导入候选 */
+export function importMealRouletteItems(
+  groupId: string,
+  items: Array<{
+    title: string;
+    address?: string;
+    phone?: string;
+    signatureDishes?: string[];
+  }>
+): Promise<{ inserted: number; duplicated: number }> {
+  return request(`/api/groups/${groupId}/roulette-items/import`, {
+    method: "POST",
+    data: { items },
+  });
+}
+
+/** DELETE /api/groups/[id]/roulette-items/[itemId] — 删除候选 */
+export function deleteMealRouletteItem(
+  groupId: string,
+  itemId: string
+): Promise<unknown> {
+  return request(`/api/groups/${groupId}/roulette-items/${itemId}`, {
+    method: "DELETE",
+    silent: true,
+  });
+}
