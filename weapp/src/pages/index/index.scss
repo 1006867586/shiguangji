@@ -45,8 +45,8 @@
   .group-tabs {
     width: 100%;
     white-space: nowrap;
-    background: $color-bg-card;
-    padding: 12rpx 16rpx;
+    background: transparent;
+    padding: 24rpx 24rpx 8rpx;
     box-sizing: border-box;
     position: sticky;
     top: 0;
@@ -55,23 +55,25 @@
 
   .group-tab {
     display: inline-flex;
-    padding: 10rpx 28rpx;
-    margin: 0 8rpx;
+    padding: 14rpx 36rpx;
+    margin-right: 16rpx;
     border-radius: $radius-pill;
     font-size: 26rpx;
     color: $color-text-secondary;
-    background: $color-bg-muted;
+    background: $color-bg-card;
+    border: 1rpx solid $border-color-light;
     transition: all 0.2s;
 
     &.active {
       color: $color-text-inverse;
       background: $color-primary;
+      border-color: $color-primary;
       font-weight: 600;
     }
   }
 
   .feed-list {
-    padding-bottom: 24rpx;
+    padding: 16rpx 24rpx 24rpx;
   }
 
   .feed-state {

@@ -2,121 +2,97 @@
 
 .link-card {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   margin-top: 16rpx;
-  padding: 20rpx;
+  padding: 24rpx;
   background: $color-bg-muted;
   border-radius: $radius-md;
-  border: 1rpx solid $border-color;
 
   .link-body {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-  }
+    .link-title {
+      display: block;
+      font-size: 30rpx;
+      font-weight: 600;
+      color: $color-text;
+      margin-bottom: 8rpx;
+    }
 
-  .link-cover {
-    width: 160rpx;
-    height: 160rpx;
-    border-radius: $radius-sm;
-    margin-left: 16rpx;
-    background: $color-bg-muted;
-  }
+    .link-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12rpx;
+      margin-bottom: 12rpx;
 
-  .link-title {
-    font-size: 30rpx;
-    font-weight: 600;
-    color: $color-text;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
+      .link-rating {
+        font-size: 24rpx;
+        color: $color-star;
+        font-weight: 600;
+      }
 
-  .link-meta {
-    display: flex;
-    align-items: center;
-    gap: 12rpx;
-    margin-top: 8rpx;
-    flex-wrap: wrap;
-  }
+      .link-tag {
+        font-size: 20rpx;
+        color: $color-primary;
+        background: $color-primary-bg;
+        padding: 4rpx 12rpx;
+        border-radius: $radius-pill;
+      }
 
-  .link-rating {
-    color: $color-star;
-    font-size: 26rpx;
-    font-weight: 600;
-  }
+      .link-price {
+        font-size: 24rpx;
+        color: $color-text-secondary;
+      }
+    }
 
-  .link-tag {
-    font-size: 22rpx;
-    color: $color-primary;
-    background: $color-primary-bg;
-    padding: 2rpx 12rpx;
-    border-radius: $radius-sm;
-  }
+    .link-row {
+      display: flex;
+      align-items: center;
+      margin-top: 8rpx;
 
-  .link-price {
-    font-size: 24rpx;
-    color: $color-text-secondary;
-  }
+      .link-row-label {
+        font-size: 22rpx;
+        color: $color-text-muted;
+        margin-right: 12rpx;
+        flex-shrink: 0;
+      }
 
-  .link-row {
-    display: flex;
-    margin-top: 6rpx;
-    font-size: 24rpx;
-    line-height: 1.5;
-  }
+      .link-row-value {
+        font-size: 24rpx;
+        color: $color-text-secondary;
+        flex: 1;
+      }
 
-  .link-row-tap {
-    align-items: center;
-
-    &:active {
-      opacity: 0.6;
+      .link-row-icon {
+        font-size: 24rpx;
+        margin-left: 8rpx;
+      }
     }
   }
 
-  .link-row-label {
-    color: $color-text-muted;
-    flex-shrink: 0;
-    margin-right: 12rpx;
-  }
-
-  .link-row-value {
-    color: $color-text-secondary;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  .link-row-icon {
-    flex-shrink: 0;
-    margin-left: 8rpx;
-    font-size: 24rpx;
+  .link-cover {
+    width: 100%;
+    height: 240rpx;
+    border-radius: $radius-md;
+    margin-top: 16rpx;
+    background: $color-bg-hover;
   }
 
   .link-footer {
-    width: 100%;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     margin-top: 16rpx;
-    padding-top: 12rpx;
+    padding-top: 16rpx;
     border-top: 1rpx solid $border-color;
-  }
 
-  .link-platform {
-    font-size: 22rpx;
-    color: $color-primary;
-  }
+    .link-platform {
+      font-size: 22rpx;
+      color: $color-primary;
+    }
 
-  .link-copy-hint {
-    font-size: 22rpx;
-    color: $color-text-muted;
+    .link-copy-hint {
+      font-size: 20rpx;
+      color: $color-text-muted;
+    }
   }
 }

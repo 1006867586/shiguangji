@@ -1,92 +1,85 @@
 @import "../styles/_tokens.scss";
 
 .activity-card {
-  margin: 16rpx 24rpx;
-  padding: 24rpx;
+  margin-bottom: 24rpx;
+  padding: 28rpx;
   background: $color-bg-card;
-  border-radius: $radius-md;
+  border-radius: $radius-lg;
   box-shadow: $shadow-card;
+  border: 1rpx solid $border-color-light;
 
   .card-header {
     display: flex;
     align-items: center;
+    margin-bottom: 16rpx;
 
     .avatar {
-      width: 80rpx;
-      height: 80rpx;
+      width: 72rpx;
+      height: 72rpx;
       border-radius: 50%;
+      margin-right: 16rpx;
       background: $color-bg-muted;
-      flex-shrink: 0;
     }
 
     .header-main {
       flex: 1;
-      min-width: 0;
-      margin-left: 16rpx;
-      display: flex;
-      flex-direction: column;
-    }
 
-    .nickname {
-      font-size: 30rpx;
-      font-weight: 600;
-      color: $color-text;
-    }
+      .nickname {
+        display: block;
+        font-size: 28rpx;
+        font-weight: 600;
+        color: $color-text;
+      }
 
-    .time {
-      font-size: 22rpx;
-      color: $color-text-muted;
-      margin-top: 4rpx;
+      .time {
+        font-size: 22rpx;
+        color: $color-text-muted;
+        margin-top: 4rpx;
+      }
     }
 
     .repost-badge {
       font-size: 20rpx;
-      color: $color-warning;
-      border: 1rpx solid $color-warning;
-      border-radius: $radius-sm;
-      padding: 2rpx 10rpx;
+      color: $color-primary;
+      background: $color-primary-bg;
+      padding: 4rpx 12rpx;
+      border-radius: $radius-pill;
     }
   }
 
   .repost-comment {
     display: block;
-    margin-top: 16rpx;
-    font-size: 28rpx;
-    color: $color-text;
-    line-height: 1.6;
+    font-size: 26rpx;
+    color: $color-text-secondary;
+    margin-bottom: 12rpx;
   }
 
   .content {
     display: block;
-    margin-top: 16rpx;
-    font-size: 28rpx;
-    color: $color-text;
+    font-size: 30rpx;
     line-height: 1.6;
+    color: $color-text;
+    margin-bottom: 16rpx;
     white-space: pre-wrap;
-    word-break: break-all;
   }
 
   .repost-quote {
     margin-top: 16rpx;
-    padding: 16rpx;
-    border-left: 6rpx solid $color-primary;
+    padding: 20rpx;
     background: $color-bg-muted;
-    border-radius: $radius-sm;
+    border-radius: $radius-md;
 
     .quote-author {
-      font-size: 26rpx;
+      display: block;
+      font-size: 24rpx;
       color: $color-primary;
-      font-weight: 600;
+      margin-bottom: 8rpx;
     }
 
     .quote-content {
-      display: block;
-      margin-top: 8rpx;
       font-size: 26rpx;
       color: $color-text-secondary;
       line-height: 1.5;
-      white-space: pre-wrap;
-      word-break: break-all;
     }
   }
 
@@ -94,44 +87,40 @@
     display: flex;
     align-items: center;
     margin-top: 20rpx;
-    padding-top: 16rpx;
+    padding-top: 20rpx;
     border-top: 1rpx solid $border-color-light;
 
     .action-btn {
       display: flex;
       align-items: center;
-      margin-right: 64rpx;
-    }
+      gap: 8rpx;
+      margin-right: 40rpx;
 
-    .share-btn {
-      padding: 0;
-      margin-left: 0;
-      margin-right: 64rpx;
-      background: transparent;
-      border: none;
-      line-height: inherit;
-      font-size: inherit;
+      .action-icon {
+        font-size: 30rpx;
+        color: $color-text-secondary;
 
-      &::after {
+        &.liked {
+          color: $color-primary;
+        }
+      }
+
+      .action-count {
+        font-size: 24rpx;
+        color: $color-text-muted;
+      }
+
+      &.share-btn {
+        margin-left: auto;
+        background: transparent;
         border: none;
+        padding: 0;
+        line-height: 1;
+
+        &::after {
+          border: none;
+        }
       }
-    }
-
-    .action-icon {
-      font-size: 32rpx;
-      color: $color-text-secondary;
-      line-height: 1;
-
-      &.liked {
-        color: $color-error;
-      }
-    }
-
-    .action-count {
-      font-size: 24rpx;
-      color: $color-text-secondary;
-      margin-left: 8rpx;
-      min-width: 32rpx;
     }
   }
 }
