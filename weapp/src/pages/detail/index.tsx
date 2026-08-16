@@ -487,31 +487,17 @@ export default function DetailPage() {
         ))}
       </View>
 
-      {/* 照片墙（web 同款：补充照片 + 编辑 + 可删图集） */}
+      {/* 照片墙（web 同款：独立卡片 + 轻量按钮） */}
       <View className="photo-wall">
         <View className="photo-wall-head">
-          <Text className="photo-wall-title">
-            照片墙 {activity.photos?.length ? `(${activity.photos.length})` : ""}
-          </Text>
+          <Text className="photo-wall-title">照片墙</Text>
           <View className="photo-wall-actions">
             {isAuthor && (
-              <Button
-                size="mini"
-                className="wall-btn edit"
-                onClick={openEdit}
-              >
-                编辑
-              </Button>
+              <Text className="wall-link edit" onClick={openEdit}>编辑</Text>
             )}
-            <Button
-              size="mini"
-              className="wall-btn add"
-              loading={addingPhotos}
-              disabled={addingPhotos}
-              onClick={() => void addPhotos()}
-            >
-              ＋ 补充照片
-            </Button>
+            <Text className="wall-link add" onClick={() => void addPhotos()}>
+              {addingPhotos ? "上传中…" : "补充照片"}
+            </Text>
           </View>
         </View>
 

@@ -40,27 +40,17 @@
     .photo-wall-actions {
       display: flex;
       align-items: center;
-      gap: 12rpx;
+      gap: 24rpx;
 
-      .wall-btn {
-        border-radius: 999rpx;
-        font-size: 24rpx;
-        padding: 0 24rpx;
-        height: 56rpx;
-        line-height: 56rpx;
-
-        &::after {
-          border: none;
-        }
+      .wall-link {
+        font-size: 26rpx;
 
         &.add {
-          background: #ff6b35;
-          color: #ffffff;
+          color: #ff6b35;
         }
 
         &.edit {
-          background: #f5f2ed;
-          color: #ff6b35;
+          color: #9ca3af;
         }
       }
     }
