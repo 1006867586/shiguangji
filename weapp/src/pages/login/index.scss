@@ -50,5 +50,12 @@
 
   .privacy {
     margin-top: 64rpx;
+    text-align: center;
+
+    .privacy-link {
+      color: #16a34a;
+      text-decoration: underline;
+      margin: 0 4rpx;
+    }
   }
 }

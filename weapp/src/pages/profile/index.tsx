@@ -80,6 +80,17 @@ export default function ProfilePage() {
       </View>
 
       <View className="menu-card">
+        <View
+          className="menu-item"
+          onClick={() => Taro.navigateTo({ url: "/pages/demo/index" })}
+        >
+          <Text className="menu-icon">📖</Text>
+          <Text className="menu-label">产品介绍</Text>
+          <Text className="arrow">›</Text>
+        </View>
+      </View>
+
+      <View className="menu-card">
         <Button className="btn-logout" onClick={handleLogout}>
           退出登录
         </Button>

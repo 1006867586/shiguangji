@@ -1,5 +1,6 @@
 export default defineAppConfig({
   pages: [
+    "pages/demo/index",
     "pages/index/index",
     "pages/publish/index",
     "pages/profile/index",
@@ -12,6 +13,7 @@ export default defineAppConfig({
     "pages/favorites-import/index",
     "pages/favorite-edit/index",
     "pages/poster/index",
+    "pages/webview/index",
   ],
   subPackages: [
     { root: "subpackages/roulette", pages: ["index"] },

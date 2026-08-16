@@ -14,6 +14,11 @@ import "./index.scss";
  * 从 "touristappid" 换成小程序后台的真实 AppID，且服务端已配置
  * WEAPP_APPID / WEAPP_SECRET。
  */
+
+// 隐私政策 / 用户协议 跳转地址（与 demo 页一致，可改为 .env 注入）
+const PRIVACY_URL = "https://m.zykh.top/privacy";
+const AGREEMENT_URL = "https://m.zykh.top/agreement";
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
@@ -37,6 +42,12 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openWebview = (url: string, title: string) => {
+    Taro.navigateTo({
+      url: `/pages/webview/index?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`,
+    });
   };
 
   return (
@@ -63,9 +74,22 @@ export default function LoginPage() {
 
       {hint && <Text className="hint">{hint}</Text>}
 
-      <Text className="privacy text-muted">
-        登录即代表同意用户协议与隐私政策（提审前需补充真实链接）
-      </Text>
+      <View className="privacy text-muted">
+        登录即代表同意
+        <Text
+          className="privacy-link"
+          onClick={() => openWebview(AGREEMENT_URL, "用户协议")}
+        >
+          《用户协议》
+        </Text>
+        与
+        <Text
+          className="privacy-link"
+          onClick={() => openWebview(PRIVACY_URL, "隐私政策")}
+        >
+          《隐私政策》
+        </Text>
+      </View>
     </View>
   );
 }

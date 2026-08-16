@@ -22,21 +22,38 @@ export function getAccessToken(): string | null {
   return Taro.getStorageSync<string>(TOKEN_KEY) || null;
 }
 
+// 防止并发调用 weappLogin 触发 45011（微信频率限制）。
+// 同时只允许一个 in-flight 请求，重复调用直接拒绝并等待首个结果。
+let loginPromise: Promise<WeappSession> | null = null;
+
 /** 微信一键登录：wx.login 拿 code，换服务端会话 token */
 export async function weappLogin(): Promise<WeappSession> {
-  const { code } = await Taro.login();
-  if (!code) throw new Error("微信登录失败：未获取到 code");
+  if (loginPromise) {
+    // 已有 in-flight 的登录请求，复用其结果（不重新拿 code、不重新 POST）
+    return loginPromise;
+  }
 
-  const session = await request<WeappSession>("/api/auth/weapp/login", {
-    method: "POST",
-    data: { code },
-    auth: false,
-  });
+  loginPromise = (async () => {
+    const { code } = await Taro.login();
+    if (!code) throw new Error("微信登录失败：未获取到 code");
 
-  Taro.setStorageSync(TOKEN_KEY, session.accessToken);
-  Taro.setStorageSync(REFRESH_KEY, session.refreshToken);
-  if (session.expiresAt) Taro.setStorageSync(EXPIRES_KEY, session.expiresAt);
-  return session;
+    const session = await request<WeappSession>("/api/auth/weapp/login", {
+      method: "POST",
+      data: { code },
+      auth: false,
+    });
+
+    Taro.setStorageSync(TOKEN_KEY, session.accessToken);
+    Taro.setStorageSync(REFRESH_KEY, session.refreshToken);
+    if (session.expiresAt) Taro.setStorageSync(EXPIRES_KEY, session.expiresAt);
+    return session;
+  })();
+
+  try {
+    return await loginPromise;
+  } finally {
+    loginPromise = null;
+  }
 }
 
 /** 退出登录：仅清本地凭据（服务端 Supabase token 自然过期） */
