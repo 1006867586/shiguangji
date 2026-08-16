@@ -116,6 +116,8 @@ type Source =
   | { type: "group"; group: GroupLite };
 
 export default function RoulettePage() {
+  // 登录态用 state（登录页返回后 useDidShow 里更新，触发重渲染）
+  const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [groups, setGroups] = useState<GroupLite[]>([]);
   const [localPools, setLocalPools] = useState<LocalPool[]>(loadLocalPools());
   const [source, setSource] = useState<Source>({ type: "local" });
@@ -131,7 +133,6 @@ export default function RoulettePage() {
   const canvasRef = useRef<Canvas2DNode | null>(null);
   const itemsRef = useRef<WheelItem[]>(DEFAULT_CUISINES);
 
-  const loggedIn = isLoggedIn();
   const anonId = getAnonId();
 
   // ---- 候选池选择列表：默认菜系 / 分享池 / 圈子池 ----
@@ -196,9 +197,12 @@ export default function RoulettePage() {
     [localPools, groups, loadItems, resolveSource]
   );
 
-  // ---- 首次进入 / 分享链接进入 ----
+  // ---- 首次进入 / 分享链接进入 / 登录态刷新 ----
   useDidShow(() => {
     setSelectedTab(3);
+    // 每次显示都重读登录态（登录页返回后更新）
+    const cur = isLoggedIn();
+    if (cur !== loggedIn) setLoggedIn(cur);
     const params = Taro.getCurrentInstance().router?.params ?? {};
     // 分享卡片进入：?pool=<code>
     const poolCode = (params.pool ?? "").toString().trim().toUpperCase();
@@ -206,12 +210,21 @@ export default function RoulettePage() {
       void enterPool(poolCode);
       return;
     }
-    if (loggedIn && groups.length === 0) {
+    if (cur && groups.length === 0) {
       fetchGroups()
         .then((list) => setGroups(list ?? []))
         .catch(() => {});
     }
   });
+
+  // 登录态变为已登录后加载圈子池
+  useEffect(() => {
+    if (loggedIn && groups.length === 0) {
+      fetchGroups()
+        .then((list) => setGroups(list ?? []))
+        .catch(() => {});
+    }
+  }, [loggedIn, groups.length]);
 
   const enterPool = async (code: string) => {
     try {
