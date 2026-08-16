@@ -60,6 +60,15 @@ interface LocalPool {
   name: string;
 }
 
+/** 将 hex 颜色向白色混合（amt 0~1），用于分段同色系渐变 */
+function lighten(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.round(((n >> 16) & 255) + (255 - ((n >> 16) & 255)) * amt));
+  const g = Math.min(255, Math.round(((n >> 8) & 255) + (255 - ((n >> 8) & 255)) * amt));
+  const b = Math.min(255, Math.round((n & 255) + (255 - (n & 255)) * amt));
+  return `rgb(${r},${g},${b})`;
+}
+
 const POOLS_KEY = "roulette_local_pools";
 const ANON_KEY = "roulette_anon_id";
 
@@ -386,18 +395,28 @@ export default function RoulettePage() {
         for (let i = 0; i < list.length; i++) {
           const start = -Math.PI / 2 + i * slice;
           const end = start + slice;
+          const mid = start + slice / 2;
+          // 同色系渐变：中心偏亮、边缘用基础色
+          const base = SLICE_COLORS[i % SLICE_COLORS.length];
+          const grad = ctx.createLinearGradient(
+            cx,
+            cy,
+            cx + Math.cos(mid) * r,
+            cy + Math.sin(mid) * r
+          );
+          grad.addColorStop(0, lighten(base, 0.4));
+          grad.addColorStop(1, base);
           ctx.beginPath();
           ctx.moveTo(cx, cy);
           ctx.arc(cx, cy, r, start, end);
           ctx.closePath();
-          ctx.fillStyle = SLICE_COLORS[i % SLICE_COLORS.length];
+          ctx.fillStyle = grad;
           ctx.fill();
-          ctx.strokeStyle = "#ffffff";
+          ctx.strokeStyle = "rgba(255,255,255,0.9)";
           ctx.lineWidth = 2;
           ctx.stroke();
 
           // 文字
-          const mid = start + slice / 2;
           const tx = cx + Math.cos(mid) * r * 0.62;
           const ty = cy + Math.sin(mid) * r * 0.62;
           ctx.save();
@@ -407,6 +426,8 @@ export default function RoulettePage() {
           ctx.font = "bold 13px sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
+          ctx.shadowColor = "rgba(0,0,0,0.28)";
+          ctx.shadowBlur = 4;
           let label = list[i].title;
           if (ctx.measureText(label).width > r * 0.42) {
             while (
@@ -418,17 +439,16 @@ export default function RoulettePage() {
             label = `${label}…`;
           }
           ctx.fillText(label, 0, 0);
+          ctx.shadowBlur = 0;
+          ctx.shadowColor = "transparent";
           ctx.restore();
         }
 
-        // 中心圆
+        // 中心圆（canvas 底）
         ctx.beginPath();
-        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 30, 0, Math.PI * 2);
         ctx.fillStyle = "#ffffff";
         ctx.fill();
-        ctx.strokeStyle = "#ff6b35";
-        ctx.lineWidth = 2;
-        ctx.stroke();
       });
   }, []);
 

@@ -126,6 +126,12 @@
   width: 600rpx;
   height: 600rpx;
   margin: 0 auto;
+  padding: 32rpx;
+  box-sizing: content-box;
+  background: #ffffff;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-float;
+  border: 1rpx solid $border-color-light;
 
   .wheel-rotor {
     width: 100%;
@@ -138,22 +144,34 @@
     height: 600rpx;
   }
 
-  /* 顶部指针 */
+  /* 顶部指针：珊瑚圆头针 */
   .wheel-pointer {
     position: absolute;
-    top: -10rpx;
+    top: 4rpx;
     left: 50%;
     transform: translateX(-50%);
     width: 0;
     height: 0;
     border-left: 20rpx solid transparent;
     border-right: 20rpx solid transparent;
-    border-top: 40rpx solid $color-text;
-    filter: drop-shadow(0 2rpx 6rpx rgba(0, 0, 0, 0.2));
+    border-top: 40rpx solid #ff6b35;
+    filter: drop-shadow(0 2rpx 6rpx rgba(255, 107, 53, 0.45));
     z-index: 3;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: -18rpx;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 18rpx;
+      height: 18rpx;
+      border-radius: 50%;
+      background: #ff6b35;
+    }
   }
 
-  /* 中心 GO 按钮 */
+  /* 中心 GO 按钮：珊瑚渐变 + 白字 */
   .wheel-go {
     position: absolute;
     top: 50%;
@@ -162,9 +180,9 @@
     width: 112rpx;
     height: 112rpx;
     border-radius: 50%;
-    background: $color-bg-card;
-    border: 6rpx solid $color-primary;
-    box-shadow: $shadow-float;
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    border: none;
+    box-shadow: 0 8rpx 20rpx rgba(255, 107, 53, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -182,7 +200,7 @@
     .go-text {
       font-size: 36rpx;
       font-weight: 700;
-      color: $color-primary;
+      color: #ffffff;
       line-height: 1;
     }
   }
