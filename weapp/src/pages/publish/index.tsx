@@ -201,9 +201,21 @@ export default function PublishPage() {
     }
     lines.push("", "打算去吃，有人一起吗？");
     setContent(lines.join("\n"));
-    // 店铺有链接则填入并尝试解析（展示封面/评分/地址卡）
+    // 店铺卡片：先用收藏夹数据本地生成（店名/评分/人均/地址/封面）；
+    // 若店铺有链接再异步解析增强（可能拿到更全的封面/评分）
+    setLinkUrl(p.store_url ?? "");
+    setLinkPreview({
+      platform: p.platform === "unknown" ? "other" : p.platform,
+      url: p.store_url ?? "",
+      title: p.title,
+      coverImage: p.cover_image_url,
+      rating: p.rating,
+      address: p.address,
+      phone: p.phone,
+      price: p.price,
+      category: p.category,
+    });
     if (p.store_url) {
-      setLinkUrl(p.store_url);
       void handleParseLink(p.store_url);
     }
   };
@@ -406,9 +418,17 @@ export default function PublishPage() {
           <View className="parsed-card">
             <View className="parsed-main">
               <Text className="parsed-title">{linkPreview.title || "未识别到店名，可手动编辑"}</Text>
-              {linkPreview.rating ? (
-                <Text className="parsed-rating">★ {linkPreview.rating.toFixed(1)}</Text>
-              ) : null}
+              <View className="parsed-tags">
+                {linkPreview.rating ? (
+                  <Text className="parsed-rating">★ {linkPreview.rating.toFixed(1)}</Text>
+                ) : null}
+                {linkPreview.price ? (
+                  <Text className="parsed-tag">人均 {linkPreview.price}</Text>
+                ) : null}
+                {linkPreview.category ? (
+                  <Text className="parsed-tag">{linkPreview.category}</Text>
+                ) : null}
+              </View>
               {linkPreview.address && (
                 <Text className="parsed-row">{linkPreview.address}</Text>
               )}

@@ -177,11 +177,25 @@
     color: $color-text;
   }
 
-  .parsed-rating {
-    display: block;
+  .parsed-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10rpx;
     margin-top: 8rpx;
-    color: $color-star;
-    font-size: 24rpx;
+
+    .parsed-rating {
+      color: $color-star;
+      font-size: 24rpx;
+    }
+
+    .parsed-tag {
+      font-size: 22rpx;
+      color: $color-text-secondary;
+      background: $color-bg;
+      padding: 2rpx 14rpx;
+      border-radius: $radius-pill;
+    }
   }
 
   .parsed-row {
