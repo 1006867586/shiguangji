@@ -373,9 +373,6 @@ export function msgSecCheck(
     silent: true,
   });
 }
-    silent: true,
-  });
-}
 
 // ---- 小程序码（M3 分享海报）----
 
@@ -457,5 +454,4 @@ export function deleteMealRouletteItem(groupId: string, itemId: string): Promise
     `/api/groups/${groupId}/meal-roulette?itemId=${itemId}`,
     { method: "DELETE" }
   );
-}
 }
