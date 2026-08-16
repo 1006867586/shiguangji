@@ -415,8 +415,6 @@ as $$
     a.content,
     a.external_link,
     a.created_at,
-    a.repost_comment,
-    a.group_id,
     jsonb_build_object('id', p.id, 'nickname', p.nickname, 'avatar_url', p.avatar_url) as author,
     (select count(*) from public.activity_photos ap where ap.activity_id = a.id) as photo_count,
     (select count(*) from public.comments c where c.activity_id = a.id) as comment_count,
@@ -437,7 +435,9 @@ as $$
        from public.activities ra
        join public.profiles rp on ra.author_id = rp.id
        where ra.id = a.repost_of_id)
-    else null end as repost_of
+    else null end as repost_of,
+    a.repost_comment,
+    a.group_id
   from public.activities a
   join public.profiles p on a.author_id = p.id
   where a.group_id = p_group_id
