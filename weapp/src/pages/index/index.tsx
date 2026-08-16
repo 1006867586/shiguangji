@@ -5,7 +5,7 @@ import Taro, {
   useReachBottom,
   useShareAppMessage,
 } from "@tarojs/taro";
-import { ScrollView, View, Text, Button } from "@tarojs/components";
+import { ScrollView, View, Text, Button, Input } from "@tarojs/components";
 import { request, ApiError } from "@/utils/request";
 import { isLoggedIn, getCurrentUserId } from "@/utils/auth";
 import { setSelectedTab } from "@/custom-tab-bar/tabStore";
@@ -22,19 +22,22 @@ import LoginGuide from "@/components/LoginGuide";
 import "./index.scss";
 
 const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE = 300;
 
 /**
- * 动态流页（TabBar 首页）：圈子切换 + cursor 分页 + 下拉刷新 + 触底加载。
+ * 动态流页（TabBar 首页）：顶部搜索框 + 圈子下拉切换 + cursor 分页 + 下拉刷新 + 触底加载。
  * 兼容圈子转发卡片进入：path 带 inviteCode 时弹窗确认加入。
  */
 export default function IndexPage() {
   const [groups, setGroups] = useState<GroupLite[] | null>(null);
   const [activeGroupId, setActiveGroupId] = useState<string>("");
   const [feed, setFeed] = useState<ActivityLite[]>([]);
-  const [loading, setLoading] = useState(false); // 首屏/切圈子 loading
+  const [loading, setLoading] = useState(false); // 首屏/切圈子/搜索 loading
   const [loadingMore, setLoadingMore] = useState(false);
   const [finished, setFinished] = useState(false); // 没有更多
   const [error, setError] = useState<string | null>(null);
+  const [keyword, setKeyword] = useState(""); // 搜索关键词（输入即更新，防抖后才请求）
+  const [showGroupSheet, setShowGroupSheet] = useState(false); // 圈子切换半屏弹层
   // 关键：用 state 而不是 const，useDidShow 时重新读 storage
   // （登录页 setStorageSync 后 switchTab 切回动态 tab，需要刷新登录态）
   const [loggedIn, setLoggedIn] = useState<boolean>(isLoggedIn());
@@ -42,6 +45,9 @@ export default function IndexPage() {
   const cursorRef = useRef<string | null>(null);
   const requestingRef = useRef(false); // 防重复请求
   const inviteHandledRef = useRef(false);
+  const keywordRef = useRef(""); // 给异步回调读最新搜索词
+  const activeGroupIdRef = useRef("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 默认转发卡片（右上角菜单 / 卡片分享按钮未命中详情页时）
   useShareAppMessage(() => ({
@@ -91,9 +97,9 @@ export default function IndexPage() {
     }
   }, [activeGroupId]);
 
-  // ---- 加载 feed（refresh=true 重置；false 追加） ----
+  // ---- 加载 feed（refresh=true 重置；false 追加）。kw 传入本次搜索词 ----
   const loadFeed = useCallback(
-    async (groupId: string, refresh: boolean) => {
+    async (groupId: string, refresh: boolean, kw = "") => {
       if (requestingRef.current) return;
       requestingRef.current = true;
       if (refresh) {
@@ -108,6 +114,7 @@ export default function IndexPage() {
           groupId,
           cursor: refresh ? null : cursorRef.current,
           limit: PAGE_SIZE,
+          keyword: kw || undefined,
         });
         const list = res?.data ?? [];
         cursorRef.current = res?.next_cursor ?? null;
@@ -136,21 +143,22 @@ export default function IndexPage() {
     }
   });
 
-  // activeGroupId 就绪后拉首屏 feed
+  // activeGroupId 就绪后拉首屏 feed（切换圈子 / 首次进入）
   const prevGroupRef = useRef<string>("");
   if (activeGroupId && prevGroupRef.current !== activeGroupId) {
     prevGroupRef.current = activeGroupId;
+    activeGroupIdRef.current = activeGroupId;
     cursorRef.current = null;
     if (!requestingRef.current && loggedIn) {
-      void loadFeed(activeGroupId, true);
+      void loadFeed(activeGroupId, true, keywordRef.current);
     }
   }
 
-  // 下拉刷新：重拉圈子 + feed
+  // 下拉刷新：重拉圈子 + feed（保持搜索词）
   usePullDownRefresh(async () => {
     try {
       if (activeGroupId) {
-        await loadFeed(activeGroupId, true);
+        await loadFeed(activeGroupId, true, keywordRef.current);
         await loadGroups();
       } else {
         await loadGroups();
@@ -160,16 +168,41 @@ export default function IndexPage() {
     }
   });
 
-  // 触底加载下一页
+  // 触底加载下一页（保持搜索词）
   useReachBottom(() => {
     if (!activeGroupId || finished || loadingMore || requestingRef.current) return;
-    void loadFeed(activeGroupId, false);
+    void loadFeed(activeGroupId, false, keywordRef.current);
   });
 
-  // 切换圈子
+  // 切换圈子：保留搜索词继续在当前圈子搜
   const switchGroup = (id: string) => {
+    setShowGroupSheet(false);
     if (id === activeGroupId) return;
     setActiveGroupId(id);
+  };
+
+  // 搜索输入：立即更新输入框，防抖后重新拉取
+  const onSearchInput = (e: { detail: { value: string } }) => {
+    const kw = e.detail.value;
+    setKeyword(kw);
+    keywordRef.current = kw;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      const gid = activeGroupIdRef.current;
+      if (gid) void loadFeed(gid, true, kw);
+    }, SEARCH_DEBOUNCE);
+  };
+
+  // 清空搜索
+  const onClearSearch = () => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = null;
+    }
+    setKeyword("");
+    keywordRef.current = "";
+    const gid = activeGroupIdRef.current;
+    if (gid) void loadFeed(gid, true, "");
   };
 
   // 点赞乐观更新
@@ -239,20 +272,35 @@ export default function IndexPage() {
     );
   }
 
+  const activeGroup = groups?.find((g) => g.id === activeGroupId);
+  const searching = keyword.trim() !== "";
+
   return (
     <View className="page feed-page has-tabbar">
-      {/* 圈子切换 tab（横向滚动） */}
-      <ScrollView className="group-tabs" scrollX enableFlex>
-        {groups?.map((g) => (
-          <View
-            key={g.id}
-            className={`group-tab ${g.id === activeGroupId ? "active" : ""}`}
-            onClick={() => switchGroup(g.id)}
-          >
-            <Text>{g.name}</Text>
-          </View>
-        ))}
-      </ScrollView>
+      {/* 顶部：当前圈子胶囊 + 搜索框（吸顶） */}
+      <View className="feed-header">
+        <View className="group-pill" onClick={() => setShowGroupSheet(true)}>
+          <Text className="group-pill-icon">🍜</Text>
+          <Text className="group-pill-name">{activeGroup?.name ?? "选择圈子"}</Text>
+          <Text className="group-pill-arrow">▾</Text>
+        </View>
+        <View className="search-box">
+          <Text className="search-icon">🔍</Text>
+          <Input
+            className="search-input"
+            value={keyword}
+            placeholder="搜索动态"
+            placeholderClass="search-placeholder"
+            confirmType="search"
+            onInput={onSearchInput}
+          />
+          {searching && (
+            <Text className="search-clear" onClick={onClearSearch}>
+              ✕
+            </Text>
+          )}
+        </View>
+      </View>
 
       {/* feed 列表 */}
       <View className="feed-list">
@@ -267,7 +315,7 @@ export default function IndexPage() {
             <Text className="error">{error}</Text>
             <Button
               size="mini"
-              onClick={() => activeGroupId && loadFeed(activeGroupId, true)}
+              onClick={() => activeGroupId && loadFeed(activeGroupId, true, keywordRef.current)}
             >
               重试
             </Button>
@@ -276,7 +324,9 @@ export default function IndexPage() {
 
         {!loading && !error && feed.length === 0 && (
           <View className="feed-state">
-            <Text className="text-muted">圈子还没有动态，发一条吧</Text>
+            <Text className="text-muted">
+              {searching ? "没有找到相关动态" : "圈子还没有动态，发一条吧"}
+            </Text>
           </View>
         )}
 
@@ -307,6 +357,37 @@ export default function IndexPage() {
           </View>
         )}
       </View>
+
+      {/* 圈子切换半屏弹层 */}
+      {showGroupSheet && (
+        <View className="sheet-mask" onClick={() => setShowGroupSheet(false)}>
+          <View className="group-sheet" onClick={(e) => e.stopPropagation()}>
+            <View className="sheet-title">
+              <Text>切换圈子</Text>
+              <Text
+                className="sheet-close"
+                onClick={() => setShowGroupSheet(false)}
+              >
+                ✕
+              </Text>
+            </View>
+            <ScrollView scrollY className="sheet-list">
+              {groups?.map((g) => (
+                <View
+                  key={g.id}
+                  className={`sheet-item ${g.id === activeGroupId ? "active" : ""}`}
+                  onClick={() => switchGroup(g.id)}
+                >
+                  <Text className="sheet-item-name">{g.name}</Text>
+                  {g.id === activeGroupId && (
+                    <Text className="sheet-item-check">✓</Text>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      )}
     </View>
   );
 }

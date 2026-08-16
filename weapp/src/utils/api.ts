@@ -111,9 +111,11 @@ export async function fetchFeed(opts: {
   groupId: string;
   cursor?: string | null;
   limit?: number;
+  keyword?: string;
 }): Promise<{ data: ActivityLite[]; next_cursor: string | null }> {
   const params = new URLSearchParams({ groupId: opts.groupId, limit: String(opts.limit ?? 20) });
   if (opts.cursor) params.set("cursor", opts.cursor);
+  if (opts.keyword?.trim()) params.set("keyword", opts.keyword.trim());
   return request<{ data: ActivityLite[]; next_cursor: string | null }>(
     `/api/feed?${params.toString()}`,
     { raw: true, silent: true }

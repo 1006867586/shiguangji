@@ -42,38 +42,94 @@
 // ---- 动态流 ----
 
 .feed-page {
-  .group-tabs {
-    width: 100%;
-    white-space: nowrap;
-    background: transparent;
-    padding: 24rpx 24rpx 8rpx;
+  // 顶部吸顶：当前圈子胶囊 + 搜索框
+  .feed-header {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+    padding: 20rpx 24rpx 12rpx;
     box-sizing: border-box;
+    background: $color-bg;
     position: sticky;
     top: 0;
     z-index: 10;
   }
 
-  .group-tab {
-    display: inline-flex;
-    padding: 14rpx 36rpx;
-    margin-right: 16rpx;
-    border-radius: $radius-pill;
-    font-size: 26rpx;
-    color: $color-text-secondary;
-    background: $color-bg-card;
-    border: 1rpx solid $border-color-light;
-    transition: all 0.2s;
+  // 圈子切换胶囊（点击弹半屏选择）
+  .group-pill {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+    flex-shrink: 0;
+    max-width: 300rpx;
+    height: 64rpx;
+    padding: 0 20rpx;
+    border-radius: 32rpx;
+    background: $color-primary-bg;
+    border: 1rpx solid rgba(255, 107, 53, 0.25);
 
-    &.active {
-      color: $color-text-inverse;
-      background: $color-primary;
-      border-color: $color-primary;
+    .group-pill-icon {
+      font-size: 24rpx;
+    }
+
+    .group-pill-name {
+      font-size: 26rpx;
       font-weight: 600;
+      color: $color-primary;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .group-pill-arrow {
+      font-size: 20rpx;
+      color: $color-primary;
     }
   }
 
+  // 搜索框
+  .search-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    height: 64rpx;
+    padding: 0 20rpx;
+    border-radius: 32rpx;
+    background: $color-bg-card;
+    border: 1rpx solid $border-color-light;
+    box-sizing: border-box;
+    overflow: hidden;
+
+    .search-icon {
+      font-size: 24rpx;
+      opacity: 0.6;
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      margin-left: 12rpx;
+      font-size: 26rpx;
+      color: $color-text;
+    }
+
+    .search-clear {
+      flex-shrink: 0;
+      padding: 8rpx 4rpx 8rpx 12rpx;
+      font-size: 24rpx;
+      color: $color-text-secondary;
+    }
+  }
+
+  .search-placeholder {
+    color: $color-text-secondary;
+  }
+
   .feed-list {
-    padding: 16rpx 24rpx 24rpx;
+    padding: 8rpx 24rpx 24rpx;
   }
 
   .feed-state {
@@ -82,5 +138,87 @@
     align-items: center;
     gap: 12rpx;
     padding: 48rpx 0;
+  }
+
+  // ---- 圈子切换半屏弹层 ----
+  .sheet-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    animation: sheet-fade-in 0.2s ease;
+  }
+
+  .group-sheet {
+    width: 100%;
+    background: $color-bg-card;
+    border-radius: 32rpx 32rpx 0 0;
+    padding: 24rpx 0 calc(32rpx + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    animation: sheet-slide-up 0.25s ease;
+
+    .sheet-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32rpx 16rpx;
+      font-size: 30rpx;
+      font-weight: 600;
+      color: $color-text;
+
+      .sheet-close {
+        font-size: 28rpx;
+        color: $color-text-secondary;
+        padding: 8rpx;
+      }
+    }
+
+    .sheet-list {
+      max-height: 50vh;
+    }
+
+    .sheet-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 26rpx 32rpx;
+      font-size: 30rpx;
+      color: $color-text;
+      border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .sheet-item-check {
+        color: $color-primary;
+        font-size: 30rpx;
+      }
+
+      &.active {
+        color: $color-primary;
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+@keyframes sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
