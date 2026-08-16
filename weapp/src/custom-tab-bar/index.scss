@@ -14,12 +14,11 @@
   margin: 0 auto;
   padding: 8rpx 16rpx;
   box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.96);
+  background: #ffffff;
   border: 1rpx solid #f0ede8;
   border-radius: 72rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(20rpx);
-  -webkit-backdrop-filter: blur(20rpx);
+  /* 不使用 backdrop-filter：微信小程序固定元素上的模糊会导致页面重绘缩放闪烁 */
 }
 
 .tab-item {
