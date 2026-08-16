@@ -137,7 +137,7 @@ export default function ProfilePage() {
         <View className="hero-stats">
           <View className="stat-item">
             <Text className="stat-num">{groupCount}</Text>
-            <Text className="stat-label">圈子</Text>
+            <Text className="stat-label">饭搭子</Text>
           </View>
           <View className="stat-divider" />
           <View className="stat-item" onClick={goNotifications}>
@@ -216,7 +216,7 @@ export default function ProfilePage() {
           </View>
           <View className="menu-item" onClick={goGroups}>
             <Text className="menu-icon">👥</Text>
-            <Text className="menu-label">我的圈子</Text>
+            <Text className="menu-label">我的饭搭子</Text>
             {unread > 0 && (
               <Text className="menu-badge">{unread > 99 ? "99+" : unread}</Text>
             )}

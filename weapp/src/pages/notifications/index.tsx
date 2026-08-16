@@ -17,15 +17,15 @@ function describe(n: NotificationLite): string {
   const who = n.actor?.nickname ? `${n.actor.nickname} ` : "";
   const snippet = typeof n.data?.snippet === "string" ? n.data.snippet : "";
   const map: Record<string, string> = {
-    comment: `${who}评论了你的动态`,
-    reply: `${who}回复了你的评论`,
-    like: `${who}赞了你的动态`,
-    repost: `${who}转发了你的动态`,
-    mention: `${who}在动态中提到了你`,
-    photo_added: `${who}向动态添加了照片`,
+    comment: `${who}留言了你的打卡`,
+    reply: `${who}回复了你的留言`,
+    like: `${who}赞了你的打卡`,
+    repost: `${who}转发了你的打卡`,
+    mention: `${who}在打卡中提到了你`,
+    photo_added: `${who}向打卡添加了照片`,
     rsvp: `${who}更新了报名状态`,
     split: `${who}发起了聚餐分账`,
-    group_invite: "你收到了圈子邀请",
+    group_invite: "你收到了饭搭子邀请",
     report_resolved: "你的举报已处理",
     system: "系统通知",
   };

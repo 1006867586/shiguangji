@@ -42,7 +42,7 @@ const DEFAULT_CUISINES: MealRouletteItem[] = [
   { id: "c6", group_id: "", title: "西餐", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
 ];
 
-/** 转盘条目统一形态（圈子池 / 分享池 / 本地） */
+/** 转盘条目统一形态（饭搭子池 / 分享池 / 本地） */
 interface WheelItem {
   id: string;
   title: string;
@@ -140,7 +140,7 @@ export default function RoulettePage() {
   /** 缓动：easeOutCubic（先快后慢） */
   const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
-  // ---- 候选池选择列表：默认菜系 / 分享池 / 圈子池 ----
+  // ---- 候选池选择列表：默认菜系 / 分享池 / 饭搭子池 ----
   const pickerList = [
     "默认菜系",
     ...localPools.map((p) => (p.name || "分享池") + "（分享）"),
@@ -226,7 +226,7 @@ export default function RoulettePage() {
     }
   });
 
-  // 登录态变为已登录后加载圈子池
+  // 登录态变为已登录后加载饭搭子池
   useEffect(() => {
     if (loggedIn && groups.length === 0) {
       fetchGroups()
@@ -318,7 +318,7 @@ export default function RoulettePage() {
     }
   };
 
-  // ---- 删除候选（分享池仅删自己的；圈子池成员可删） ----
+  // ---- 删除候选（分享池仅删自己的；饭搭子池成员可删） ----
   const removeItem = async (item: WheelItem) => {
     if (spinning) return;
     if (source.type === "pool" && item.created_by !== anonId) {
@@ -347,7 +347,7 @@ export default function RoulettePage() {
     }
   };
 
-  // ---- 圈子池专属：导入收藏 ----
+  // ---- 饭搭子池专属：导入收藏 ----
   const importFavorites = async () => {
     if (source.type !== "group") return;
     if (spinning) {
@@ -667,7 +667,7 @@ export default function RoulettePage() {
         </View>
       )}
 
-      {/* 候选池管理（默认菜系不可编辑；分享池/圈子池可增删） */}
+      {/* 候选池管理（默认菜系不可编辑；分享池/饭搭子池可增删） */}
       {source.type !== "local" && (
         <View className="pool-card">
           <View className="pool-header">
@@ -732,7 +732,7 @@ export default function RoulettePage() {
       {!loggedIn && source.type !== "pool" && (
         <View className="login-hint">
           <Text className="text-muted">
-            登录后可使用圈子候选池；分享池免登录即可用
+            登录后可使用饭搭子候选池；分享池免登录即可用
           </Text>
         </View>
       )}

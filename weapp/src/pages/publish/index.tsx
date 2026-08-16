@@ -24,7 +24,7 @@ interface LocalImage {
 }
 
 /**
- * 发布页：圈子选择 + 文字 + 图片（R2 直传）+ 链接解析 → 创建活动。
+ * 发布页：饭搭子选择 + 文字 + 图片（R2 直传）+ 链接解析 → 创建活动。
  * 提交顺序：先 createActivity（拿活动 id）→ 逐张直传 R2 → addActivityPhoto 挂到活动。
  */
 export default function PublishPage() {
@@ -44,7 +44,7 @@ export default function PublishPage() {
       setGroups(list);
     } catch (err) {
       if (err instanceof ApiError && err.status !== 401) {
-        Taro.showToast({ title: "加载圈子失败", icon: "none" });
+        Taro.showToast({ title: "加载饭搭子失败", icon: "none" });
       }
     }
   }, []);
@@ -149,7 +149,7 @@ export default function PublishPage() {
     const text = content.trim();
 
     if (!selectedGroup) {
-      Taro.showToast({ title: "请选择圈子", icon: "none" });
+      Taro.showToast({ title: "请选择饭搭子", icon: "none" });
       return;
     }
     // 后端约束：内容或链接至少一项（照片仅作为附加媒体）
@@ -212,7 +212,7 @@ export default function PublishPage() {
       Taro.hideLoading();
       Taro.showToast({ title: "发布成功", icon: "success" });
 
-      // 重置表单并回到动态页
+      // 重置表单并回到打卡页
       setContent("");
       setImages([]);
       setLinkUrl("");
@@ -254,7 +254,7 @@ export default function PublishPage() {
         </View>
       </View>
 
-      {/* 圈子选择 */}
+      {/* 饭搭子选择 */}
       <View className="form-card">
         <Text className="form-label">发布到</Text>
         {groups.length > 0 ? (
@@ -270,7 +270,7 @@ export default function PublishPage() {
             </View>
           </Picker>
         ) : (
-          <Text className="text-muted">加载圈子中…（还没有圈子请先在 Web 端创建）</Text>
+          <Text className="text-muted">加载饭搭子中…（还没有饭搭子请先在 Web 端创建）</Text>
         )}
       </View>
 

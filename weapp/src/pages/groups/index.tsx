@@ -14,7 +14,7 @@ import {
 import "./index.scss";
 
 /**
- * 圈子页（TabBar）：我的圈子列表 + 创建 + 邀请码加入。
+ * 饭搭子页（TabBar）：我的饭搭子列表 + 创建 + 邀请码加入。
  * 卡片式布局，右上角悬浮 + 按钮快速创建。
  */
 async function promptText(title: string, placeholder: string): Promise<string | null> {
@@ -27,7 +27,7 @@ async function promptText(title: string, placeholder: string): Promise<string | 
   return r.confirm ? (r.content ?? "") : null;
 }
 
-/** 圈子首字母渐变头像 fallback */
+/** 饭搭子首字母渐变头像 fallback */
 function getInitial(name: string): string {
   return name?.[0] || "圈";
 }
@@ -54,7 +54,7 @@ export default function GroupsPage() {
 
   const handleCreate = async () => {
     if (creating) return;
-    const input = await promptText("创建圈子", "给圈子起个名字（如：周五饭搭子）");
+    const input = await promptText("创建饭搭子", "给饭搭子起个名字（如：周五饭搭子）");
     if (input === null) return;
     const name = input.trim();
     if (!name) {
@@ -69,7 +69,7 @@ export default function GroupsPage() {
         if (!sec.pass) {
           Taro.showModal({
             title: "名称无法使用",
-            content: sec.reason ?? "圈子名称包含违规信息，请修改后重试",
+            content: sec.reason ?? "饭搭子名称包含违规信息，请修改后重试",
             showCancel: false,
           });
           return;
@@ -93,7 +93,7 @@ export default function GroupsPage() {
   };
 
   const handleJoin = async () => {
-    const input = await promptText("加入圈子", "输入 6 位邀请码");
+    const input = await promptText("加入饭搭子", "输入 6 位邀请码");
     if (input === null) return;
     const code = input.trim();
     if (!code) {
@@ -114,14 +114,14 @@ export default function GroupsPage() {
   };
 
   if (!isLoggedIn()) {
-    return <LoginGuide subtitle="登录后管理你的圈子" />;
+    return <LoginGuide subtitle="登录后管理你的饭搭子" />;
   }
 
   return (
     <View className="groups-page has-tabbar">
       {/* 顶部操作栏 */}
       <View className="top-bar">
-        <Text className="page-title">圈子</Text>
+        <Text className="page-title">饭搭子</Text>
         <View className="top-actions">
           <View className="action-btn join-btn" onClick={handleJoin}>
             <Text>邀请码</Text>
@@ -132,7 +132,7 @@ export default function GroupsPage() {
         </View>
       </View>
 
-      {/* 圈子列表 */}
+      {/* 饭搭子列表 */}
       {loading && groups === null && (
         <View className="state">
           <Text className="text-muted">加载中…</Text>
@@ -142,7 +142,7 @@ export default function GroupsPage() {
       {groups && groups.length === 0 && (
         <View className="state">
           <Text className="state-emoji">🍽️</Text>
-          <Text className="text-muted">还没有圈子，创建一个或用邀请码加入</Text>
+          <Text className="text-muted">还没有饭搭子，创建一个或用邀请码加入</Text>
         </View>
       )}
 
@@ -175,7 +175,7 @@ export default function GroupsPage() {
               <Text className="circle-desc">{g.description}</Text>
             )}
             <View className="circle-enter">
-              <Text className="enter-text">进入圈子</Text>
+              <Text className="enter-text">进入饭搭子</Text>
               <Text className="enter-arrow">›</Text>
             </View>
           </View>

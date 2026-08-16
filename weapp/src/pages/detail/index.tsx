@@ -31,7 +31,7 @@ import "./index.scss";
 const MAX_ADD_PHOTOS = 9;
 
 /**
- * 活动详情页：完整卡片 + 照片补充/删除 + 编辑（作者）+ 评论区。
+ * 活动详情页：完整卡片 + 照片补充/删除 + 编辑（作者）+ 留言区。
  * 入口：普通跳转带 id；扫海报小程序码进入带 scene（uuid 去横线）。
  */
 export default function DetailPage() {
@@ -92,7 +92,7 @@ export default function DetailPage() {
       setId(activityId);
       void load(activityId);
     } else if (activityId) {
-      // 返回本页时刷新评论数
+      // 返回本页时刷新留言数
       void load(activityId);
     }
   });
@@ -318,19 +318,19 @@ export default function DetailPage() {
     }
   };
 
-  // 发评论
+  // 发留言
   const submitComment = async () => {
     const text = commentText.trim();
     if (!text || !id || sending) return;
     setSending(true);
     try {
-      // 内容安全前置检测（scene 2 评论）
+      // 内容安全前置检测（scene 2 留言）
       try {
         const sec = await msgSecCheck(text, 2);
         if (!sec.pass) {
           Taro.showModal({
-            title: "评论无法发送",
-            content: sec.reason ?? "评论包含违规信息，请修改后重试",
+            title: "留言无法发送",
+            content: sec.reason ?? "留言包含违规信息，请修改后重试",
             showCancel: false,
           });
           return;
@@ -341,11 +341,11 @@ export default function DetailPage() {
       await postComment(id, text);
       setCommentText("");
       Taro.hideKeyboard();
-      // 重新拉评论 + 更新评论数
+      // 重新拉留言 + 更新留言数
       const [a, c] = await Promise.all([fetchActivityDetail(id), fetchComments(id)]);
       setActivity(a);
       setComments(Array.isArray(c) ? c : []);
-      Taro.showToast({ title: "评论成功", icon: "success" });
+      Taro.showToast({ title: "留言成功", icon: "success" });
     } catch {
       // request 层已 toast
     } finally {
@@ -378,7 +378,7 @@ export default function DetailPage() {
       {editing && (
         <View className="edit-panel">
           <View className="edit-head">
-            <Text className="edit-title">编辑动态</Text>
+            <Text className="edit-title">编辑打卡</Text>
             <Text className="edit-close" onClick={closeEdit}>关闭</Text>
           </View>
 
@@ -442,7 +442,7 @@ export default function DetailPage() {
         </View>
       )}
 
-      {/* 详情主体：复用动态卡片（只读图集） */}
+      {/* 详情主体：复用打卡卡片（只读图集） */}
       <ActivityCard
         activity={activity}
         onLike={handleLike}
@@ -454,15 +454,15 @@ export default function DetailPage() {
         }}
       />
 
-      {/* 评论区 */}
+      {/* 留言区 */}
       <View className="comment-section">
         <View className="comment-header">
-          <Text className="comment-title">评论 {comments.length > 0 ? `(${comments.length})` : ""}</Text>
+          <Text className="comment-title">留言 {comments.length > 0 ? `(${comments.length})` : ""}</Text>
         </View>
 
         {comments.length === 0 && (
           <View className="comment-empty">
-            <Text className="text-muted">还没有评论，来说两句</Text>
+            <Text className="text-muted">还没有留言，来说两句</Text>
           </View>
         )}
 
@@ -518,7 +518,7 @@ export default function DetailPage() {
         )}
       </View>
 
-      {/* 底部评论输入框 */}
+      {/* 底部留言输入框 */}
       <View className="comment-input-bar">
         <Input
           className="comment-input"

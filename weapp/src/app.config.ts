@@ -23,8 +23,8 @@ export default defineAppConfig({
     backgroundColor: "#ffffff",
     borderStyle: "white",
     list: [
-      { pagePath: "pages/index/index", text: "动态" },
-      { pagePath: "pages/groups/index", text: "圈子" },
+      { pagePath: "pages/index/index", text: "打卡" },
+      { pagePath: "pages/groups/index", text: "饭搭子" },
       { pagePath: "pages/publish/index", text: "发布" },
       { pagePath: "pages/roulette/index", text: "转盘" },
       { pagePath: "pages/profile/index", text: "我的" },

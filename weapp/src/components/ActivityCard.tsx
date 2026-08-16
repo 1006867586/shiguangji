@@ -36,7 +36,7 @@ interface Props {
   onDeleted?: (a: ActivityLite) => void;
 }
 
-/** 动态卡片：作者 + ⋮菜单 + 内容 + 图集 + 链接 + 转发引用 + 图标操作栏 */
+/** 打卡卡片：作者 + ⋮菜单 + 内容 + 图集 + 链接 + 转发引用 + 图标操作栏 */
 export default function ActivityCard({
   activity,
   onLike,
@@ -98,7 +98,7 @@ export default function ActivityCard({
 
   const handleDelete = async () => {
     const m = await Taro.showModal({
-      title: "删除动态",
+      title: "删除打卡",
       content: "删除后不可恢复，确定删除？",
       confirmColor: "#ef4444",
     });
@@ -116,10 +116,10 @@ export default function ActivityCard({
   const openRepost = async () => {
     try {
       const groups = await fetchGroups();
-      // 排除原活动所在圈子
+      // 排除原活动所在饭搭子
       const others = groups.filter((g) => g.id !== a.group_id);
       if (others.length === 0) {
-        Taro.showToast({ title: "没有可转发到的圈子", icon: "none" });
+        Taro.showToast({ title: "没有可转发到的饭搭子", icon: "none" });
         return;
       }
       setRepostGroups(others);
@@ -194,7 +194,7 @@ export default function ActivityCard({
         />
       </View>
 
-      {/* 转发评论 */}
+      {/* 转发留言 */}
       {a.type === "repost" && a.repost_comment && (
         <Text className="repost-comment">{a.repost_comment}</Text>
       )}
@@ -261,7 +261,7 @@ export default function ActivityCard({
       {repostOpen && (
         <View className="card-panel" onClick={(e) => e.stopPropagation()}>
           <View className="panel-head">
-            <Text className="panel-title">转发到圈子</Text>
+            <Text className="panel-title">转发到饭搭子</Text>
             <Text className="panel-close" onClick={() => setRepostOpen(false)}>关闭</Text>
           </View>
           <Picker
@@ -271,7 +271,7 @@ export default function ActivityCard({
             onChange={(e) => setRepostGroupIdx(Number(e.detail.value))}
           >
             <View className="panel-picker">
-              <Text>{repostGroups[repostGroupIdx]?.name ?? "选择圈子"}</Text>
+              <Text>{repostGroups[repostGroupIdx]?.name ?? "选择饭搭子"}</Text>
               <Text className="panel-arrow">▾</Text>
             </View>
           </Picker>
@@ -302,7 +302,7 @@ export default function ActivityCard({
       {reportOpen && (
         <View className="card-panel" onClick={(e) => e.stopPropagation()}>
           <View className="panel-head">
-            <Text className="panel-title">举报动态</Text>
+            <Text className="panel-title">举报打卡</Text>
             <Text className="panel-close" onClick={() => setReportOpen(false)}>关闭</Text>
           </View>
           <View className="report-reasons">

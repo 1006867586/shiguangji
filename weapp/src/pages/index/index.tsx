@@ -25,21 +25,21 @@ const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE = 300;
 
 /**
- * 动态流页（TabBar 首页）：顶部搜索框 + 圈子下拉切换 + cursor 分页 + 下拉刷新 + 触底加载。
- * 兼容圈子转发卡片进入：path 带 inviteCode 时弹窗确认加入。
+ * 打卡流页（TabBar 首页）：顶部搜索框 + 饭搭子下拉切换 + cursor 分页 + 下拉刷新 + 触底加载。
+ * 兼容饭搭子转发卡片进入：path 带 inviteCode 时弹窗确认加入。
  */
 export default function IndexPage() {
   const [groups, setGroups] = useState<GroupLite[] | null>(null);
   const [activeGroupId, setActiveGroupId] = useState<string>("");
   const [feed, setFeed] = useState<ActivityLite[]>([]);
-  const [loading, setLoading] = useState(false); // 首屏/切圈子/搜索 loading
+  const [loading, setLoading] = useState(false); // 首屏/切饭搭子/搜索 loading
   const [loadingMore, setLoadingMore] = useState(false);
   const [finished, setFinished] = useState(false); // 没有更多
   const [error, setError] = useState<string | null>(null);
   const [keyword, setKeyword] = useState(""); // 搜索关键词（输入即更新，防抖后才请求）
-  const [showGroupSheet, setShowGroupSheet] = useState(false); // 圈子切换半屏弹层
+  const [showGroupSheet, setShowGroupSheet] = useState(false); // 饭搭子切换半屏弹层
   // 关键：用 state 而不是 const，useDidShow 时重新读 storage
-  // （登录页 setStorageSync 后 switchTab 切回动态 tab，需要刷新登录态）
+  // （登录页 setStorageSync 后 switchTab 切回打卡 tab，需要刷新登录态）
   const [loggedIn, setLoggedIn] = useState<boolean>(isLoggedIn());
 
   const cursorRef = useRef<string | null>(null);
@@ -56,7 +56,7 @@ export default function IndexPage() {
     path: "/pages/index/index",
   }));
 
-  // ---- 首次加载圈子列表，默认选第一个；处理分享卡邀请码 ----
+  // ---- 首次加载饭搭子列表，默认选第一个；处理分享卡邀请码 ----
   const loadGroups = useCallback(async () => {
     try {
       const list = await fetchGroups();
@@ -65,7 +65,7 @@ export default function IndexPage() {
         setActiveGroupId(list[0].id);
       }
 
-      // 分享卡片带 inviteCode：未加入该圈子时弹窗确认加入
+      // 分享卡片带 inviteCode：未加入该饭搭子时弹窗确认加入
       const inviteCode = Taro.getCurrentInstance().router?.params?.inviteCode;
       if (inviteCode && !inviteHandledRef.current) {
         inviteHandledRef.current = true;
@@ -74,8 +74,8 @@ export default function IndexPage() {
         );
         if (!joined) {
           const res = await Taro.showModal({
-            title: "加入圈子",
-            content: "好友邀请你加入 TA 的饭局圈子，是否加入？",
+            title: "加入饭搭子",
+            content: "好友邀请你加入 TA 的饭搭子，是否加入？",
             confirmText: "加入",
           });
           if (res.confirm) {
@@ -94,12 +94,12 @@ export default function IndexPage() {
         }
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "加载圈子失败");
+      setError(err instanceof ApiError ? err.message : "加载饭搭子失败");
     }
   }, [activeGroupId]);
 
   // ---- 加载 feed（refresh=true 重置；false 追加）。kw 传入本次搜索词 ----
-  // 采用「最新请求优先」：refresh 类请求（搜索/切圈子/刷新）不因 in-flight 被丢弃，
+  // 采用「最新请求优先」：refresh 类请求（搜索/切饭搭子/刷新）不因 in-flight 被丢弃，
   // 而是递增序号接管；旧请求的响应回来后发现序号过期则作废，避免结果回跳/串台。
   const loadFeed = useCallback(
     async (groupId: string, refresh: boolean, kw = "") => {
@@ -129,7 +129,7 @@ export default function IndexPage() {
         if (!res?.next_cursor) setFinished(true);
       } catch (err) {
         if (seq !== feedSeqRef.current) return;
-        setError(err instanceof ApiError ? err.message : "加载动态失败");
+        setError(err instanceof ApiError ? err.message : "加载打卡失败");
       } finally {
         // 仅最新请求负责解锁/收尾，避免清掉后发请求的状态
         if (seq === feedSeqRef.current) {
@@ -142,7 +142,7 @@ export default function IndexPage() {
     []
   );
 
-  // 首次进入 / 圈子切换
+  // 首次进入 / 饭搭子切换
   useDidShow(() => {
     setSelectedTab(0);
     // 每次显示都重新读登录态：从登录页 setStorageSync 后 switchTab 回来时才不会卡在「去登录」
@@ -154,7 +154,7 @@ export default function IndexPage() {
     }
   });
 
-  // activeGroupId 就绪后拉首屏 feed（切换圈子 / 首次进入）
+  // activeGroupId 就绪后拉首屏 feed（切换饭搭子 / 首次进入）
   const prevGroupRef = useRef<string>("");
   if (activeGroupId && prevGroupRef.current !== activeGroupId) {
     prevGroupRef.current = activeGroupId;
@@ -165,7 +165,7 @@ export default function IndexPage() {
     }
   }
 
-  // 下拉刷新：重拉圈子 + feed（保持搜索词）
+  // 下拉刷新：重拉饭搭子 + feed（保持搜索词）
   usePullDownRefresh(async () => {
     try {
       if (activeGroupId) {
@@ -185,7 +185,7 @@ export default function IndexPage() {
     void loadFeed(activeGroupId, false, keywordRef.current);
   });
 
-  // 切换圈子：保留搜索词继续在当前圈子搜
+  // 切换饭搭子：保留搜索词继续在当前饭搭子搜
   const switchGroup = (id: string) => {
     setShowGroupSheet(false);
     if (id === activeGroupId) return;
@@ -254,10 +254,10 @@ export default function IndexPage() {
 
   // ---- 未登录 ----
   if (!loggedIn) {
-    return <LoginGuide subtitle="登录后查看你的饭局动态" />;
+    return <LoginGuide subtitle="登录后查看你的饭局打卡" />;
   }
 
-  // ---- 加载圈子中 ----
+  // ---- 加载饭搭子中 ----
   if (groups === null && !error) {
     return (
       <View className="page placeholder">
@@ -266,11 +266,11 @@ export default function IndexPage() {
     );
   }
 
-  // ---- 没有圈子 ----
+  // ---- 没有饭搭子 ----
   if (groups && groups.length === 0) {
     return (
       <View className="page placeholder">
-        <Text className="title">还没有圈子</Text>
+        <Text className="title">还没有饭搭子</Text>
         <Text className="text-muted">创建一个，或用好友的邀请码加入</Text>
         <Button
           className="btn-primary"
@@ -288,11 +288,11 @@ export default function IndexPage() {
 
   return (
     <View className="page feed-page has-tabbar">
-      {/* 顶部：当前圈子胶囊 + 搜索框（吸顶） */}
+      {/* 顶部：当前饭搭子胶囊 + 搜索框（吸顶） */}
       <View className="feed-header">
         <View className="group-pill" onClick={() => setShowGroupSheet(true)}>
           <Text className="group-pill-icon">🍜</Text>
-          <Text className="group-pill-name">{activeGroup?.name ?? "选择圈子"}</Text>
+          <Text className="group-pill-name">{activeGroup?.name ?? "选择饭搭子"}</Text>
           <Text className="group-pill-arrow">▾</Text>
         </View>
         <View className="search-box">
@@ -300,7 +300,7 @@ export default function IndexPage() {
           <Input
             className="search-input"
             value={keyword}
-            placeholder="搜索动态"
+            placeholder="搜索打卡"
             placeholderClass="search-placeholder"
             confirmType="search"
             onInput={onSearchInput}
@@ -336,7 +336,7 @@ export default function IndexPage() {
         {!loading && !error && feed.length === 0 && (
           <View className="feed-state">
             <Text className="text-muted">
-              {searching ? "没有找到相关动态" : "圈子还没有动态，发一条吧"}
+              {searching ? "没有找到相关打卡" : "饭搭子还没有打卡，发一条吧"}
             </Text>
           </View>
         )}
@@ -369,12 +369,12 @@ export default function IndexPage() {
         )}
       </View>
 
-      {/* 圈子切换半屏弹层 */}
+      {/* 饭搭子切换半屏弹层 */}
       {showGroupSheet && (
         <View className="sheet-mask" onClick={() => setShowGroupSheet(false)}>
           <View className="group-sheet" onClick={(e) => e.stopPropagation()}>
             <View className="sheet-title">
-              <Text>切换圈子</Text>
+              <Text>切换饭搭子</Text>
               <Text
                 className="sheet-close"
                 onClick={() => setShowGroupSheet(false)}

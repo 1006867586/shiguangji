@@ -25,7 +25,7 @@ const SLOGAN = "属于你们小团体的聚餐记录";
 
 const DESCRIPTION =
   "飨刻是一款为 3–20 人小团体打造的聚餐记录应用。在这里，每一顿饭都是值得珍藏的时光。" +
-  "创建属于你的饭局圈，邀请好友加入，记录打卡、分享店铺、追加照片、留下评论；" +
+  "创建属于你的饭局圈，邀请好友加入，记录打卡、分享店铺、追加照片、留下留言；" +
   "让友谊的味道，比食物更长久。";
 
 const FEATURES: Array<{ emoji: string; title: string; desc: string }> = [
@@ -46,8 +46,8 @@ const FEATURES: Array<{ emoji: string; title: string; desc: string }> = [
   },
   {
     emoji: "💬",
-    title: "评论点赞",
-    desc: "一级评论、楼中楼回复、点赞与表情互动",
+    title: "留言点赞",
+    desc: "一级留言、楼中楼回复、点赞与表情互动",
   },
   {
     emoji: "🎯",
@@ -113,7 +113,7 @@ export default function DemoPage() {
         <Text className="name">{APP_NAME}</Text>
         <Text className="slogan">{SLOGAN}</Text>
 
-        {/* 进入应用按钮：switchTab 跳到动态 tab，tabBar 正确高亮 */}
+        {/* 进入应用按钮：switchTab 跳到打卡 tab，tabBar 正确高亮 */}
         <Button
           className="enter-btn"
           onClick={() => Taro.switchTab({ url: "/pages/index/index" })}

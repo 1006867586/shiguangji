@@ -16,8 +16,8 @@ import { uploadToR2 } from "@/utils/upload";
 import "./index.scss";
 
 /**
- * 圈子详情：基本信息 + 邀请码（复制 / 转发拉人）+ 成员列表。
- * 圈主可转让管理员 / 移除成员；所有成员可退出圈子。
+ * 饭搭子详情：基本信息 + 邀请码（复制 / 转发拉人）+ 成员列表。
+ * 圈主可转让管理员 / 移除成员；所有成员可退出饭搭子。
  */
 export default function GroupDetailPage() {
   const [groupId, setGroupId] = useState("");
@@ -26,7 +26,7 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  // 编辑圈子（圈主）
+  // 编辑饭搭子（圈主）
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editAvatarUrl, setEditAvatarUrl] = useState("");
@@ -58,7 +58,7 @@ export default function GroupDetailPage() {
     }
   });
 
-  // 转发卡片：标题带圈子名，path 指向动态页并带邀请码参数
+  // 转发卡片：标题带饭搭子名，path 指向打卡页并带邀请码参数
   useShareAppMessage(() => {
     const name = group?.name ?? "飨刻";
     return {
@@ -72,7 +72,7 @@ export default function GroupDetailPage() {
     Taro.setClipboardData({ data: group.invite_code });
   };
 
-  // ---- 编辑圈子（圈主）----
+  // ---- 编辑饭搭子（圈主）----
   const openEdit = () => {
     if (!group) return;
     setEditName(group.name);
@@ -101,7 +101,7 @@ export default function GroupDetailPage() {
     if (savingEdit || !groupId) return;
     const name = editName.trim();
     if (!name) {
-      Taro.showToast({ title: "圈子名称不能为空", icon: "none" });
+      Taro.showToast({ title: "饭搭子名称不能为空", icon: "none" });
       return;
     }
     setSavingEdit(true);
@@ -120,12 +120,12 @@ export default function GroupDetailPage() {
     }
   };
 
-  // ---- 退出圈子 ----
+  // ---- 退出饭搭子 ----
   const handleLeave = async () => {
     if (busy || !groupId) return;
     const m = await Taro.showModal({
-      title: "退出圈子",
-      content: `确定退出「${group?.name ?? "该圈子"}」？退出后需邀请码才能重新加入。`,
+      title: "退出饭搭子",
+      content: `确定退出「${group?.name ?? "该饭搭子"}」？退出后需邀请码才能重新加入。`,
       confirmColor: "#ef4444",
     });
     if (!m.confirm) return;
@@ -167,7 +167,7 @@ export default function GroupDetailPage() {
     if (busy || !groupId) return;
     const m = await Taro.showModal({
       title: "移除成员",
-      content: `确定将「${member.profile?.nickname || "该成员"}」移出圈子？`,
+      content: `确定将「${member.profile?.nickname || "该成员"}」移出饭搭子？`,
       confirmColor: "#ef4444",
     });
     if (!m.confirm) return;
@@ -194,7 +194,7 @@ export default function GroupDetailPage() {
   if (!group) {
     return (
       <View className="gd-page state">
-        <Text className="text-muted">圈子不存在或已退出</Text>
+        <Text className="text-muted">饭搭子不存在或已退出</Text>
       </View>
     );
   }
@@ -224,11 +224,11 @@ export default function GroupDetailPage() {
           )}
         </View>
 
-        {/* 编辑圈子面板（圈主） */}
+        {/* 编辑饭搭子面板（圈主） */}
         {editing && (
           <View className="gd-edit-panel">
             <View className="gd-edit-head">
-              <Text className="gd-edit-title">编辑圈子</Text>
+              <Text className="gd-edit-title">编辑饭搭子</Text>
               <Text className="gd-edit-close" onClick={() => setEditing(false)}>关闭</Text>
             </View>
             <View className="gd-edit-avatar-row">
@@ -254,7 +254,7 @@ export default function GroupDetailPage() {
               <Input
                 className="gd-edit-input"
                 value={editName}
-                placeholder="圈子名称"
+                placeholder="饭搭子名称"
                 maxlength={50}
                 onInput={(e) => setEditName(e.detail.value)}
               />
@@ -347,7 +347,7 @@ export default function GroupDetailPage() {
         })}
       </View>
 
-      {/* 退出圈子 */}
+      {/* 退出饭搭子 */}
       <View className="gd-leave">
         <Button
           className="leave-btn"
@@ -355,7 +355,7 @@ export default function GroupDetailPage() {
           disabled={busy}
           onClick={() => void handleLeave()}
         >
-          退出圈子
+          退出饭搭子
         </Button>
       </View>
     </View>
