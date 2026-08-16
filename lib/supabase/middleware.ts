@@ -3,7 +3,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { CookiesToSet } from "./cookies";
 
 /** 公开路径白名单：已登录或未登录均可访问 */
-const PUBLIC_PATHS = new Set<string>(["/login", "/join"]);
+const PUBLIC_PATHS = new Set<string>([
+  "/login",
+  "/join",
+  // 隐私政策 / 用户协议：小程序 web-view 与审核员均需免登录可访问
+  "/privacy",
+  "/agreement",
+]);
 const PUBLIC_PREFIXES = [
   "/api/auth/",
   "/api/ai/status",
