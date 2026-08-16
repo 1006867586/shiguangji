@@ -10,6 +10,11 @@ page {
   color: $color-text;
 }
 
+/* tab 页根容器：给自定义悬浮底栏留出空间 */
+.has-tabbar {
+  padding-bottom: calc(130rpx + env(safe-area-inset-bottom));
+}
+
 /* 通用小工具类 */
 .text-muted {
   color: $color-text-muted;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Taro, { useDidShow } from "@tarojs/taro";
 import { View, Text, Canvas, Button, Picker } from "@tarojs/components";
 import { isLoggedIn } from "@/utils/auth";
+import { setSelectedTab } from "@/custom-tab-bar/tabStore";
 import {
   fetchGroups,
   fetchMealRoulette,
@@ -43,14 +44,14 @@ const SLICE_COLORS = [
   "#6C5CE7",
 ];
 
-/** 默认菜系候选 */
+/** 默认菜系候选（本地转盘模式，不绑定圈子） */
 const DEFAULT_CUISINES: MealRouletteItem[] = [
-  { id: "c1", title: "火锅" },
-  { id: "c2", title: "日料" },
-  { id: "c3", title: "烧烤" },
-  { id: "c4", title: "川菜" },
-  { id: "c5", title: "粤菜" },
-  { id: "c6", title: "西餐" },
+  { id: "c1", group_id: "", title: "火锅", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
+  { id: "c2", group_id: "", title: "日料", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
+  { id: "c3", group_id: "", title: "烧烤", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
+  { id: "c4", group_id: "", title: "川菜", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
+  { id: "c5", group_id: "", title: "粤菜", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
+  { id: "c6", group_id: "", title: "西餐", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
 ];
 
 async function promptText(title: string, placeholder: string): Promise<string | null> {
@@ -85,6 +86,7 @@ export default function RoulettePage() {
 
   // ---- 加载圈子列表 ----
   useDidShow(() => {
+    setSelectedTab(3);
     if (!isLoggedIn()) return;
     fetchGroups()
       .then((list) => {
@@ -358,7 +360,7 @@ export default function RoulettePage() {
   const groupPickerList = ["默认菜系", ...groups.map((g) => g.name)];
 
   return (
-    <View className="roulette-page">
+    <View className="roulette-page has-tabbar">
       {/* 标题区 */}
       <View className="roulette-header">
         <Text className="roulette-title">今天吃啥？</Text>

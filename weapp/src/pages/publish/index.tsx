@@ -3,6 +3,7 @@ import Taro, { useDidShow } from "@tarojs/taro";
 import { View, Text, Image, Textarea, Button, Picker } from "@tarojs/components";
 import { ApiError } from "@/utils/request";
 import { isLoggedIn } from "@/utils/auth";
+import { setSelectedTab } from "@/custom-tab-bar/tabStore";
 import {
   fetchGroups,
   parseLink,
@@ -48,6 +49,7 @@ export default function PublishPage() {
   }, []);
 
   useDidShow(() => {
+    setSelectedTab(2);
     if (isLoggedIn() && groups.length === 0) void loadGroups();
   });
 
@@ -243,7 +245,7 @@ export default function PublishPage() {
   }
 
   return (
-    <View className="publish-page">
+    <View className="publish-page has-tabbar">
       {/* 圈子选择 */}
       <View className="form-card">
         <Text className="form-label">发布到</Text>

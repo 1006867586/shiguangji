@@ -17,6 +17,7 @@ export default defineAppConfig({
     "pages/webview/index",
   ],
   tabBar: {
+    custom: true,
     color: "#9ca3af",
     selectedColor: "#ff6b35",
     backgroundColor: "#ffffff",

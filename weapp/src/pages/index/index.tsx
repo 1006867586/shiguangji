@@ -8,6 +8,7 @@ import Taro, {
 import { ScrollView, View, Text, Button } from "@tarojs/components";
 import { request, ApiError } from "@/utils/request";
 import { isLoggedIn } from "@/utils/auth";
+import { setSelectedTab } from "@/custom-tab-bar/tabStore";
 import {
   fetchGroups,
   fetchFeed,
@@ -124,6 +125,7 @@ export default function IndexPage() {
 
   // 首次进入 / 圈子切换
   useDidShow(() => {
+    setSelectedTab(0);
     // 每次显示都重新读登录态：从登录页 setStorageSync 后 switchTab 回来时才不会卡在「去登录」
     const cur = isLoggedIn();
     if (cur !== loggedIn) setLoggedIn(cur);
@@ -249,7 +251,7 @@ export default function IndexPage() {
   }
 
   return (
-    <View className="page feed-page">
+    <View className="page feed-page has-tabbar">
       {/* 圈子切换 tab（横向滚动） */}
       <ScrollView className="group-tabs" scrollX enableFlex>
         {groups?.map((g) => (

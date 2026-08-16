@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import Taro, { useDidShow } from "@tarojs/taro";
 import { View, Text, Button, OpenData } from "@tarojs/components";
 import { isLoggedIn, logout } from "@/utils/auth";
+import { setSelectedTab } from "@/custom-tab-bar/tabStore";
 import { fetchUnreadCount, fetchGroups } from "@/utils/api";
 import "./index.scss";
 
@@ -28,6 +29,7 @@ export default function ProfilePage() {
   }, []);
 
   useDidShow(() => {
+    setSelectedTab(4);
     setLogged(isLoggedIn());
     void loadStats();
   });
@@ -59,7 +61,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <View className="profile-page">
+    <View className="profile-page has-tabbar">
       {/* 渐变 Hero 区 */}
       <View className="hero">
         <View className="hero-avatar">

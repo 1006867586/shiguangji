@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import Taro, { useDidShow } from "@tarojs/taro";
 import { View, Text, Image, Button } from "@tarojs/components";
 import { isLoggedIn } from "@/utils/auth";
+import { setSelectedTab } from "@/custom-tab-bar/tabStore";
 import {
   fetchGroups,
   createGroup,
@@ -46,6 +47,7 @@ export default function GroupsPage() {
   }, []);
 
   useDidShow(() => {
+    setSelectedTab(1);
     if (isLoggedIn()) void load();
   });
 
@@ -126,7 +128,7 @@ export default function GroupsPage() {
   }
 
   return (
-    <View className="groups-page">
+    <View className="groups-page has-tabbar">
       {/* 顶部操作栏 */}
       <View className="top-bar">
         <Text className="page-title">圈子</Text>
