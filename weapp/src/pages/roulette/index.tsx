@@ -132,6 +132,7 @@ export default function RoulettePage() {
   const canvasRef = useRef<Canvas2DNode | null>(null);
   const canvasSizeRef = useRef(0);     // 画布 CSS 尺寸
   const animRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 动画定时器
+  const spinningRef = useRef(false); // 供 canvas 绘制中心 GO 状态
   const itemsRef = useRef<WheelItem[]>(DEFAULT_CUISINES);
 
   const anonId = getAnonId();
@@ -468,7 +469,26 @@ export default function RoulettePage() {
       ctx.shadowColor = "transparent";
       ctx.restore();
     }
-    // 中心留白给 DOM 层 GO 按钮（不再自绘白色圆）
+
+    // 中心 GO（canvas 绘制，保证可见；DOM 按钮仅作透明点击层）
+    const goR = 26;
+    const goGrad = ctx.createLinearGradient(cx - goR, cy - goR, cx + goR, cy + goR);
+    goGrad.addColorStop(0, "#ff8c42");
+    goGrad.addColorStop(1, "#ff6b35");
+    ctx.save();
+    ctx.shadowColor = "rgba(255, 107, 53, 0.45)";
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(cx, cy, goR, 0, Math.PI * 2);
+    ctx.fillStyle = goGrad;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 15px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(spinningRef.current ? "…" : "GO", cx, cy + 1);
+    ctx.restore();
   }, []);
 
   useEffect(() => {
@@ -507,6 +527,7 @@ export default function RoulettePage() {
     if (spinning || items.length < 2) return;
     setWinner(null);
     setSpinning(true);
+    spinningRef.current = true;
     const idx = Math.floor(Math.random() * items.length);
     const sliceDeg = 360 / items.length;
     const target = -(idx * sliceDeg + sliceDeg / 2);
@@ -525,6 +546,7 @@ export default function RoulettePage() {
         return;
       }
       animRef.current = null;
+      spinningRef.current = false;
       setSpinning(false);
       const w = items[idx];
       setWinner(w);
@@ -594,9 +616,7 @@ export default function RoulettePage() {
         <View
           className={`wheel-go ${spinning ? "spinning" : ""}`}
           onClick={spin}
-        >
-          <Text className="go-text">{spinning ? "…" : "GO"}</Text>
-        </View>
+        ></View>
       </View>
 
       {/* 中奖结果 */}

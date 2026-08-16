@@ -171,7 +171,7 @@
     }
   }
 
-  /* 中心 GO 按钮：珊瑚渐变 + 白字 */
+  /* 中心 GO 按钮：透明点击层（视觉由 canvas 绘制，避免原生层遮盖） */
   .wheel-go {
     position: absolute;
     top: 50%;
@@ -180,28 +180,12 @@
     width: 112rpx;
     height: 112rpx;
     border-radius: 50%;
-    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    background: transparent;
     border: none;
-    box-shadow: 0 8rpx 20rpx rgba(255, 107, 53, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
     z-index: 4;
-    transition: transform 0.2s ease;
 
     &.spinning {
-      opacity: 0.6;
-    }
-
-    &:active {
-      transform: translate(-50%, -50%) scale(0.92);
-    }
-
-    .go-text {
-      font-size: 36rpx;
-      font-weight: 700;
-      color: #ffffff;
-      line-height: 1;
+      opacity: 1;
     }
   }
 }
