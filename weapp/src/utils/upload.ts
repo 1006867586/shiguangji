@@ -66,8 +66,20 @@ export async function uploadToR2(
     "image/jpeg";
 
   // 预检大小（获取失败不阻塞，交由 readFile 兜底）
-  const info = await Taro.getFileInfo({ filePath }).catch(() => null);
-  const fileSize = info && "fileSize" in info ? (info as { fileSize: number }).fileSize : 0;
+  // 注意：wx.getFileInfo 已废弃，改用 FileSystemManager.getFileInfo
+  const info = await new Promise<{ fileSize: number } | null>((resolve) => {
+    try {
+      const fs = Taro.getFileSystemManager();
+      fs.getFileInfo({
+        filePath,
+        success: (r) => resolve({ fileSize: r.size }),
+        fail: () => resolve(null),
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+  const fileSize = info?.fileSize ?? 0;
   if (fileSize > MAX_BYTES) {
     throw new Error("文件超过 10MB，请压缩后重试");
   }
