@@ -1,18 +1,19 @@
-/* 自定义底栏：悬浮白色胶囊（设计稿 2:608）
+/* 自定义底栏：白色胶囊固定贴底（设计稿 2:608，按需求调整底部悬浮为贴底）
    5 个等高 tab 项；选中态 = 珊瑚色填充胶囊（图标+文字整体），白色图标 + 白色文字 */
 .custom-tab-bar {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(24rpx + env(safe-area-inset-bottom));
+  bottom: 0;
   z-index: 999;
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 670rpx;
-  height: 124rpx;
+  height: auto;
+  min-height: 124rpx;
   margin: 0 auto;
-  padding: 8rpx 16rpx;
+  padding: 8rpx 16rpx calc(8rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   background: #ffffff;
   border: 1rpx solid #f0ede8;
