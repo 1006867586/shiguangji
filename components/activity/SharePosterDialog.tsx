@@ -205,7 +205,7 @@ export function SharePosterDialog({
     } finally {
       setExporting(false);
     }
-  }, [activity, galleryKey, authorAvatar, authorName, timeText, summary]);
+  }, [activity, authorAvatar, authorName, timeText, summary]);
 
   /** 二维码就绪后自动生成海报 */
   const exportRef = useRef(exportPoster);
@@ -352,6 +352,7 @@ export function SharePosterDialog({
         <div className="flex flex-col items-center gap-3">
           <div className="relative mx-auto overflow-hidden rounded-2xl border border-border bg-white shadow-[0_10px_40px_-12px_rgba(0,0,0,0.18)]">
             {posterDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={posterDataUrl}
                 alt="分享海报预览"

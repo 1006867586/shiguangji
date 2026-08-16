@@ -27,7 +27,7 @@ export default function PrivacyPage() {
         <p style={meta}>生效日期：{EFFECTIVE_DATE}</p>
 
         <p>
-          欢迎使用 <strong>{APP_NAME}</strong>（以下简称"本服务"）。我们非常重视您的隐私与个人信息保护，
+          欢迎使用 <strong>{APP_NAME}</strong>（以下简称&ldquo;本服务&rdquo;）。我们非常重视您的隐私与个人信息保护，
           依据《中华人民共和国网络安全法》《中华人民共和国个人信息保护法》《微信小程序平台运营规范》等相关法律法规，
           制定本《隐私政策》并向您说明：在使用本服务时，我们如何收集、使用、存储、共享和保护您的个人信息，
           以及您所享有的权利和行使方式。
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
             仅在您主动发布含图片的活动时启用，未启用图片功能时不会向 R2 传输任何内容；
           </li>
           <li>
-            <strong>AI（可选）</strong>：当您使用"截图识别"等 AI 功能时，截图内容会被发送给 AI 服务提供商用于解析，
+            <strong>AI（可选）</strong>：当您使用&ldquo;截图识别&rdquo;等 AI 功能时，截图内容会被发送给 AI 服务提供商用于解析，
             我们不会将其用于模型训练。
           </li>
         </ul>
@@ -91,7 +91,7 @@ export default function PrivacyPage() {
 
         <h2 style={h2}>四、您的权利</h2>
         <ul>
-          <li><strong>查阅 / 复制</strong>：您可在"我的"页面查看您发布的内容、加入的圈子、收藏的地点；</li>
+          <li><strong>查阅 / 复制</strong>：您可在&ldquo;我的&rdquo;页面查看您发布的内容、加入的圈子、收藏的地点；</li>
           <li><strong>更正</strong>：您可在相应编辑页面修改昵称、活动内容等信息；</li>
           <li><strong>删除</strong>：您可删除您发布的内容、退出圈子、删除收藏；</li>
           <li><strong>注销账号</strong>：您可通过下方联系方式申请注销账号，注销后您的个人信息将被删除或匿名化处理，

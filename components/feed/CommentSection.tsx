@@ -20,7 +20,7 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({
-  activityId,
+  activityId: _activityId,
   comments,
   currentUserId,
   onAdd,
