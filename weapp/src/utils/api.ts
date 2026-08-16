@@ -102,6 +102,21 @@ export function fetchActivityDetail(id: string): Promise<ActivityLite> {
   return request<ActivityLite>(`/api/activities/${id}`, { silent: true });
 }
 
+/** PATCH /api/activities/[id] — 编辑活动（仅作者，仅原创；可改正文与商家链接） */
+export function updateActivity(
+  id: string,
+  body: { content?: string | null; externalLink?: ExternalLinkLite | null }
+): Promise<unknown> {
+  return request(`/api/activities/${id}`, { method: "PATCH", data: body });
+}
+
+/** DELETE /api/activities/[id]/photos/[photoId] — 删除照片（作者可删全部，他人删自己上传的） */
+export function deleteActivityPhoto(activityId: string, photoId: string): Promise<unknown> {
+  return request(`/api/activities/${activityId}/photos/${photoId}`, {
+    method: "DELETE",
+  });
+}
+
 /** POST /api/activities/[id]/like — 点赞 / 取消（toggle） */
 export function toggleLike(id: string): Promise<{ liked: boolean; like_count: number }> {
   return request(`/api/activities/${id}/like`, { method: "POST" });

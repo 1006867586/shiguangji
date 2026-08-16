@@ -1,6 +1,6 @@
 import { View, Text, Image, Button } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import type { ActivityLite } from "@/utils/api";
+import type { ActivityLite, ActivityPhotoLite } from "@/utils/api";
 import { formatRelativeTime } from "@/utils/time";
 import PhotoGrid from "./PhotoGrid";
 import LinkCard from "./LinkCard";
@@ -12,10 +12,12 @@ interface Props {
   onLike?: (a: ActivityLite) => void;
   /** 卡片点击进详情（操作按钮区域点击不触发） */
   onTap?: (a: ActivityLite) => void;
+  /** 提供时图集单元格显示删除角标（详情页照片管理） */
+  onDeletePhoto?: (photo: ActivityPhotoLite) => void;
 }
 
 /** 动态卡片：作者 + 内容 + 图集 + 链接 + 转发引用 + 操作栏 */
-export default function ActivityCard({ activity, onLike, onTap }: Props) {
+export default function ActivityCard({ activity, onLike, onTap, onDeletePhoto }: Props) {
   const a = activity;
 
   const goDetail = () => onTap?.(a);
@@ -58,7 +60,7 @@ export default function ActivityCard({ activity, onLike, onTap }: Props) {
       {a.content && <Text className="content">{a.content}</Text>}
 
       {/* 图集 */}
-      {a.photos?.length > 0 && <PhotoGrid photos={a.photos} />}
+      {a.photos?.length > 0 && <PhotoGrid photos={a.photos} onDeletePhoto={onDeletePhoto} />}
 
       {/* 商家链接卡片 */}
       {a.external_link && <LinkCard link={a.external_link} />}

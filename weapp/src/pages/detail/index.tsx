@@ -4,23 +4,33 @@ import Taro, {
   useShareAppMessage,
   useShareTimeline,
 } from "@tarojs/taro";
-import { View, Text, Image, Input, Button } from "@tarojs/components";
+import { View, Text, Image, Input, Button, Textarea } from "@tarojs/components";
 import {
   fetchActivityDetail,
   fetchComments,
   postComment,
   toggleLike,
+  addActivityPhoto,
+  updateActivity,
+  deleteActivityPhoto,
+  parseLink,
   msgSecCheck,
   sceneToActivityId,
   type ActivityLite,
+  type ActivityPhotoLite,
   type CommentLite,
+  type LinkPreviewResult,
 } from "@/utils/api";
+import { uploadToR2 } from "@/utils/upload";
+import { getCurrentUserId } from "@/utils/auth";
 import { formatRelativeTime } from "@/utils/time";
 import ActivityCard from "@/components/ActivityCard";
 import "./index.scss";
 
+const MAX_ADD_PHOTOS = 9;
+
 /**
- * 活动详情页：完整卡片 + 评论区（楼中楼展示，回复固定到一级）+ 点赞。
+ * 活动详情页：完整卡片 + 照片补充/删除 + 编辑（作者）+ 评论区。
  * 入口：普通跳转带 id；扫海报小程序码进入带 scene（uuid 去横线）。
  */
 export default function DetailPage() {
@@ -31,6 +41,20 @@ export default function DetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [sending, setSending] = useState(false);
+
+  // 照片补充 / 编辑
+  const [addingPhotos, setAddingPhotos] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [editLinkUrl, setEditLinkUrl] = useState("");
+  const [editLinkPreview, setEditLinkPreview] = useState<LinkPreviewResult | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const currentUserId = getCurrentUserId();
+  const isAuthor =
+    !!activity && !!currentUserId && activity.author?.id === currentUserId;
 
   /** 兼容 id 直跳与小程序码 scene 两种入口 */
   const resolveId = () => {
@@ -56,6 +80,10 @@ export default function DetailPage() {
       setLoading(false);
     }
   }, []);
+
+  const reload = useCallback(() => {
+    if (id) void load(id);
+  }, [id, load]);
 
   useDidShow(() => {
     const activityId = resolveId();
@@ -122,6 +150,173 @@ export default function DetailPage() {
     }
   };
 
+  // ---- 照片补充：选图 → R2 直传 → 挂到活动 ----
+  const addPhotos = async () => {
+    if (addingPhotos || !id) return;
+    const remain = MAX_ADD_PHOTOS - (activity?.photos?.length ?? 0);
+    if (remain <= 0) {
+      Taro.showToast({ title: "照片已满（9 张）", icon: "none" });
+      return;
+    }
+    try {
+      const res = await Taro.chooseMedia({
+        count: remain,
+        mediaType: ["image"],
+        sizeType: ["compressed"],
+        sourceType: ["album", "camera"],
+      });
+      const files = res.tempFiles.map((f) => f.tempFilePath);
+      if (!files.length) return;
+      setAddingPhotos(true);
+      Taro.showLoading({ title: "上传中…", mask: true });
+      for (let i = 0; i < files.length; i++) {
+        Taro.showLoading({
+          title: `上传 ${i + 1}/${files.length}`,
+          mask: true,
+        });
+        const url = await uploadToR2(files[i]);
+        await addActivityPhoto(id, url, "image");
+      }
+      Taro.hideLoading();
+      Taro.showToast({ title: "照片已补充", icon: "success" });
+      reload();
+    } catch {
+      Taro.hideLoading();
+      // 用户取消或 request 层已 toast
+    } finally {
+      setAddingPhotos(false);
+    }
+  };
+
+  // ---- 删除照片：作者可删全部，其他人仅自己的（后端兜底） ----
+  const handleDeletePhoto = async (photo: ActivityPhotoLite) => {
+    if (deletingPhotoId || !id) return;
+    const m = await Taro.showModal({
+      title: "删除照片",
+      content: "确定删除这张照片？",
+    });
+    if (!m.confirm) return;
+    setDeletingPhotoId(photo.id);
+    try {
+      await deleteActivityPhoto(id, photo.id);
+      Taro.showToast({ title: "已删除", icon: "success" });
+      reload();
+    } catch {
+      // request 层已 toast
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  };
+
+  // ---- 编辑：打开表单（预填当前正文与商家链接） ----
+  const openEdit = () => {
+    if (!activity) return;
+    setEditContent(activity.content ?? "");
+    setEditLinkUrl("");
+    const link = activity.external_link;
+    setEditLinkPreview(
+      link
+        ? {
+            platform: link.platform || "other",
+            url: link.url || "",
+            title: link.title || "",
+            coverImage: link.coverImage ?? null,
+            rating: link.rating ?? null,
+            address: link.address ?? null,
+            phone: link.phone ?? null,
+            price: link.price ?? null,
+            category: link.category ?? null,
+          }
+        : null
+    );
+    setEditing(true);
+  };
+
+  const closeEdit = () => {
+    setEditing(false);
+    setEditLinkPreview(null);
+    setEditLinkUrl("");
+  };
+
+  const handleEditParseLink = async () => {
+    const input = editLinkUrl.trim();
+    if (!input) {
+      Taro.showToast({ title: "请粘贴链接或分享文本", icon: "none" });
+      return;
+    }
+    setParsing(true);
+    try {
+      const res = await parseLink(input);
+      if (res) {
+        setEditLinkPreview(res);
+        Taro.showToast({
+          title: res.title ? "解析成功" : "已保存，可手动补充",
+          icon: "none",
+        });
+      }
+    } catch {
+      // request 层已 toast
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const clearEditLink = () => {
+    setEditLinkPreview(null);
+    setEditLinkUrl("");
+  };
+
+  const saveEdit = async () => {
+    if (savingEdit || !id) return;
+    const text = editContent.trim();
+    if (!text && !editLinkPreview) {
+      Taro.showToast({ title: "内容和链接不能同时为空", icon: "none" });
+      return;
+    }
+    // 内容安全前置检测（scene 1 资料类）
+    if (text) {
+      try {
+        const sec = await msgSecCheck(text, 1);
+        if (!sec.pass) {
+          Taro.showModal({
+            title: "内容无法保存",
+            content: sec.reason ?? "内容包含违规信息，请修改后重试",
+            showCancel: false,
+          });
+          return;
+        }
+      } catch {
+        // 检测接口不可达：放行（服务端校验兜底）
+      }
+    }
+    setSavingEdit(true);
+    try {
+      await updateActivity(id, {
+        content: text || null,
+        externalLink: editLinkPreview
+          ? {
+              platform: editLinkPreview.platform || "other",
+              url: editLinkPreview.url || editLinkUrl.trim(),
+              title: editLinkPreview.title || "",
+              coverImage: editLinkPreview.coverImage,
+              rating: editLinkPreview.rating,
+              address: editLinkPreview.address,
+              phone: editLinkPreview.phone,
+              price: editLinkPreview.price,
+              category: editLinkPreview.category,
+            }
+          : null,
+      });
+      Taro.showToast({ title: "已保存", icon: "success" });
+      closeEdit();
+      reload();
+    } catch {
+      // request 层已 toast
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   // 发评论
   const submitComment = async () => {
     const text = commentText.trim();
@@ -178,8 +373,104 @@ export default function DetailPage() {
 
   return (
     <View className="detail-page">
-      {/* 详情主体：复用动态卡片 */}
-      <ActivityCard activity={activity} onLike={handleLike} />
+      {/* 编辑表单（作者） */}
+      {editing ? (
+        <View className="edit-panel">
+          <View className="edit-head">
+            <Text className="edit-title">编辑动态</Text>
+            <Text className="edit-close" onClick={closeEdit}>关闭</Text>
+          </View>
+
+          <Textarea
+            className="edit-content"
+            value={editContent}
+            placeholder="说点什么…"
+            maxlength={2000}
+            onInput={(e) => setEditContent(e.detail.value)}
+          />
+
+          <View className="edit-link-row">
+            <Textarea
+              className="edit-link-input"
+              value={editLinkUrl}
+              placeholder="粘贴美团/点评链接（可选）"
+              maxlength={1000}
+              autoHeight
+              onInput={(e) => setEditLinkUrl(e.detail.value)}
+            />
+            <Button
+              size="mini"
+              type="primary"
+              loading={parsing}
+              disabled={!editLinkUrl.trim() || parsing}
+              onClick={handleEditParseLink}
+            >
+              解析
+            </Button>
+          </View>
+
+          {editLinkPreview && (
+            <View className="edit-link-preview">
+              <Text className="edit-link-title">
+                {editLinkPreview.title || "未识别到店名"}
+              </Text>
+              {editLinkPreview.rating ? (
+                <Text className="edit-link-rating">★ {editLinkPreview.rating.toFixed(1)}</Text>
+              ) : null}
+              <Text className="edit-link-clear" onClick={clearEditLink}>移除</Text>
+            </View>
+          )}
+
+          <View className="edit-actions">
+            <Button
+              size="mini"
+              onClick={closeEdit}
+            >
+              取消
+            </Button>
+            <Button
+              size="mini"
+              type="primary"
+              loading={savingEdit}
+              disabled={savingEdit}
+              onClick={() => void saveEdit()}
+            >
+              保存
+            </Button>
+          </View>
+        </View>
+      ) : (
+        <>
+          {/* 操作区：补充照片（所有人）+ 编辑（仅作者） */}
+          <View className="detail-actions">
+            <Button
+              size="mini"
+              className="action-btn add-photo"
+              loading={addingPhotos}
+              disabled={addingPhotos}
+              onClick={() => void addPhotos()}
+            >
+              ＋ 补充照片
+            </Button>
+            {isAuthor && (
+              <Button
+                size="mini"
+                className="action-btn edit-btn"
+                onClick={openEdit}
+              >
+                编辑
+              </Button>
+            )}
+          </View>
+
+          {/* 详情主体：复用动态卡片（照片可删） */}
+          <ActivityCard
+            activity={activity}
+            onLike={handleLike}
+            onDeletePhoto={handleDeletePhoto}
+          />
+        </>
+      )}
 
       {/* 评论区 */}
       <View className="comment-section">

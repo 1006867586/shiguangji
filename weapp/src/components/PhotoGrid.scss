@@ -6,6 +6,8 @@
   overflow: hidden;
 
   &.single {
+    position: relative;
+
     .photo-single {
       width: 100%;
       max-height: 640rpx;
@@ -21,6 +23,7 @@
   }
 
   .photo-cell {
+    position: relative;
     width: calc((100% - 16rpx) / 3);
     height: 220rpx;
     border-radius: $radius-sm;
@@ -36,5 +39,25 @@
   .photo-img {
     width: 100%;
     height: 100%;
+  }
+
+  .photo-del {
+    position: absolute;
+    top: 8rpx;
+    right: 8rpx;
+    width: 44rpx;
+    height: 44rpx;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+
+    .photo-del-x {
+      color: #ffffff;
+      font-size: 28rpx;
+      line-height: 1;
+    }
   }
 }

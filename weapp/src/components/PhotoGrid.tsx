@@ -1,12 +1,19 @@
-import { View, Image } from "@tarojs/components";
+import { View, Image, Text } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import type { ActivityPhotoLite } from "@/utils/api";
 import "./PhotoGrid.scss";
 
 /**
  * 图片宫格：1 张大图 / 2-3 张一行 / 4+ 九宫格（最多 9），点击全屏预览。
+ * onDeletePhoto 提供时每个单元格右上角显示删除角标（详情页照片管理用）。
  */
-export default function PhotoGrid({ photos }: { photos: ActivityPhotoLite[] }) {
+export default function PhotoGrid({
+  photos,
+  onDeletePhoto,
+}: {
+  photos: ActivityPhotoLite[];
+  onDeletePhoto?: (photo: ActivityPhotoLite) => void;
+}) {
   if (!photos.length) return null;
 
   const urls = photos.map((p) => p.url);
@@ -25,6 +32,11 @@ export default function PhotoGrid({ photos }: { photos: ActivityPhotoLite[] }) {
           mode="aspectFill"
           lazyLoad
         />
+        {onDeletePhoto && (
+          <View className="photo-del" onClick={(e) => { e.stopPropagation(); onDeletePhoto(photos[0]); }}>
+            <Text className="photo-del-x">×</Text>
+          </View>
+        )}
       </View>
     );
   }
@@ -39,6 +51,17 @@ export default function PhotoGrid({ photos }: { photos: ActivityPhotoLite[] }) {
         >
           <Image className="photo-img" src={p.url} mode="aspectFill" lazyLoad />
           {photos.length > 9 && null}
+          {onDeletePhoto && (
+            <View
+              className="photo-del"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeletePhoto(p);
+              }}
+            >
+              <Text className="photo-del-x">×</Text>
+            </View>
+          )}
         </View>
       ))}
     </View>

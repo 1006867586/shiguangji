@@ -22,6 +22,42 @@ export function getAccessToken(): string | null {
   return Taro.getStorageSync<string>(TOKEN_KEY) || null;
 }
 
+const B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/** 纯 JS base64url 解码（小程序无 atob，JWT payload 为 base64url） */
+function decodeB64Url(s: string): string {
+  const cleaned = s.replace(/-/g, "+").replace(/_/g, "/");
+  let out = "";
+  let buffer = 0;
+  let bits = 0;
+  for (const ch of cleaned) {
+    if (ch === "=") break;
+    const val = B64_CHARS.indexOf(ch);
+    if (val < 0) continue;
+    buffer = (buffer << 6) | val;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out += String.fromCharCode((buffer >> bits) & 0xff);
+    }
+  }
+  return out;
+}
+
+/** 当前登录用户 id（从 Supabase JWT 的 sub 解码；未登录返回 null） */
+export function getCurrentUserId(): string | null {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(decodeB64Url(parts[1]));
+    return typeof payload.sub === "string" ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 // 防止并发调用 weappLogin 触发 45011（微信频率限制）。
 // 同时只允许一个 in-flight 请求，重复调用直接拒绝并等待首个结果。
 let loginPromise: Promise<WeappSession> | null = null;
