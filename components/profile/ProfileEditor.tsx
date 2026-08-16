@@ -61,6 +61,14 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             value={avatarUrl}
             nickname={nickname}
             onChange={setAvatarUrl}
+            onPersist={async (url) => {
+              // 头像选择/清除即落库，避免用户上传后未点"保存"导致丢失
+              await fetchData<Profile>("/api/profile", {
+                method: "PATCH",
+                body: JSON.stringify({ avatarUrl: url }),
+              });
+              router.refresh();
+            }}
             size={80}
             className="relative"
           />
