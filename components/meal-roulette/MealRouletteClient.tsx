@@ -79,7 +79,7 @@ export function MealRouletteClient({
       setSpinning(false);
       setWinnerIndex(idx);
       setWinner(items[idx]);
-      toast.success(`今晚就吃「${items[idx].title}」！`);
+      toast.success(`今天就吃「${items[idx].title}」！`);
     }, SPIN_MS);
   };
 
@@ -220,6 +220,7 @@ export function MealRouletteClient({
           spinning={spinning}
           winnerIndex={winnerIndex}
           rotation={rotation}
+          onGoClick={handleSpin}
         />
         <div className="flex items-center gap-2">
           <Button
@@ -248,14 +249,16 @@ export function MealRouletteClient({
         </div>
       </div>
 
-      {/* 中奖结果 */}
+      {/* 选择结果（同小程序：珊瑚边框卡 + 标题「今天就吃 XX」） */}
       {winner ? (
         <div className="rounded-2xl border-2 border-primary/60 bg-primary/5 p-4 shadow-sm">
           <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-primary">
             <UtensilsCrossed className="h-3.5 w-3.5" />
-            今晚就吃这家
+            选择结果
           </div>
-          <p className="text-lg font-semibold tracking-tight">{winner.title}</p>
+          <p className="text-lg font-semibold tracking-tight text-primary">
+            今天就吃「{winner.title}」
+          </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {winner.address ? (
               <span className="inline-flex items-center gap-0.5">
