@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Taro, { useDidShow, useShareAppMessage } from "@tarojs/taro";
-import { View, Text, Canvas, Button, Picker } from "@tarojs/components";
+import { View, Text, Canvas, Button, Picker, Input, ScrollView } from "@tarojs/components";
 import { isLoggedIn } from "@/utils/auth";
 import { setSelectedTab } from "@/custom-tab-bar/tabStore";
 import {
@@ -14,9 +14,11 @@ import {
   fetchRoulettePool,
   addRoulettePoolItem,
   deleteRoulettePoolItem,
+  PLATFORM_LABELS,
   type GroupLite,
   type MealRouletteItem,
   type RoulettePool,
+  type FavoritePlace,
 } from "@/utils/api";
 import "./index.scss";
 
@@ -347,25 +349,71 @@ export default function RoulettePage() {
     }
   };
 
-  // ---- 饭搭子池专属：导入收藏 ----
-  const importFavorites = async () => {
+  // ---- 饭搭子池专属：导入收藏（可选部分条目） ----
+  const [favOpen, setFavOpen] = useState(false);
+  const [favList, setFavList] = useState<FavoritePlace[] | null>(null);
+  const [favLoading, setFavLoading] = useState(false);
+  const [favKeyword, setFavKeyword] = useState("");
+  const [favSelected, setFavSelected] = useState<Set<string>>(new Set());
+  const [importing, setImporting] = useState(false);
+
+  const loadFavorites = useCallback(async () => {
+    if (favLoading) return;
+    setFavLoading(true);
+    try {
+      const list = await fetchFavoritePlaces();
+      setFavList(list);
+    } catch {
+      // request 层已 toast
+    } finally {
+      setFavLoading(false);
+    }
+  }, [favLoading]);
+
+  const openFavorites = () => {
     if (source.type !== "group") return;
     if (spinning) {
       Taro.showToast({ title: "转盘转动中，请稍候", icon: "none" });
       return;
     }
+    setFavOpen(true);
+    setFavSelected(new Set());
+    if (favList === null) void loadFavorites();
+  };
+
+  const filteredFav = useMemo(() => {
+    const k = favKeyword.trim().toLowerCase();
+    if (!k) return favList ?? [];
+    return (favList ?? []).filter(
+      (p) =>
+        p.title.toLowerCase().includes(k) ||
+        (p.address ?? "").toLowerCase().includes(k) ||
+        (p.signature_dishes ?? []).some((d) => d.toLowerCase().includes(k))
+    );
+  }, [favList, favKeyword]);
+
+  const toggleFav = (id: string) => {
+    setFavSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const confirmImportFavorites = async () => {
+    if (source.type !== "group" || importing) return;
+    const picked = (favList ?? []).filter((p) => favSelected.has(p.id));
+    if (picked.length === 0) {
+      Taro.showToast({ title: "请至少选择一家", icon: "none" });
+      return;
+    }
+    setImporting(true);
     Taro.showLoading({ title: "导入中…", mask: true });
     try {
-      const places = await fetchFavoritePlaces();
-      const valid = places.filter((p) => p.title);
-      if (valid.length === 0) {
-        Taro.hideLoading();
-        Taro.showToast({ title: "收藏夹还是空的", icon: "none" });
-        return;
-      }
       const res = await importMealRouletteItems(
         source.group.id,
-        valid.map((p) => ({
+        picked.map((p) => ({
           title: p.title,
           address: p.address ?? undefined,
           phone: p.phone ?? undefined,
@@ -373,6 +421,7 @@ export default function RoulettePage() {
         }))
       );
       Taro.hideLoading();
+      setFavOpen(false);
       Taro.showToast({
         title: `导入 ${res.inserted} 家${res.duplicated ? `，${res.duplicated} 家已存在` : ""}`,
         icon: "none",
@@ -382,6 +431,8 @@ export default function RoulettePage() {
       void loadItems(source);
     } catch {
       Taro.hideLoading();
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -684,7 +735,7 @@ export default function RoulettePage() {
                 <Button
                   size="mini"
                   type="primary"
-                  onClick={() => void importFavorites()}
+                  onClick={() => openFavorites()}
                 >
                   导入收藏
                 </Button>
@@ -734,6 +785,91 @@ export default function RoulettePage() {
           <Text className="text-muted">
             登录后可使用饭搭子候选池；分享池免登录即可用
           </Text>
+        </View>
+      )}
+
+      {/* 从收藏夹导入（多选）弹层 */}
+      {favOpen && (
+        <View className="fav-sheet-mask" onClick={() => setFavOpen(false)}>
+          <View className="fav-sheet" onClick={(e) => e.stopPropagation()}>
+            <View className="fav-sheet-title">
+              <Text>从收藏夹导入</Text>
+              <Text
+                className="fav-sheet-close"
+                onClick={() => setFavOpen(false)}
+              >
+                ✕
+              </Text>
+            </View>
+            <Input
+              className="fav-search"
+              value={favKeyword}
+              placeholder="搜店名 / 地址 / 招牌菜"
+              onInput={(e) => setFavKeyword(e.detail.value)}
+            />
+            <ScrollView scrollY className="fav-list">
+              {favLoading && favList === null ? (
+                <Text className="fav-empty">加载中…</Text>
+              ) : filteredFav.length === 0 ? (
+                <Text className="fav-empty">
+                  {favList === null || favList.length === 0
+                    ? "收藏夹还是空的，去截图导入"
+                    : "没有匹配的店铺"}
+                </Text>
+              ) : (
+                filteredFav.map((p) => {
+                  const checked = favSelected.has(p.id);
+                  return (
+                    <View
+                      key={p.id}
+                      className={`fav-item${checked ? " checked" : ""}`}
+                      onClick={() => toggleFav(p.id)}
+                    >
+                      <View className="fav-item-main">
+                        <View className="fav-item-title-row">
+                          <Text className="fav-item-title">{p.title}</Text>
+                          {p.platform !== "unknown" && (
+                            <Text className="fav-item-platform">
+                              {PLATFORM_LABELS[p.platform]}
+                            </Text>
+                          )}
+                        </View>
+                        {p.address ? (
+                          <Text className="fav-item-sub">{p.address}</Text>
+                        ) : null}
+                        {p.signature_dishes && p.signature_dishes.length > 0 ? (
+                          <View className="fav-item-dishes">
+                            {p.signature_dishes.slice(0, 3).map((d) => (
+                              <Text key={d} className="fav-item-dish">
+                                {d}
+                              </Text>
+                            ))}
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text className={`fav-item-check${checked ? " on" : ""}`}>
+                        {checked ? "✓" : ""}
+                      </Text>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+            <View className="fav-sheet-footer">
+              <Text className="fav-sheet-count">
+                已选 {favSelected.size} 家
+              </Text>
+              <Button
+                size="mini"
+                type="primary"
+                loading={importing}
+                disabled={favSelected.size === 0}
+                onClick={() => void confirmImportFavorites()}
+              >
+                导入 ({favSelected.size})
+              </Button>
+            </View>
+          </View>
         </View>
       )}
     </View>
