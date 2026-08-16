@@ -14,6 +14,12 @@ interface AvatarUploaderProps {
   nickname: string;
   /** 上传完成回调，传入新的 URL（或 null 表示清除） */
   onChange: (url: string | null) => void;
+  /**
+   * 头像变更自动持久化回调（可选）：头像选择/清除后即时调用，
+   * 父组件可用于立即 PATCH /api/profile，避免用户上传后未点"保存"导致丢失。
+   * 传入新的 URL（null 表示清除）。
+   */
+  onPersist?: (url: string | null) => void | Promise<void>;
   /** 头像尺寸，默认 72 */
   size?: number;
   className?: string;
@@ -27,6 +33,7 @@ export function AvatarUploader({
   value,
   nickname,
   onChange,
+  onPersist,
   size = 72,
   className,
 }: AvatarUploaderProps) {
@@ -53,7 +60,13 @@ export function AvatarUploader({
       const url = await uploadFile(file, "image");
       if (url) {
         onChange(url);
-        toast.success("头像已更新");
+        if (onPersist) {
+          try {
+            await onPersist(url);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "保存失败");
+          }
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "上传失败");
@@ -62,6 +75,18 @@ export function AvatarUploader({
 
   const handleClear = () => {
     onChange(null);
+    if (onPersist) {
+      try {
+        const result = onPersist(null);
+        if (result && typeof (result as Promise<void>).then === "function") {
+          (result as Promise<void>).catch((err) =>
+            toast.error(err instanceof Error ? err.message : "保存失败")
+          );
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "保存失败");
+      }
+    }
   };
 
   return (
