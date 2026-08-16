@@ -1,4 +1,4 @@
-import { View, Text, Image } from "@tarojs/components";
+import { View, Text, Image, Button } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import type { ActivityLite } from "@/utils/api";
 import { formatRelativeTime } from "@/utils/time";
@@ -28,6 +28,11 @@ export default function ActivityCard({ activity, onLike, onTap }: Props) {
   const handleComment = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
     Taro.navigateTo({ url: `/pages/detail/index?id=${a.id}` });
+  };
+
+  const handlePoster = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    Taro.navigateTo({ url: `/pages/poster/index?id=${a.id}` });
   };
 
   const avatar = a.author?.avatar_url || "https://img.example.com/avatar-default.png";
@@ -82,6 +87,18 @@ export default function ActivityCard({ activity, onLike, onTap }: Props) {
         <View className="action-btn" onClick={handleComment}>
           <Text className="action-icon">💬</Text>
           <Text className="action-count">{a.comment_count || ""}</Text>
+        </View>
+        <Button
+          className="action-btn share-btn"
+          openType="share"
+          plain
+        >
+          <Text className="action-icon">📤</Text>
+          <Text className="action-count">分享</Text>
+        </Button>
+        <View className="action-btn" onClick={handlePoster}>
+          <Text className="action-icon">🖼️</Text>
+          <Text className="action-count">海报</Text>
         </View>
       </View>
     </View>

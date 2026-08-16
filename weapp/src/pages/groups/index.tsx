@@ -6,6 +6,7 @@ import {
   fetchGroups,
   createGroup,
   joinGroup,
+  msgSecCheck,
   type GroupLite,
 } from "@/utils/api";
 import "./index.scss";
@@ -59,6 +60,20 @@ export default function GroupsPage() {
     }
     setCreating(true);
     try {
+      // 内容安全前置检测（scene 1 资料类：圈名）
+      try {
+        const sec = await msgSecCheck(name, 1);
+        if (!sec.pass) {
+          Taro.showModal({
+            title: "名称无法使用",
+            content: sec.reason ?? "圈子名称包含违规信息，请修改后重试",
+            showCancel: false,
+          });
+          return;
+        }
+      } catch {
+        // 检测接口不可达：放行（服务端入库校验兜底）
+      }
       const group = await createGroup({ name });
       Taro.showToast({ title: "创建成功", icon: "success" });
       await load();

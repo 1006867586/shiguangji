@@ -23,6 +23,10 @@ export function isSupabaseConfigured(): boolean {
  * Server Component / Route Handler 中使用的 Supabase Client。
  * 通过 cookies 读取用户会话，受 RLS 约束。
  *
+ * 小程序通道：检测到 Authorization: Bearer <access_token> 时，自动把 token
+ * 注入到 supabase-js 的 global headers，让后续所有 .rpc()/.from() 调用都
+ * 以「已登录用户」身份执行（RLS 正常生效），不需要依赖 sb-* cookie。
+ *
  * 如果 Supabase 环境变量未就绪（仍是占位符），这里**不再 throw**，
  * 否则 SSR 渲染阶段（如 middleware / login 布局）一进来就 500，
  * 连登录页都打不开。改成 console.warn 提示运维去补 env。
@@ -51,6 +55,14 @@ export async function createServerClient() {
 
   const cookieStore = await cookies();
 
+  // 小程序通道：从 Authorization 头读 Bearer token，注入到 supabase-js 全局 headers
+  const headerList = await headers();
+  const authorization = headerList.get("authorization");
+  const bearerToken =
+    authorization && authorization.toLowerCase().startsWith("bearer ")
+      ? authorization.slice(7).trim()
+      : null;
+
   return createSSRClient(url!, anonKey!, {
     cookies: {
       getAll() {
@@ -66,6 +78,15 @@ export async function createServerClient() {
         }
       },
     },
+    // 关键：把 Bearer token 注入 supabase-js 内部 fetch，让 .rpc() / .from()
+    // 调 PostgREST 时带正确的 Authorization 头，PostgREST 解析 JWT → auth.uid() 有值 → RLS 正常
+    ...(bearerToken
+      ? {
+          global: {
+            headers: { Authorization: `Bearer ${bearerToken}` },
+          },
+        }
+      : {}),
   });
 }
 

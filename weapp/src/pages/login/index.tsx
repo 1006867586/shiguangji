@@ -11,6 +11,7 @@ import "./index.scss";
  * 底部微信一键登录按钮 + 协议文本
  */
 
+// 隐私政策 / 用户协议 跳转地址（与 demo 页一致，可改为 .env 注入）
 const PRIVACY_URL = "https://m.zykh.top/privacy";
 const AGREEMENT_URL = "https://m.zykh.top/agreement";
 

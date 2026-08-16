@@ -103,6 +103,20 @@
       margin-right: 64rpx;
     }
 
+    .share-btn {
+      padding: 0;
+      margin-left: 0;
+      margin-right: 64rpx;
+      background: transparent;
+      border: none;
+      line-height: inherit;
+      font-size: inherit;
+
+      &::after {
+        border: none;
+      }
+    }
+
     .action-icon {
       font-size: 32rpx;
       color: $color-text-secondary;

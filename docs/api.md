@@ -12,6 +12,8 @@
 - [匹配算法说明](#匹配算法说明)
 - [前端地图唤起](#前端地图唤起)
 - [小程序认证（weapp 分支）](#小程序认证weapp-分支)
+- [小程序内容安全（msgSecCheck）](#小程序内容安全msgseccheck)
+- [小程序码（wxacode）](#小程序码wxacode)
 - [错误码参考](#错误码参考)
 - [环境变量](#环境变量)
 
@@ -519,11 +521,100 @@ openMapApp("amap", { name: "海底捞", address: "xx路1号", city: "上海" });
 | 成功 | `200 { accessToken, refreshToken, expiresAt }` |
 | 401 | refresh_token 已失效，小程序端应清除凭据重新登录 |
 
+## 小程序内容安全（msgSecCheck）
+
+小程序端发布动态 / 评论 / 创建圈子等 UGC 行为前，调用文本内容安全检测（微信官方 msgSecCheck 2.0），满足小程序审核要求。
+
+### POST /api/weapp/security/msg-sec-check
+
+需登录（Bearer 双通道）。openid 取自登录时写入的 `user_metadata.weapp_openid`，前端无需传。
+
+```http
+POST /api/weapp/security/msg-sec-check
+Content-Type: application/json
+```
+
+```json
+{
+  "content": "要检测的文本（≤2500 字）",
+  "scene": 4
+}
+```
+
+| scene | 场景 |
+|-------|------|
+| 1 | 资料（圈子名称等） |
+| 2 | 评论 |
+| 3 | 论坛 |
+| 4 | 社交日志（动态发布，默认） |
+
+响应：
+
+```json
+{ "data": { "pass": true, "suggest": "pass", "label": 100 } }
+```
+
+| 字段 | 说明 |
+|------|------|
+| `pass` | 是否放行（前端只看这个） |
+| `suggest` | 微信判定：`pass` / `review`（人审，放行）/ `risky`（拦截） |
+| `label` | 100 正常；10001 广告、20002 色情、20003 辱骂、20006 违法犯罪、20008 欺诈、20012 低俗 等 |
+| `reason` | `pass: false` 时的拦截提示文案 |
+| `skipped` | 服务端未配置密钥或会话无 openid，跳过检测 |
+| `fallback` | 微信接口故障，放行并记录日志（不阻塞业务） |
+
+降级策略：本地开发未配置密钥直接放行；微信侧故障放行 + `console.error` 留痕；`review` 判定放行、`risky` 拦截。access_token 走 `stable_token` 接口（`lib/wechat.ts` 模块级缓存，提前 5 分钟刷新，40001 强制刷新重试一次）。
+
 ### 本地开发
 
 1. `weapp/` 下 `cp .env.example .env`（指向本地 Next.js）
 2. 微信开发者工具导入 `weapp/` 目录，appid 换成真实值，勾选「不校验合法域名」
 3. 服务端 `.env` 配置 `WEAPP_APPID` / `WEAPP_SECRET`
+
+---
+
+## 小程序码（wxacode）
+
+小程序分享海报底部的小程序码由服务端代理生成（微信官方 `getwxacodeunlimit`），扫码直达小程序页面。
+
+### POST /api/weapp/wxacode
+
+需登录（Bearer 双通道）。
+
+```http
+POST /api/weapp/wxacode
+Content-Type: application/json
+```
+
+```json
+{
+  "scene": "e4f1c2a3b4d5e6f7a8b9c0d1e2f3a4b5",
+  "page": "pages/detail/index",
+  "width": 430
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `scene` | string | 必填，≤32 可见字符。活动 uuid 去横线恰好 32 字符 |
+| `page` | string | 可选，默认 `pages/detail/index`，白名单校验 |
+| `width` | number | 可选，280-1280，默认 430 |
+
+响应：
+
+```json
+{ "data": { "base64": "<PNG base64>" } }
+```
+
+**scene 编解码约定**（`weapp/src/utils/api.ts`）：`activityIdToScene(uuid)` 去横线；详情页 `onLoad` 遇 `scene` 参数时用 `sceneToActivityId` 还原 8-4-4-4-12 格式。
+
+错误：400 参数越界；502 微信侧失败（含 errcode/errmsg）；503 未配置密钥。生成失败时前端海报画占位框，不阻塞海报生成。
+
+**前端缓存**：base64 结果缓存到 storage（key `wxacode:{id}`）+ 用户目录文件，避免重复生成。
+
+### POI 坐标落库（地图导航）
+
+`external_link` 新增可选字段 `location: { lng, lat }`（GCJ-02，与微信 `openLocation` / 高德同系）。链接解析 POI 兜底时由百度 BD-09 转换后写入（`lib/poi/coords.ts`）。小程序端点击地址行唤起 `wx.openLocation`；历史数据无坐标时降级复制地址文本。
 
 ---
 

@@ -8,6 +8,7 @@ import {
   parseLink,
   createActivity,
   addActivityPhoto,
+  msgSecCheck,
   type GroupLite,
   type LinkPreviewResult,
 } from "@/utils/api";
@@ -152,6 +153,24 @@ export default function PublishPage() {
     if (!text && !linkPreview) {
       Taro.showToast({ title: "写点什么或粘贴商家链接", icon: "none" });
       return;
+    }
+
+    // 内容安全前置检测（scene 4 社交日志）；失败降级由服务端保证，拦截才中断
+    if (text) {
+      try {
+        const sec = await msgSecCheck(text, 4);
+        if (!sec.pass) {
+          Taro.hideLoading();
+          Taro.showModal({
+            title: "内容无法发布",
+            content: sec.reason ?? "内容包含违规信息，请修改后重试",
+            showCancel: false,
+          });
+          return;
+        }
+      } catch {
+        // 检测接口不可达：放行（服务端敏感词/入库校验兜底）
+      }
     }
 
     setSubmitting(true);
