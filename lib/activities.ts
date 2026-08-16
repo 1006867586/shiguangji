@@ -20,7 +20,45 @@ export function parseExternalLink(raw: unknown): ExternalLink | null {
     coverImage: (r.coverImage as string) ?? (r.cover_image as string) ?? null,
     rating: typeof r.rating === "number" ? r.rating : null,
     address: (r.address as string) ?? null,
+    phone: (r.phone as string) ?? null,
     price: (r.price as string) ?? null,
+    category: (r.category as string) ?? null,
+    location: parseLinkLocation(r.location),
+  };
+}
+
+/** jsonb 中的经纬度（GCJ-02）：兼容 { lng, lat } 与 { longitude, latitude } 两种命名 */
+function parseLinkLocation(raw: unknown): ExternalLink["location"] {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const lng =
+    typeof r.lng === "number"
+      ? r.lng
+      : typeof r.longitude === "number"
+        ? r.longitude
+        : null;
+  const lat =
+    typeof r.lat === "number"
+      ? r.lat
+      : typeof r.latitude === "number"
+        ? r.latitude
+        : null;
+  if (lng === null || lat === null) return null;
+  return { lng, lat };
+}
+
+/** 将 feed RPC 返回的 repost_of jsonb 规范化为 RepostOf（external_link 同样走 parseExternalLink） */
+function parseRepostOf(raw: unknown): Activity["repost_of"] {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.id !== "string") return null;
+  return {
+    id: r.id,
+    type: (r.type as Activity["type"]) ?? "original",
+    content: (r.content as string) ?? null,
+    external_link: parseExternalLink(r.external_link),
+    created_at: (r.created_at as string) ?? "",
+    author: r.author as Activity["author"],
   };
 }
 
@@ -38,7 +76,8 @@ export function mapFeedRow(row: Record<string, unknown>): Activity {
     comment_count: Number(row.comment_count ?? 0),
     like_count: Number(row.like_count ?? 0),
     is_liked: Boolean(row.is_liked),
-    repost_of: (row.repost_of as Activity["repost_of"]) ?? null,
+    repost_of: parseRepostOf(row.repost_of),
+    repost_comment: (row.repost_comment as string) ?? null,
     group_id: (row.group_id as string) ?? "",
   };
 }
