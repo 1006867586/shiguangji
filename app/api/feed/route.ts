@@ -6,7 +6,7 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/feed?groupId=<uuid>&cursor=<iso>&limit=20 */
+/** GET /api/feed?groupId=<uuid>&cursor=<iso>&limit=20&keyword=<str> */
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -25,12 +25,14 @@ export async function GET(request: NextRequest) {
       DEFAULT_PAGE_SIZE,
       50
     );
+    const keyword = searchParams.get("keyword");
 
     const result = await fetchFeed({
       groupId,
       cursor,
       limit,
       userId: user.id,
+      keyword,
     });
 
     return jsonResponse(result);
