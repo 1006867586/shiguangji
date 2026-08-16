@@ -1,6 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Taro, { useDidShow } from "@tarojs/taro";
-import { View, Text, Image, Textarea, Button, Picker } from "@tarojs/components";
+import {
+  View,
+  Text,
+  Image,
+  Textarea,
+  Button,
+  Picker,
+  Input,
+  ScrollView,
+} from "@tarojs/components";
 import { ApiError } from "@/utils/request";
 import { isLoggedIn } from "@/utils/auth";
 import { setSelectedTab } from "@/custom-tab-bar/tabStore";
@@ -10,8 +19,11 @@ import {
   createActivity,
   addActivityPhoto,
   msgSecCheck,
+  fetchFavoritePlaces,
+  PLATFORM_LABELS,
   type GroupLite,
   type LinkPreviewResult,
+  type FavoritePlace,
 } from "@/utils/api";
 import { uploadToR2 } from "@/utils/upload";
 import { safeDecodeURIComponent } from "@/utils/url";
@@ -38,6 +50,11 @@ export default function PublishPage() {
   const [parsing, setParsing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const prefillApplied = useRef(false);
+  // ---- 从收藏夹选取 ----
+  const [favOpen, setFavOpen] = useState(false);
+  const [favList, setFavList] = useState<FavoritePlace[] | null>(null);
+  const [favLoading, setFavLoading] = useState(false);
+  const [favKeyword, setFavKeyword] = useState("");
 
   const loadGroups = useCallback(async () => {
     try {
@@ -105,8 +122,8 @@ export default function PublishPage() {
   };
 
   // ---- 链接解析 ----
-  const handleParseLink = async () => {
-    const input = linkUrl.trim();
+  const handleParseLink = async (raw?: string) => {
+    const input = (raw ?? linkUrl).trim();
     if (!input) {
       Taro.showToast({ title: "请粘贴链接或分享文本", icon: "none" });
       return;
@@ -142,6 +159,53 @@ export default function PublishPage() {
   const clearLink = () => {
     setLinkPreview(null);
     setLinkUrl("");
+  };
+
+  // ---- 从收藏夹选取 ----
+  const loadFavorites = useCallback(async () => {
+    if (favLoading) return;
+    setFavLoading(true);
+    try {
+      const list = await fetchFavoritePlaces();
+      setFavList(list);
+    } catch {
+      // request 层已 toast（silent 时静默）
+    } finally {
+      setFavLoading(false);
+    }
+  }, [favLoading]);
+
+  const openFavorites = () => {
+    setFavOpen(true);
+    if (favList === null) void loadFavorites();
+  };
+
+  const filteredFav = useMemo(() => {
+    const k = favKeyword.trim().toLowerCase();
+    if (!k) return favList ?? [];
+    return (favList ?? []).filter(
+      (p) =>
+        p.title.toLowerCase().includes(k) ||
+        (p.address ?? "").toLowerCase().includes(k) ||
+        (p.signature_dishes ?? []).some((d) => d.toLowerCase().includes(k))
+    );
+  }, [favList, favKeyword]);
+
+  const handlePickFavorite = (p: FavoritePlace) => {
+    setFavOpen(false);
+    // 预填正文草稿
+    const lines = [`【${p.title}】`];
+    if (p.address) lines.push(`📍 ${p.address}`);
+    if (p.signature_dishes?.length) {
+      lines.push(p.signature_dishes.slice(0, 3).join("、"));
+    }
+    lines.push("", "打算去吃，有人一起吗？");
+    setContent(lines.join("\n"));
+    // 店铺有链接则填入并尝试解析（展示封面/评分/地址卡）
+    if (p.store_url) {
+      setLinkUrl(p.store_url);
+      void handleParseLink(p.store_url);
+    }
   };
 
   // ---- 提交 ----
@@ -278,6 +342,12 @@ export default function PublishPage() {
 
       {/* 正文 */}
       <View className="form-card">
+        <View className="content-toolbar">
+          <Text className="form-label">正文</Text>
+          <View className="pick-fav-btn" onClick={openFavorites}>
+            <Text>从收藏夹选取</Text>
+          </View>
+        </View>
         <Textarea
           className="content-input"
           value={content}
@@ -326,7 +396,7 @@ export default function PublishPage() {
             type="primary"
             loading={parsing}
             disabled={!linkUrl.trim() || parsing}
-            onClick={handleParseLink}
+            onClick={() => void handleParseLink()}
           >
             解析
           </Button>
@@ -355,6 +425,72 @@ export default function PublishPage() {
           </View>
         )}
       </View>
+
+      {/* 从收藏夹选取弹层 */}
+      {favOpen && (
+        <View className="fav-sheet-mask" onClick={() => setFavOpen(false)}>
+          <View className="fav-sheet" onClick={(e) => e.stopPropagation()}>
+            <View className="fav-sheet-title">
+              <Text>从收藏夹选取</Text>
+              <Text
+                className="fav-sheet-close"
+                onClick={() => setFavOpen(false)}
+              >
+                ✕
+              </Text>
+            </View>
+            <Input
+              className="fav-search"
+              value={favKeyword}
+              placeholder="搜店名 / 地址 / 招牌菜"
+              onInput={(e) => setFavKeyword(e.detail.value)}
+            />
+            <ScrollView scrollY className="fav-list">
+              {favLoading && favList === null ? (
+                <Text className="fav-empty">加载中…</Text>
+              ) : filteredFav.length === 0 ? (
+                <Text className="fav-empty">
+                  {favList === null || favList.length === 0
+                    ? "收藏夹还是空的，去截图导入"
+                    : "没有匹配的店铺"}
+                </Text>
+              ) : (
+                filteredFav.map((p) => (
+                  <View
+                    key={p.id}
+                    className="fav-item"
+                    onClick={() => handlePickFavorite(p)}
+                  >
+                    <View className="fav-item-main">
+                      <View className="fav-item-title-row">
+                        <Text className="fav-item-title">{p.title}</Text>
+                        {p.platform !== "unknown" && (
+                          <Text className="fav-item-platform">
+                            {PLATFORM_LABELS[p.platform]}
+                          </Text>
+                        )}
+                      </View>
+                      {p.address ? (
+                        <Text className="fav-item-sub">{p.address}</Text>
+                      ) : null}
+                      {p.signature_dishes && p.signature_dishes.length > 0 ? (
+                        <View className="fav-item-dishes">
+                          {p.signature_dishes.slice(0, 3).map((d) => (
+                            <Text key={d} className="fav-item-dish">
+                              {d}
+                            </Text>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text className="fav-item-arrow">›</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
