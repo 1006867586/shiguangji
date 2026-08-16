@@ -3,14 +3,15 @@
 .groups-page {
   min-height: 100vh;
   background: $color-bg;
-  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+  padding: 24rpx;
+  box-sizing: border-box;
 
   &.placeholder {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20rpx;
-    padding-top: 28vh;
+    justify-content: center;
+    padding-top: 30vh;
 
     .placeholder-logo {
       font-size: 80rpx;
@@ -18,13 +19,12 @@
     }
 
     .btn-login {
-      margin-top: 24rpx;
       width: 60%;
+      margin-top: 24rpx;
       background: $color-primary;
       color: $color-text-inverse;
       border-radius: $radius-pill;
       border: none;
-      font-size: 30rpx;
 
       &::after {
         border: none;
@@ -33,15 +33,14 @@
   }
 }
 
-/* ---- 顶部操作栏 ---- */
 .top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx 32rpx 16rpx;
+  padding: 16rpx 8rpx 24rpx;
 
   .page-title {
-    font-size: 40rpx;
+    font-size: 44rpx;
     font-weight: 700;
     color: $color-text;
   }
@@ -55,32 +54,32 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: $radius-pill;
-      font-size: 24rpx;
-    }
-
-    .join-btn {
-      padding: 10rpx 24rpx;
-      background: $color-bg-muted;
-      color: $color-text-secondary;
-    }
-
-    .create-btn {
-      width: 64rpx;
       height: 64rpx;
-      background: $color-primary;
-      color: $color-text-inverse;
+      padding: 0 24rpx;
+      border-radius: $radius-pill;
+      font-size: 26rpx;
 
-      .create-icon {
-        font-size: 36rpx;
-        line-height: 1;
-        font-weight: 300;
+      &.join-btn {
+        background: $color-bg-card;
+        color: $color-primary;
+        border: 1rpx solid $border-color;
+      }
+
+      &.create-btn {
+        width: 64rpx;
+        padding: 0;
+        background: $color-primary;
+        color: #ffffff;
+
+        .create-icon {
+          font-size: 36rpx;
+          line-height: 1;
+        }
       }
     }
   }
 }
 
-/* ---- 状态 ---- */
 .state {
   display: flex;
   flex-direction: column;
@@ -89,132 +88,115 @@
   padding: 96rpx 0;
 
   .state-emoji {
-    font-size: 64rpx;
-    line-height: 1;
+    font-size: 72rpx;
   }
 }
 
-/* ---- 圈子卡片 ---- */
 .circle-list {
-  padding: 0 24rpx;
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 
 .circle-card {
   background: $color-bg-card;
-  border-radius: $radius-md;
-  padding: 24rpx;
+  border-radius: $radius-lg;
+  padding: 28rpx;
   box-shadow: $shadow-card;
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
+  border: 1rpx solid $border-color-light;
 
   .card-head {
     display: flex;
     align-items: center;
-    gap: 16rpx;
-  }
 
-  .circle-icon {
-    width: 96rpx;
-    height: 96rpx;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: $color-bg-muted;
+    .circle-icon {
+      width: 88rpx;
+      height: 88rpx;
+      border-radius: 24rpx;
+      margin-right: 20rpx;
+      background: $color-bg-muted;
 
-    &.gradient-icon {
-      background: $gradient-primary;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      &.gradient-icon {
+        background: $gradient-primary;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
-      .icon-text {
-        font-size: 36rpx;
-        font-weight: 700;
-        color: $color-text-inverse;
+        .icon-text {
+          color: #ffffff;
+          font-size: 40rpx;
+          font-weight: 600;
+        }
+      }
+    }
+
+    .circle-info {
+      flex: 1;
+
+      .circle-name-row {
+        display: flex;
+        align-items: center;
+        gap: 12rpx;
+
+        .circle-name {
+          font-size: 32rpx;
+          font-weight: 600;
+          color: $color-text;
+        }
+
+        .role-badge {
+          font-size: 20rpx;
+          color: $color-primary;
+          background: $color-primary-bg;
+          padding: 4rpx 12rpx;
+          border-radius: $radius-pill;
+        }
+      }
+
+      .circle-members {
+        display: block;
+        font-size: 24rpx;
+        color: $color-text-muted;
+        margin-top: 8rpx;
       }
     }
   }
 
-  .circle-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4rpx;
-  }
-
-  .circle-name-row {
-    display: flex;
-    align-items: center;
-    gap: 12rpx;
-  }
-
-  .circle-name {
-    font-size: 32rpx;
-    font-weight: 600;
-    color: $color-text;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .role-badge {
-    flex-shrink: 0;
-    font-size: 20rpx;
-    color: $color-warning;
-    border: 1rpx solid $color-warning;
-    border-radius: $radius-sm;
-    padding: 2rpx 10rpx;
-  }
-
-  .circle-members {
-    font-size: 24rpx;
-    color: $color-primary;
-  }
-
   .circle-desc {
+    display: block;
     font-size: 26rpx;
     color: $color-text-secondary;
+    margin-top: 20rpx;
     line-height: 1.5;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
   }
 
   .circle-enter {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 4rpx;
-    padding-top: 8rpx;
+    justify-content: space-between;
+    margin-top: 20rpx;
+    padding-top: 20rpx;
     border-top: 1rpx solid $border-color-light;
 
     .enter-text {
-      font-size: 24rpx;
+      font-size: 26rpx;
       color: $color-primary;
+      font-weight: 500;
     }
 
     .enter-arrow {
-      font-size: 28rpx;
-      color: $color-primary;
-      line-height: 1;
+      font-size: 32rpx;
+      color: $color-text-muted;
     }
   }
 }
 
 .loading-mask {
   position: fixed;
-  bottom: 200rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  padding: 16rpx 32rpx;
-  border-radius: $radius-pill;
-  font-size: 26rpx;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
 }
