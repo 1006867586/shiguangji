@@ -7,6 +7,7 @@
 // ---- 品牌色 ----
 $color-primary: #ff6b35;        // 暖珊瑚 — 主品牌色
 $color-primary-light: #ffa940;  // 暖橙 — 辅助/渐变终点
+$color-primary-mid: #ff8c42;    // 中橙 — 渐变终点（设计稿 135° 渐变）
 $color-primary-bg: #fff0e8;     // 珊瑚浅底 — 标签/按钮浅色背景
 $color-primary-dark: #e55a2b;   // 深珊瑚 — 按压态
 
@@ -32,7 +33,7 @@ $color-success: #07c160;        // 成功
 $color-warning: #f59e0b;        // 警告
 
 // ---- 渐变 ----
-$gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ffa940 100%);
+$gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
 
 // ---- 圆角 ----
 $radius-sm: 8rpx;
