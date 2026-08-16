@@ -21,7 +21,6 @@ import {
 import "./index.scss";
 
 const SPIN_MS = 4000;
-const EASE = "cubic-bezier(0.17, 0.67, 0.12, 0.99)";
 
 /** 设计稿 6 色：火锅/日料/烧烤/川菜/粤菜/西餐 */
 const SLICE_COLORS = [
@@ -124,16 +123,21 @@ export default function RoulettePage() {
   const [sourceIdx, setSourceIdx] = useState(0);
   const [items, setItems] = useState<WheelItem[]>(DEFAULT_CUISINES);
   const [loading, setLoading] = useState(false);
-  const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<WheelItem | null>(null);
   const [history, setHistory] = useState<WheelItem[]>([]);
 
-  const accRef = useRef(0);
+  // 转盘旋转用 ref（canvas 内部绘制动画，不依赖 CSS transform）
+  const rotRef = useRef(0);            // 当前显示角度（累计）
   const canvasRef = useRef<Canvas2DNode | null>(null);
+  const canvasSizeRef = useRef(0);     // 画布 CSS 尺寸
+  const animRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 动画定时器
   const itemsRef = useRef<WheelItem[]>(DEFAULT_CUISINES);
 
   const anonId = getAnonId();
+
+  /** 缓动：easeOutCubic（先快后慢） */
+  const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
   // ---- 候选池选择列表：默认菜系 / 分享池 / 圈子池 ----
   const pickerList = [
@@ -380,101 +384,91 @@ export default function RoulettePage() {
     }
   };
 
-  // ---- 转盘绘制 ----
-  const drawWheel = useCallback(() => {
+  // ---- 转盘绘制（canvas 内部旋转，rotDeg 为累计角度）----
+  const drawWheel = useCallback((rotDeg: number) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const query = Taro.createSelectorQuery();
-    query
-      .select("#wheel")
-      .fields({ size: true })
-      .exec((res) => {
-        const size = (res?.[0] as { width?: number })?.width ?? 300;
-        const dpr = Taro.getSystemInfoSync().pixelRatio || 2;
-        canvas.width = size * dpr;
-        canvas.height = size * dpr;
-        const ctx = canvas.getContext("2d");
-        ctx.scale(dpr, dpr);
+    const size = canvasSizeRef.current;
+    if (!canvas || !size) return;
+    const dpr = Taro.getSystemInfoSync().pixelRatio || 2;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
 
-        const cx = size / 2;
-        const cy = size / 2;
-        const r = size / 2 - 6;
-        const list = itemsRef.current;
+    const cx = size / 2;
+    const cy = size / 2;
+    const r = size / 2 - 6;
+    const list = itemsRef.current;
 
-        ctx.clearRect(0, 0, size, size);
+    ctx.clearRect(0, 0, size, size);
 
-        if (list.length === 0) {
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          ctx.fillStyle = "#f5f2ed";
-          ctx.fill();
-          ctx.fillStyle = "#9ca3af";
-          ctx.font = "15px sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText("先添加候选", cx, cy);
-          ctx.textAlign = "left";
-          return;
+    if (list.length === 0) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#f5f2ed";
+      ctx.fill();
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "15px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("先添加候选", cx, cy);
+      ctx.textAlign = "left";
+      return;
+    }
+
+    const rot = (rotDeg * Math.PI) / 180;
+    const slice = (Math.PI * 2) / list.length;
+    for (let i = 0; i < list.length; i++) {
+      const start = -Math.PI / 2 + rot + i * slice;
+      const end = start + slice;
+      const mid = start + slice / 2;
+      // 同色系渐变：中心偏亮、边缘用基础色
+      const base = SLICE_COLORS[i % SLICE_COLORS.length];
+      const grad = ctx.createLinearGradient(
+        cx,
+        cy,
+        cx + Math.cos(mid) * r,
+        cy + Math.sin(mid) * r
+      );
+      grad.addColorStop(0, lighten(base, 0.4));
+      grad.addColorStop(1, base);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, start, end);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // 文字
+      const tx = cx + Math.cos(mid) * r * 0.62;
+      const ty = cy + Math.sin(mid) * r * 0.62;
+      ctx.save();
+      ctx.translate(tx, ty);
+      ctx.rotate(mid + Math.PI / 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(0,0,0,0.28)";
+      ctx.shadowBlur = 4;
+      let label = list[i].title;
+      if (ctx.measureText(label).width > r * 0.42) {
+        while (
+          label.length > 1 &&
+          ctx.measureText(`${label}…`).width > r * 0.42
+        ) {
+          label = label.slice(0, -1);
         }
-
-        const slice = (Math.PI * 2) / list.length;
-        for (let i = 0; i < list.length; i++) {
-          const start = -Math.PI / 2 + i * slice;
-          const end = start + slice;
-          const mid = start + slice / 2;
-          // 同色系渐变：中心偏亮、边缘用基础色
-          const base = SLICE_COLORS[i % SLICE_COLORS.length];
-          const grad = ctx.createLinearGradient(
-            cx,
-            cy,
-            cx + Math.cos(mid) * r,
-            cy + Math.sin(mid) * r
-          );
-          grad.addColorStop(0, lighten(base, 0.4));
-          grad.addColorStop(1, base);
-          ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.arc(cx, cy, r, start, end);
-          ctx.closePath();
-          ctx.fillStyle = grad;
-          ctx.fill();
-          ctx.strokeStyle = "rgba(255,255,255,0.9)";
-          ctx.lineWidth = 2;
-          ctx.stroke();
-
-          // 文字
-          const tx = cx + Math.cos(mid) * r * 0.62;
-          const ty = cy + Math.sin(mid) * r * 0.62;
-          ctx.save();
-          ctx.translate(tx, ty);
-          ctx.rotate(mid + Math.PI / 2);
-          ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 13px sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.shadowColor = "rgba(0,0,0,0.28)";
-          ctx.shadowBlur = 4;
-          let label = list[i].title;
-          if (ctx.measureText(label).width > r * 0.42) {
-            while (
-              label.length > 1 &&
-              ctx.measureText(`${label}…`).width > r * 0.42
-            ) {
-              label = label.slice(0, -1);
-            }
-            label = `${label}…`;
-          }
-          ctx.fillText(label, 0, 0);
-          ctx.shadowBlur = 0;
-          ctx.shadowColor = "transparent";
-          ctx.restore();
-        }
-
-        // 中心圆（canvas 底）
-        ctx.beginPath();
-        ctx.arc(cx, cy, 30, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fill();
-      });
+        label = `${label}…`;
+      }
+      ctx.fillText(label, 0, 0);
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = "transparent";
+      ctx.restore();
+    }
+    // 中心留白给 DOM 层 GO 按钮（不再自绘白色圆）
   }, []);
 
   useEffect(() => {
@@ -482,12 +476,14 @@ export default function RoulettePage() {
       const query = Taro.createSelectorQuery();
       query
         .select("#wheel")
-        .fields({ node: true })
+        .fields({ node: true, size: true })
         .exec((res) => {
           const node = (res?.[0] as { node?: Canvas2DNode })?.node;
+          const width = (res?.[0] as { width?: number })?.width;
           if (!node) return;
           canvasRef.current = node;
-          drawWheel();
+          canvasSizeRef.current = width ?? 300;
+          drawWheel(rotRef.current);
         });
     };
     const timer = setTimeout(init, 50);
@@ -495,10 +491,18 @@ export default function RoulettePage() {
   }, [drawWheel]);
 
   useEffect(() => {
-    if (canvasRef.current) drawWheel();
+    if (canvasRef.current && canvasSizeRef.current) drawWheel(rotRef.current);
   }, [items, drawWheel]);
 
-  // ---- 开转 ----
+  // 卸载时清理动画
+  useEffect(
+    () => () => {
+      if (animRef.current) clearTimeout(animRef.current);
+    },
+    []
+  );
+
+  // ---- 开转（canvas 内部动画，不依赖 CSS transform）----
   const spin = () => {
     if (spinning || items.length < 2) return;
     setWinner(null);
@@ -506,12 +510,21 @@ export default function RoulettePage() {
     const idx = Math.floor(Math.random() * items.length);
     const sliceDeg = 360 / items.length;
     const target = -(idx * sliceDeg + sliceDeg / 2);
-    const base = accRef.current + 360 * 5;
+    const base = rotRef.current + 360 * 5;
     const next = base + (((target - base) % 360) + 360) % 360;
-    accRef.current = next;
-    setRotation(next);
 
-    setTimeout(() => {
+    const from = rotRef.current;
+    const start = Date.now();
+    const tick = () => {
+      const t = Math.min(1, (Date.now() - start) / SPIN_MS);
+      const cur = from + (next - from) * easeOutCubic(t);
+      rotRef.current = cur;
+      drawWheel(cur);
+      if (t < 1) {
+        animRef.current = setTimeout(tick, 16);
+        return;
+      }
+      animRef.current = null;
       setSpinning(false);
       const w = items[idx];
       setWinner(w);
@@ -521,7 +534,8 @@ export default function RoulettePage() {
         icon: "none",
         duration: 2500,
       });
-    }, SPIN_MS + 100);
+    };
+    animRef.current = setTimeout(tick, 16);
   };
 
   const callPhone = (phone?: string | null) => {
@@ -571,15 +585,9 @@ export default function RoulettePage() {
         </View>
       </View>
 
-      {/* 转盘 */}
+      {/* 转盘（canvas 内部绘制旋转） */}
       <View className="wheel-box">
-        <View
-          className="wheel-rotor"
-          style={{
-            transform: `rotate(${rotation}deg)`,
-            transition: `transform ${SPIN_MS}ms ${EASE}`,
-          }}
-        >
+        <View className="wheel-rotor">
           <Canvas type="2d" id="wheel" className="wheel-canvas" />
         </View>
         <View className="wheel-pointer" />
