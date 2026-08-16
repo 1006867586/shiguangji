@@ -51,7 +51,7 @@ export default function ProfilePage() {
     return (
       <View className="profile-page placeholder">
         <View className="placeholder-logo">🍜</View>
-        <Text className="placeholder-title">欢迎使用「想聚」</Text>
+        <Text className="placeholder-title">欢迎使用「飨刻」</Text>
         <Text className="text-muted">登录后开启你的聚餐社交</Text>
         <Button className="btn-login" onClick={goLogin}>
           微信一键登录
