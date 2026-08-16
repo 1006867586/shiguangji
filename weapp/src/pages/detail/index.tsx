@@ -506,7 +506,11 @@ export default function DetailPage() {
         </View>
 
         {activity.photos?.length ? (
-          <PhotoGrid photos={activity.photos} onDeletePhoto={handleDeletePhoto} />
+          <PhotoGrid
+            photos={activity.photos}
+            onDeletePhoto={handleDeletePhoto}
+            canDeletePhoto={(p) => isAuthor || p.uploaded_by === currentUserId}
+          />
         ) : (
           <View className="photo-wall-empty">
             <Text className="text-muted">还没有照片，点击「补充照片」上传</Text>

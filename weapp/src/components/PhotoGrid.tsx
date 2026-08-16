@@ -5,14 +5,17 @@ import "./PhotoGrid.scss";
 
 /**
  * 图片宫格：1 张大图 / 2-3 张一行 / 4+ 九宫格（最多 9），点击全屏预览。
- * onDeletePhoto 提供时每个单元格右上角显示删除角标（详情页照片管理用）。
+ * onDeletePhoto 提供时单元格右上角显示删除角标；canDeletePhoto 用于按权限
+ * 过滤（仅作者或上传者），缺省时全部可删。
  */
 export default function PhotoGrid({
   photos,
   onDeletePhoto,
+  canDeletePhoto,
 }: {
   photos: ActivityPhotoLite[];
   onDeletePhoto?: (photo: ActivityPhotoLite) => void;
+  canDeletePhoto?: (photo: ActivityPhotoLite) => boolean;
 }) {
   if (!photos.length) return null;
 
@@ -21,6 +24,9 @@ export default function PhotoGrid({
   const preview = (current: string) => {
     Taro.previewImage({ current, urls });
   };
+
+  const deletable = (p: ActivityPhotoLite) =>
+    !!onDeletePhoto && (!canDeletePhoto || canDeletePhoto(p));
 
   // 单图：限制最大宽度，保留原始比例展示
   if (photos.length === 1) {
@@ -32,8 +38,8 @@ export default function PhotoGrid({
           mode="aspectFill"
           lazyLoad
         />
-        {onDeletePhoto && (
-          <View className="photo-del" onClick={(e) => { e.stopPropagation(); onDeletePhoto(photos[0]); }}>
+        {deletable(photos[0]) && (
+          <View className="photo-del" onClick={(e) => { e.stopPropagation(); onDeletePhoto!(photos[0]); }}>
             <Text className="photo-del-x">×</Text>
           </View>
         )}
@@ -51,12 +57,12 @@ export default function PhotoGrid({
         >
           <Image className="photo-img" src={p.url} mode="aspectFill" lazyLoad />
           {photos.length > 9 && null}
-          {onDeletePhoto && (
+          {deletable(p) && (
             <View
               className="photo-del"
               onClick={(e) => {
                 e.stopPropagation();
-                onDeletePhoto(p);
+                onDeletePhoto!(p);
               }}
             >
               <Text className="photo-del-x">×</Text>

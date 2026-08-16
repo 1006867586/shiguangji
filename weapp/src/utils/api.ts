@@ -34,6 +34,8 @@ export interface ActivityPhotoLite {
   url: string;
   caption?: string | null;
   kind?: string;
+  /** 上传者 id（照片删除权限判断用） */
+  uploaded_by?: string | null;
 }
 
 export interface ActivityLite {
