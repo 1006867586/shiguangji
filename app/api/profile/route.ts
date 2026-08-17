@@ -70,9 +70,12 @@ export async function PATCH(request: NextRequest) {
       return jsonResponse({ error: "没有需要更新的字段" }, { status: 400 });
     }
 
+    // requireUser 已确保 user 存在 → profile 行必然存在，直接 update
+    // （比 upsert 更明确，避免 onConflict / upsert 路径下的潜在 500）
     const { data, error } = await supabase
       .from("profiles")
-      .upsert({ id: user.id, ...patch })
+      .update(patch)
+      .eq("id", user.id)
       .select("id, nickname, avatar_url, created_at")
       .single();
 
