@@ -1,0 +1,27 @@
+{
+  "name": "飨刻 - 圈子聚餐记录",
+  "short_name": "飨刻",
+  "description": "面向小团体的聚餐记录应用",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "lang": "zh-CN",
+  "orientation": "portrait",
+  "categories": ["social", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
