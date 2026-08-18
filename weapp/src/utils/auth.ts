@@ -79,6 +79,13 @@ export function getCurrentUserId(): string | null {
 // 同时只允许一个 in-flight 请求，重复调用直接拒绝并等待首个结果。
 let loginPromise: Promise<WeappSession> | null = null;
 
+/** 保存会话凭据到本地存储（weappLogin 与 login-confirm 页共用） */
+export function saveSession(session: WeappSession) {
+  Taro.setStorageSync(TOKEN_KEY, session.accessToken);
+  Taro.setStorageSync(REFRESH_KEY, session.refreshToken);
+  if (session.expiresAt) Taro.setStorageSync(EXPIRES_KEY, session.expiresAt);
+}
+
 /** 微信一键登录：wx.login 拿 code，换服务端会话 token */
 export async function weappLogin(): Promise<WeappSession> {
   if (loginPromise) {
@@ -96,9 +103,7 @@ export async function weappLogin(): Promise<WeappSession> {
       auth: false,
     });
 
-    Taro.setStorageSync(TOKEN_KEY, session.accessToken);
-    Taro.setStorageSync(REFRESH_KEY, session.refreshToken);
-    if (session.expiresAt) Taro.setStorageSync(EXPIRES_KEY, session.expiresAt);
+    saveSession(session);
     return session;
   })();
 
