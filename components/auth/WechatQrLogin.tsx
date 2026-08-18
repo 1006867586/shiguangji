@@ -49,6 +49,8 @@ export function WechatQrLogin({ open, onClose, redirect }: WechatQrLoginProps) {
   // 生成二维码
   useEffect(() => {
     if (!open) return;
+    // 重开弹窗时重置停止标记（关闭时 cleanup 会把它置 true）
+    stoppedRef.current = false;
     let cancelled = false;
     (async () => {
       try {
