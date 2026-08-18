@@ -15,6 +15,7 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const qqEnabled = Boolean(process.env.QQ_APP_ID);
+  const wechatEnabled = Boolean(process.env.WEAPP_APPID && process.env.WEAPP_SECRET);
 
   const user = await getCurrentUser();
   if (user) {
@@ -22,6 +23,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   return (
-    <LoginClient qqEnabled={qqEnabled} initialError={params.error ?? null} />
+    <LoginClient
+      qqEnabled={qqEnabled}
+      wechatEnabled={wechatEnabled}
+      initialError={params.error ?? null}
+    />
   );
 }

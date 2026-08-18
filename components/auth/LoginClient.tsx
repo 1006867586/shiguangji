@@ -10,10 +10,13 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { safeRedirectPath } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
+import { WechatQrLogin } from "@/components/auth/WechatQrLogin";
 
 interface LoginClientProps {
   /** 服务器端根据 QQ_APP_ID 判断是否启用 QQ 登录 */
   qqEnabled: boolean;
+  /** 服务器端根据 WEAPP_APPID/WEAPP_SECRET 判断是否启用微信扫码登录 */
+  wechatEnabled: boolean;
   /** 由 URL error 参数触发的错误信息，mount 后展示一次 toast */
   initialError?: string | null;
 }
@@ -27,7 +30,7 @@ function formatError(code: string): string {
   return ERROR_MESSAGES[code] ?? code;
 }
 
-function LoginForm({ qqEnabled, initialError }: LoginClientProps) {
+function LoginForm({ qqEnabled, wechatEnabled, initialError }: LoginClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect"));
@@ -41,6 +44,7 @@ function LoginForm({ qqEnabled, initialError }: LoginClientProps) {
   const [nickname, setNickname] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [wechatOpen, setWechatOpen] = useState(false);
 
   // mount 后展示初始错误（例如：从 /api/auth/qq?error=xxx 跳转回来）
   useEffect(() => {
@@ -314,6 +318,26 @@ function LoginForm({ qqEnabled, initialError }: LoginClientProps) {
             </a>
           </>
         ) : null}
+
+        {wechatEnabled ? (
+          <button
+            type="button"
+            onClick={() => setWechatOpen(true)}
+            className="flex w-full animate-slide-up-fade items-center justify-center gap-2 rounded-lg bg-[#07C160] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#06AD56] hover:shadow-md active:scale-[0.98]"
+            style={{ animationDelay: "560ms" }}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+              <path d="M9.5 4C5.36 4 2 6.69 2 10c0 1.89 1.08 3.56 2.78 4.66l-.7 2.14a.4.4 0 0 0 .61.43l2.42-1.47c.77.21 1.59.34 2.39.34h.66a5.9 5.9 0 0 1-.16-1.35C10 11.11 12.7 8.6 16 8.6c.36 0 .71.04 1.06.09C16.22 5.9 13.14 4 9.5 4zM7.2 7.9a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8zm4.6 0a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8zM16 9.6c-2.98 0-5.4 1.9-5.4 4.25 0 1.22.66 2.31 1.7 3.05l-.5 1.52a.29.29 0 0 0 .43.3l1.72-1.04c.66.18 1.33.28 2.05.28 2.98 0 5.4-1.9 5.4-4.25S18.98 9.6 16 9.6zm-1.55 2.1a.72.72 0 1 1 0 1.44.72.72 0 0 1 0-1.44zm3.1 0a.72.72 0 1 1 0 1.44.72.72 0 0 1 0-1.44z" />
+            </svg>
+            微信登录
+          </button>
+        ) : null}
+
+        <WechatQrLogin
+          open={wechatOpen}
+          onClose={() => setWechatOpen(false)}
+          redirect={redirect}
+        />
       </div>
     </div>
   );
