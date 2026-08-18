@@ -217,3 +217,57 @@ export async function checkImageContent(
   }
   throw new Error("图片检测超时");
 }
+
+// ---- 小程序登录凭证换取 openid（auth.code2Session） ----
+
+const CODE2SESSION_URL = "https://api.weixin.qq.com/sns/jscode2session";
+
+/** code2Session 业务失败（微信返回 errcode 而非 openid） */
+export class Code2SessionError extends Error {
+  errcode: number;
+  constructor(errcode: number, errmsg: string) {
+    super(`微信登录失败（${errcode}）：${errmsg ?? ""}`);
+    this.name = "Code2SessionError";
+    this.errcode = errcode;
+  }
+}
+
+export interface Code2SessionResult {
+  openid: string;
+  unionid?: string;
+  session_key?: string;
+}
+
+/**
+ * 用 wx.login 的 code 换 openid / unionid（auth.code2Session）。
+ * - 微信业务错误（errcode）→ 抛 Code2SessionError
+ * - HTTP 层失败 → 抛普通 Error
+ */
+export async function code2Session(code: string): Promise<Code2SessionResult> {
+  if (!isWeappConfigured()) {
+    throw new Error("WEAPP_APPID / WEAPP_SECRET 未配置");
+  }
+  const url =
+    `${CODE2SESSION_URL}?appid=${encodeURIComponent(process.env.WEAPP_APPID!)}` +
+    `&secret=${encodeURIComponent(process.env.WEAPP_SECRET!)}` +
+    `&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`code2Session HTTP ${res.status}`);
+  }
+  const data = (await res.json()) as {
+    openid?: string;
+    session_key?: string;
+    unionid?: string;
+    errcode?: number;
+    errmsg?: string;
+  };
+  if (!data.openid || data.errcode) {
+    throw new Code2SessionError(data.errcode ?? 0, data.errmsg ?? "unknown");
+  }
+  return {
+    openid: data.openid,
+    session_key: data.session_key,
+    ...(data.unionid ? { unionid: data.unionid } : {}),
+  };
+}

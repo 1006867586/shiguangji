@@ -521,6 +521,53 @@ openMapApp("amap", { name: "海底捞", address: "xx路1号", city: "上海" });
 | 成功 | `200 { accessToken, refreshToken, expiresAt }` |
 | 401 | refresh_token 已失效，小程序端应清除凭据重新登录 |
 
+### PC 端微信扫码登录（小程序辅助确认）
+
+微信开放平台微信登录仅对企业开放；本方案借小程序实现 PC 扫码登录：PC 显示小程序码 → 微信扫码打开小程序「确认登录」页 → 确认后 PC 自动登录，小程序端顺带自动登录（同一 openid → 同一账号）。
+
+```
+PC /login 点「微信扫码登录」
+→ POST /api/auth/weapp/qrcode
+    ├─ 生成 32 位 sessionId，登记 wechat_login_sessions（TTL 5min）
+    └─ getwxacodeunlimit 生成小程序码（scene=sessionId，指向 pages/login-confirm/index）
+→ PC 展示二维码，长轮询 POST /api/auth/weapp/login-status { uuid }
+→ 微信扫码 → 小程序确认页 → POST /api/auth/weapp/confirm-login { code, uuid }
+    ├─ 微信登录（自动注册），返回 token → 小程序自动登录
+    └─ 登记 openid → PC 轮询命中
+→ PC 轮询命中 → 服务端写 sb-* cookie → { status: "ok" } → 硬跳首页
+```
+
+#### POST /api/auth/weapp/qrcode
+
+| 项 | 说明 |
+|----|------|
+| 请求体 | `{}`（无需登录） |
+| 成功 | `200 { data: { uuid, qrBase64 } }`（PNG base64） |
+| 501 | 服务端未配置 `WEAPP_APPID`/`WEAPP_SECRET`（`code: weapp_not_configured`）或 Supabase（`code: supabase_not_configured`） |
+| 502 | 小程序码生成失败（`code: qrcode_failed`） |
+
+二维码指向的小程序版本由 `WEAPP_QR_ENV` 控制：`release`（默认）/ `trial` / `develop`。
+
+#### POST /api/auth/weapp/confirm-login
+
+| 项 | 说明 |
+|----|------|
+| 请求体 | `{ "code": "wx.login() 凭证", "uuid": "PC 二维码携带的 sessionId" }` |
+| 成功 | `200 { accessToken, refreshToken, expiresAt, isNewUser }`（小程序存本地即完成登录） |
+| 400 | uuid 无效 / 二维码已失效（`code: login_session_expired`） |
+| 401 | 微信 code 无效或已被使用（40029 / 40163） |
+| 501 | 服务端未配置（`weapp_not_configured` / `supabase_not_configured`） |
+
+#### POST /api/auth/weapp/login-status
+
+| 项 | 说明 |
+|----|------|
+| 请求体 | `{ "uuid": "...", "redirect": "/" }`（无需登录） |
+| 成功 | `200 { status: "ok", isNewUser, redirect }`，响应同时写入 `sb-*` 会话 cookie |
+| pending | `200 { status: "pending" }` — 未确认，前端应续发（长轮询单次约 20s） |
+| expired | `200 { status: "expired" }` — 二维码已失效，提示刷新 |
+| 502 | 查询/消费/建会话失败（`status_query_failed` / `status_consume_failed` 等） |
+
 ## 小程序内容安全（msgSecCheck）
 
 小程序端发布动态 / 评论 / 创建圈子等 UGC 行为前，调用文本内容安全检测（微信官方 msgSecCheck 2.0），满足小程序审核要求。
