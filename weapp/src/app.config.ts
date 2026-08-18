@@ -7,6 +7,7 @@ export default defineAppConfig({
     "pages/roulette/index",
     "pages/profile/index",
     "pages/login/index",
+    "pages/login-confirm/index",
     "pages/detail/index",
     "pages/group-detail/index",
     "pages/notifications/index",

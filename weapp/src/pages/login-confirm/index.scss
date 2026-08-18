@@ -1,0 +1,103 @@
+@import "../../styles/_tokens.scss";
+
+.confirm-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0 64rpx;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #ff6b36 0%, #ff8c42 100%);
+  color: #ffffff;
+}
+
+.brand-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 20vh;
+}
+
+.logo {
+  width: 168rpx;
+  height: 168rpx;
+  border-radius: 44rpx;
+  background: rgba(255, 255, 255, 0.16);
+  border: 2rpx solid rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 40rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+}
+
+.logo-emoji {
+  font-size: 88rpx;
+}
+
+.brand-name {
+  font-size: 64rpx;
+  font-weight: 700;
+  letter-spacing: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.brand-slogan {
+  font-size: 28rpx;
+  opacity: 0.92;
+  letter-spacing: 2rpx;
+}
+
+.action-section {
+  padding-bottom: calc(96rpx + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.desc {
+  font-size: 26rpx;
+  opacity: 0.92;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.hint {
+  color: #fff3e8;
+  font-size: 24rpx;
+  text-align: center;
+}
+
+.btn-confirm {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  border-radius: 48rpx;
+  background: #ffffff;
+  color: #ff6b35;
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+
+  &::after {
+    border: none;
+  }
+}
+
+.btn-cancel {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 48rpx;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 30rpx;
+  border: none;
+
+  &::after {
+    border: none;
+  }
+}
