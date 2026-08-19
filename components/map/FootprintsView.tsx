@@ -153,8 +153,8 @@ export function FootprintsView() {
             <CheckinMapView
               places={places}
               zoom={10}
-              onPlaceClick={(p) => {
-                const checkin = checkins.find((c) => c.id === p.i_checkin_id);
+              onPlaceClick={(payload) => {
+                const checkin = checkins.find((c) => c.id === payload.place.i_checkin_id);
                 if (checkin) setSelected(checkin);
               }}
             />

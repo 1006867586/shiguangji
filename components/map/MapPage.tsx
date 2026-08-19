@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import {
@@ -11,15 +11,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { CheckinMapView } from "@/components/map/CheckinMapView";
+import { CheckinMapView, type PlaceClickPayload } from "@/components/map/CheckinMapView";
+import { PlaceMapOverlay } from "@/components/map/PlaceMapOverlay";
 import { PlaceSearchBox } from "@/components/map/PlaceSearchBox";
-import { PlaceCard } from "@/components/map/PlaceCard";
 import { CheckinSheet } from "@/components/map/CheckinSheet";
 import { fetcher, fetchData } from "@/lib/fetcher";
 import type { MapPlace } from "@/types";
@@ -44,6 +38,8 @@ const CITIES = [
 export function MapPage() {
   const [city, setCity] = useState("武汉市");
   const [selected, setSelected] = useState<MapPlace | null>(null);
+  const [selectedScreenPos, setSelectedScreenPos] = useState<{ x: number; y: number } | null>(null);
+  const [mapInstance, setMapInstance] = useState<any>(null);
   const [sheetPlace, setSheetPlace] = useState<{
     name?: string | null;
     address?: string | null;
@@ -52,9 +48,7 @@ export function MapPage() {
     lat?: number | null;
   } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [focus, setFocus] = useState<{ lng: number; lat: number } | null>(
-    null
-  );
+  const [focus, setFocus] = useState<{ lng: number; lat: number } | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const { data, isLoading, mutate } = useSWR<{ data: MapPlace[] }>(
@@ -78,8 +72,23 @@ export function MapPage() {
       西安市: [108.9398, 34.3416],
       重庆市: [106.5516, 29.563],
     };
-    return map[city] ?? [114.3054, 30.5931]; // 兜底改为武汉（默认城市）
+    return map[city] ?? [114.3054, 30.5931];
   }, [city]);
+
+  const handleMapReady = useCallback((map: any) => {
+    setMapInstance(map);
+  }, []);
+
+  // 地图空白点击：关闭浮层（不响应 marker 点击）
+  const handleMapClick = useCallback(() => {
+    setSelected(null);
+    setSelectedScreenPos(null);
+  }, []);
+
+  const handlePlaceClick = useCallback((payload: PlaceClickPayload) => {
+    setSelected(payload.place);
+    setSelectedScreenPos(payload.screenPos);
+  }, []);
 
   const handlePick = (c: PoiCandidate) => {
     setFocus({ lng: c.location.lng, lat: c.location.lat });
@@ -103,6 +112,11 @@ export function MapPage() {
     });
     setSheetOpen(true);
   };
+
+  const closeOverlay = useCallback(() => {
+    setSelected(null);
+    setSelectedScreenPos(null);
+  }, []);
 
   const handleRemove = async (place: MapPlace) => {
     if (!place.i_checkin_id) return;
@@ -141,7 +155,11 @@ export function MapPage() {
             <div className="relative">
               <select
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(e) => {
+                  setCity(e.target.value);
+                  // 切换城市时关闭浮层
+                  closeOverlay();
+                }}
                 className="h-8 appearance-none rounded-lg border border-border bg-card pl-2.5 pr-7 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="切换城市"
               >
@@ -161,15 +179,30 @@ export function MapPage() {
         <PlaceSearchBox city={city} onPick={handlePick} />
       </div>
 
-      {/* 地图 */}
-      <div className="relative mx-3 mt-3 h-[46dvh] overflow-hidden rounded-xl border border-border">
+      {/* 地图（relative 包裹以容纳浮层） */}
+      <div
+        className="relative mx-3 mt-3 h-[46dvh] overflow-hidden rounded-xl border border-border"
+        onClick={handleMapClick}
+      >
         <CheckinMapView
           places={places}
           center={center}
           zoom={11}
           focusPoint={focus}
-          onPlaceClick={(p) => setSelected(p)}
+          onPlaceClick={handlePlaceClick}
+          onMapReady={handleMapReady}
         />
+        {mapInstance && selected && selectedScreenPos ? (
+          <PlaceMapOverlay
+            place={selected}
+            screenPos={selectedScreenPos}
+            mapInstance={mapInstance}
+            onClose={closeOverlay}
+            onCheckin={handleCheckin}
+            onRemoveCheckin={handleRemove}
+            removing={removingId === selected.id}
+          />
+        ) : null}
         {isLoading ? (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/50 text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
@@ -191,29 +224,16 @@ export function MapPage() {
         <span className="ml-auto">共 {places.length} 个打卡点</span>
       </div>
 
-      {/* 地点弹窗 */}
-      <Dialog open={Boolean(selected)} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>地点详情</DialogTitle>
-          </DialogHeader>
-          {selected ? (
-            <PlaceCard
-              place={selected}
-              onCheckin={handleCheckin}
-              onRemoveCheckin={handleRemove}
-              removing={removingId === selected.id}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
       {/* 打卡表单 */}
       <CheckinSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         initialPlace={sheetPlace}
-        onSuccess={() => mutate()}
+        onSuccess={() => {
+          // 刷新当前城市打卡点；如果打开的浮层对应的 place 也变了，关闭它
+          void mutate();
+          closeOverlay();
+        }}
       />
     </div>
   );
