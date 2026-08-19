@@ -10,19 +10,26 @@ import {
 /**
  * POST /api/auth/weapp/confirm-login — 小程序「确认登录」页调用
  *
- * 请求 { code, uuid }：code 为 wx.login 凭证，uuid 为 PC 端二维码携带的 sessionId。
- * 流程：校验会话行有效 → 微信登录（自动注册，返回 token 供小程序自动登录）
- * → 幂等登记 openid/user_id → PC 轮询端消费。
+ * 请求 { code, uuid, nickname?, avatarUrl? }：
+ * - code 为 wx.login 凭证
+ * - uuid 为 PC 端二维码携带的 sessionId
+ * - nickname / avatarUrl 来自小程序确认页的 chooseAvatar + Input type="nickname"，
+ *   avatarUrl 须是已上传到 R2 的公网 URL（小程序端走 uploadToR2 拿到）。
  *
- * 响应：{ accessToken, refreshToken, expiresAt, isNewUser }
+ * 流程：校验会话行有效 → 微信登录 + 自动注册（仅新用户写入昵称/头像，
+ * 绝不能覆盖老用户资料）→ 幂等登记 openid/user_id → PC 轮询端消费。
+ *
+ * 响应：{ accessToken, refreshToken, expiresAt, isNewUser, nickname?, avatarUrl? }
  */
 
 const UUID_RE = /^[0-9a-f]{32}$/;
+const NICKNAME_MAX_LEN = 20;
 const isPlaceholder = (v?: string) =>
   !v || v.startsWith("BUILD_PLACEHOLDER") || v.startsWith("placeholder");
+const isHttpUrl = (s: string) => /^https?:\/\/\S+/.test(s);
 
 export async function POST(request: Request) {
-  let body: { code?: string; uuid?: string };
+  let body: { code?: string; uuid?: string; nickname?: string; avatarUrl?: string };
   try {
     body = await request.json();
   } catch {
@@ -31,11 +38,18 @@ export async function POST(request: Request) {
 
   const code = body.code?.trim();
   const uuid = body.uuid?.trim().toLowerCase() ?? "";
+  const nicknameRaw = body?.nickname?.trim() ?? "";
+  const avatarUrlRaw = body?.avatarUrl?.trim() ?? "";
+  const nickname = nicknameRaw ? nicknameRaw.slice(0, NICKNAME_MAX_LEN) : undefined;
+  const avatarUrl = avatarUrlRaw && isHttpUrl(avatarUrlRaw) ? avatarUrlRaw : undefined;
   if (!code) {
     return jsonResponse({ error: "缺少微信登录 code" }, { status: 400 });
   }
   if (!UUID_RE.test(uuid)) {
     return jsonResponse({ error: "无效的登录二维码" }, { status: 400 });
+  }
+  if (avatarUrlRaw && !avatarUrl) {
+    return jsonResponse({ error: "avatarUrl 必须是 http(s) 链接" }, { status: 400 });
   }
 
   if (!isWeappConfigured()) {
@@ -68,8 +82,9 @@ export async function POST(request: Request) {
       return jsonResponse({ error: "二维码已失效，请刷新后重试", code: "login_session_expired" }, { status: 400 });
     }
 
-    // 2. 微信登录 + 自动注册（返回 token，小程序端顺带自动登录）
-    const session = await exchangeCodeForSession(code);
+    // 2. 微信登录 + 自动注册（返回 token，小程序端顺带自动登录）。
+    //    仅当新用户时才会把 nickname / avatarUrl 写入 user_metadata + profiles。
+    const session = await exchangeCodeForSession(code, { nickname, avatarUrl });
 
     // 3. 幂等登记 openid/user_id → PC 轮询端消费；影响 0 行视为已被消费/过期
     const { data: updated, error: updateErr } = await admin
@@ -88,6 +103,8 @@ export async function POST(request: Request) {
       refreshToken: session.refreshToken,
       expiresAt: session.expiresAt,
       isNewUser: session.isNewUser,
+      ...(session.nickname ? { nickname: session.nickname } : {}),
+      ...(session.avatarUrl ? { avatarUrl: session.avatarUrl } : {}),
     });
   } catch (err) {
     if (err instanceof WeappSessionError) {
