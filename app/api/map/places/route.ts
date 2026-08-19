@@ -46,8 +46,8 @@ export async function GET(request: NextRequest) {
     const placeIds = rows.map((r) => r.id as string);
 
     // 当前用户已打卡的地点集合（checkins 仅本人可见，走常规查询即可）
-    let checkedSet = new Set<string>();
-    let checkinIdByPlace = new Map<string, string>();
+    const checkedSet = new Set<string>();
+    const checkinIdByPlace = new Map<string, string>();
     if (placeIds.length > 0) {
       const { data: mine } = await supabase
         .from("checkins")

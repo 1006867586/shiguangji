@@ -7,7 +7,6 @@ import {
   MapPin,
   Loader2,
   ChevronDown,
-  MapPinned,
   Footprints,
 } from "lucide-react";
 import Link from "next/link";

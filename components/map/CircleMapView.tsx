@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- 高德 JS API 无官方 TS 类型定义 */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin, Users, Clock } from "lucide-react";
 import {

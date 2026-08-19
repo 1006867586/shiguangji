@@ -51,7 +51,9 @@ export function FootprintsView() {
     fetcher,
     { revalidateOnFocus: false }
   );
-  const checkins = data?.data ?? [];
+
+  // 稳定引用，避免下游 useMemo 的依赖在每次渲染时变化
+  const checkins = useMemo(() => data?.data ?? [], [data]);
 
   const places = useMemo(
     () =>
