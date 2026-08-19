@@ -25,7 +25,7 @@ interface CheckinMapViewProps {
 export function CheckinMapView({
   places,
   onPlaceClick,
-  center = [121.4737, 31.2304],
+  center = [114.3054, 30.5931], // 默认武汉
   zoom = 12,
   focusPoint,
   className,

@@ -25,22 +25,24 @@ import { fetcher, fetchData } from "@/lib/fetcher";
 import type { MapPlace } from "@/types";
 import type { PoiCandidate } from "@/lib/poi/types";
 
+// 城市文案统一带「市」，与高德 POI 返回的 cityname（如"武汉市"/"上海市"）保持一致，
+// 否则 /api/map/places?city=武汉 会查不到 places.city = "武汉市" 的数据。
 const CITIES = [
-  "上海",
-  "北京",
-  "深圳",
-  "广州",
-  "杭州",
-  "成都",
-  "南京",
-  "武汉",
-  "西安",
-  "重庆",
+  "上海市",
+  "北京市",
+  "深圳市",
+  "广州市",
+  "杭州市",
+  "成都市",
+  "南京市",
+  "武汉市",
+  "西安市",
+  "重庆市",
 ];
 
 /** 地图页客户端主体：城市切换 + 搜索定位 + 打卡点地图 + 打卡/撤销 */
 export function MapPage() {
-  const [city, setCity] = useState("上海");
+  const [city, setCity] = useState("武汉市");
   const [selected, setSelected] = useState<MapPlace | null>(null);
   const [sheetPlace, setSheetPlace] = useState<{
     name?: string | null;
@@ -63,20 +65,20 @@ export function MapPage() {
   const places = data?.data ?? [];
 
   const center = useMemo<[number, number]>(() => {
-    // 各城市默认中心（GCJ-02 近似）
+    // 各城市默认中心（GCJ-02 近似）；key 与上方 CITIES 同步带「市」
     const map: Record<string, [number, number]> = {
-      上海: [121.4737, 31.2304],
-      北京: [116.4074, 39.9042],
-      深圳: [114.0579, 22.5431],
-      广州: [113.2644, 23.1291],
-      杭州: [120.1551, 30.2741],
-      成都: [104.0665, 30.5723],
-      南京: [118.7969, 32.0603],
-      武汉: [114.3054, 30.5931],
-      西安: [108.9398, 34.3416],
-      重庆: [106.5516, 29.563],
+      上海市: [121.4737, 31.2304],
+      北京市: [116.4074, 39.9042],
+      深圳市: [114.0579, 22.5431],
+      广州市: [113.2644, 23.1291],
+      杭州市: [120.1551, 30.2741],
+      成都市: [104.0665, 30.5723],
+      南京市: [118.7969, 32.0603],
+      武汉市: [114.3054, 30.5931],
+      西安市: [108.9398, 34.3416],
+      重庆市: [106.5516, 29.563],
     };
-    return map[city] ?? [121.4737, 31.2304];
+    return map[city] ?? [114.3054, 30.5931]; // 兜底改为武汉（默认城市）
   }, [city]);
 
   const handlePick = (c: PoiCandidate) => {

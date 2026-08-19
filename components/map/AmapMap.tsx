@@ -58,7 +58,7 @@ interface AmapMapProps {
  * 实例就绪后通过 onReady 交给上层绘制。容器必须有确定高度。
  */
 export function AmapMap({
-  center = [121.4737, 31.2304], // 默认上海
+  center = [114.3054, 30.5931], // 默认武汉（与 MapPage 默认城市保持一致）
   zoom = 12,
   onReady,
   onDestroy,
