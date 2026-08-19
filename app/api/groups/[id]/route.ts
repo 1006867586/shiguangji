@@ -156,3 +156,59 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 }
+
+/**
+ * DELETE /api/groups/[id] — 解散圈子
+ * 仅圈子 admin 可调用，调用 RPC dissolve_group（security definer，内部校验权限）。
+ * 删除会级联清理成员/活动及其子表。
+ */
+export async function DELETE(_request: NextRequest, { params }: Params) {
+  try {
+    const user = await requireUser();
+    const supabase = await createServerClient();
+    const { id } = await params;
+
+    if (!isUuid(id)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
+
+    // 校验当前用户为圈子 admin（RPC 内部也会校验）
+    const { data: membership } = await supabase
+      .from("group_members")
+      .select("role")
+      .eq("group_id", id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!membership) {
+      return jsonResponse({ error: "无权访问" }, { status: 403 });
+    }
+    if (membership.role !== "admin") {
+      return jsonResponse(
+        { error: "仅管理员可解散圈子" },
+        { status: 403 }
+      );
+    }
+
+    const { error: rpcErr } = await supabase.rpc("dissolve_group", {
+      p_group_id: id,
+    });
+
+    if (rpcErr) {
+      return jsonResponse(
+        { error: safeErrorMessage(rpcErr, "解散失败") },
+        { status: 400 }
+      );
+    }
+
+    return jsonResponse({ success: true });
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return jsonResponse({ error: err.message }, { status: 401 });
+    }
+    return jsonResponse(
+      { error: safeErrorMessage(err, "服务器错误") },
+      { status: 500 }
+    );
+  }
+}

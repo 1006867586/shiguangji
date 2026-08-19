@@ -7,6 +7,7 @@ import {
   Settings as SettingsIcon,
   BarChart3,
   Users as UsersIcon,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,6 +104,11 @@ export default async function GroupFeedPage({ params }: Params) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href={`/g/${groupId}/manage`}>
+                    <LayoutDashboard className="h-4 w-4" /> 圈子管理
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href={`/g/${groupId}/stats`}>
                     <BarChart3 className="h-4 w-4" /> 圈子统计

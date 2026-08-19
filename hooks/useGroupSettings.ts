@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { fetchData } from "@/lib/fetcher";
+import { fetchData, fetcher } from "@/lib/fetcher";
 import type { Group, UpdateGroupBody } from "@/types";
 
 /** useGroupSettings 返回值 */
@@ -72,4 +72,9 @@ export async function updateGroup(
     method: "PATCH",
     body: JSON.stringify(body),
   });
+}
+
+/** dissolveGroup — 解散圈子（独立函数，可在组件外调用）。仅 admin 可调用。 */
+export async function dissolveGroup(groupId: string): Promise<void> {
+  await fetcher(`/api/groups/${groupId}`, { method: "DELETE" });
 }
