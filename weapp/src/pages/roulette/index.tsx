@@ -30,12 +30,12 @@ const SLICE_COLORS = [
 
 /** 本地默认菜系候选（免登录模式） */
 const DEFAULT_CUISINES: MealRouletteItem[] = [
-  { id: "c1", group_id: "", title: "火锅", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
-  { id: "c2", group_id: "", title: "日料", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
-  { id: "c3", group_id: "", title: "烧烤", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
-  { id: "c4", group_id: "", title: "川菜", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
-  { id: "c5", group_id: "", title: "粤菜", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
-  { id: "c6", group_id: "", title: "西餐", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
+  { id: "c1", title: "火锅", address: null, phone: null },
+  { id: "c2", title: "日料", address: null, phone: null },
+  { id: "c3", title: "烧烤", address: null, phone: null },
+  { id: "c4", title: "川菜", address: null, phone: null },
+  { id: "c5", title: "粤菜", address: null, phone: null },
+  { id: "c6", title: "西餐", address: null, phone: null },
 ];
 
 /** 转盘条目统一形态（分享池 / 本地默认菜系；饭搭子池已去除） */

@@ -2,7 +2,7 @@ import Taro from "@tarojs/taro";
 import { request } from "./request";
 
 /**
- * R2 预签名直传（M2 发布页用）。
+ * R2 预签名直传（工具属性：收藏夹截图导入、头像上传）。
  *
  * 流程：
  * 1. POST /api/upload/presign 拿 { presignedUrl, publicUrl }
@@ -11,7 +11,7 @@ import { request } from "./request";
  *
  * 说明：Taro.uploadFile 只支持 multipart POST，而 R2 预签名是 PUT，
  * 因此走 readFile + ArrayBuffer 通道（微信基础库支持 request body 为 ArrayBuffer）。
- * 单文件建议 < 5MB（发布前用 chooseMedia 的 compressed 压缩）。
+ * 单文件建议 < 5MB（上传前用 chooseMedia 的 compressed 压缩）。
  */
 
 interface PresignResult {
