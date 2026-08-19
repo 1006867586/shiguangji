@@ -32,6 +32,7 @@ export function CheckinMapView({
 }: CheckinMapViewProps) {
   const mapRef = useRef<any>(null);
   const clustererRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
   const [map, setMap] = useState<any>(null);
   const onPlaceClickRef = useRef(onPlaceClick);
   onPlaceClickRef.current = onPlaceClick;
@@ -43,6 +44,7 @@ export function CheckinMapView({
 
   const handleDestroy = useCallback(() => {
     clustererRef.current = null;
+    markersRef.current = [];
     mapRef.current = null;
     setMap(null);
   }, []);
@@ -69,7 +71,8 @@ export function CheckinMapView({
     }
   }, [map]);
 
-  // 数据变化时重建标记
+  // 数据变化时更新标记（防御式：优先 setMarkers 覆盖；降级路径只调用确实存在的方法，
+  // 避免不同版本 MarkerClusterer 插件方法名差异导致报错）
   useEffect(() => {
     if (!map) return;
     const AMap = window.AMap;
@@ -90,19 +93,30 @@ export function CheckinMapView({
       return marker;
     });
 
-    if (clustererRef.current) {
-      clustererRef.current.setMarkers(markers);
+    const clusterer = clustererRef.current;
+    if (clusterer) {
+      if (typeof clusterer.setMarkers === "function") {
+        // 直接整体覆盖，无需先清空
+        clusterer.setMarkers(markers);
+      } else {
+        // 降级：清空旧聚合点后再添加（仅调用确实存在的方法）
+        if (typeof clusterer.clearMarkers === "function") {
+          clusterer.clearMarkers();
+        } else if (typeof clusterer.removeMarkers === "function") {
+          clusterer.removeMarkers(markersRef.current);
+        }
+        if (markers.length > 0 && typeof clusterer.addMarkers === "function") {
+          clusterer.addMarkers(markers);
+        }
+      }
     } else {
+      // 聚合器不可用（插件未加载等）：直接挂到地图，并清理上一批
+      map.remove(markersRef.current);
       map.add(markers);
     }
+    markersRef.current = markers;
 
-    return () => {
-      if (clustererRef.current) {
-        clustererRef.current.clearMarkers();
-      } else {
-        map.remove(markers);
-      }
-    };
+    // 不在卸载前清空聚合器：组件卸载时由 AmapMap 的 map.destroy() 统一销毁
   }, [map, places]);
 
   // 外部定位（搜索结果等）
