@@ -295,6 +295,26 @@ export interface JoinGroupBody {
   inviteCode: string;
 }
 
+/** 邀请链接预览（按邀请码查询的圈子公开信息） */
+export interface GroupInvitePreview {
+  id: UUID;
+  name: string;
+  description: string | null;
+  avatar_url: string | null;
+  /** 圈子成员数 */
+  member_count: number;
+  /** 当前登录用户是否已是该圈子成员（未登录为 false） */
+  is_member: boolean;
+}
+
+/** 通过邀请码加入圈子的返回结果 */
+export interface JoinGroupResult {
+  /** 圈子 id（用于跳转 /g/{id}） */
+  id: UUID;
+  /** 加入前是否已是成员（true 表示未重复插入） */
+  alreadyMember: boolean;
+}
+
 export interface AddPhotoBody {
   url: string;
   caption?: string;
