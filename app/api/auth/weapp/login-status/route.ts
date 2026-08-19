@@ -90,10 +90,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ status: "pending" });
       }
 
-      // 用 openid 建立 Web 会话（虚拟邮箱 + magic link，无微信调用）
+      // 用 openid 建立 Web 会话（虚拟邮箱 + magic link，无微信调用）。
+      // writeProfile:false——confirm-login 已经把昵称/头像写入 user_metadata 与 profiles，
+      // 此处若重复 upsert 默认值反而会抹掉刚写的头像。
       let session;
       try {
-        session = await exchangeOpenIdForSession(consumed[0].openid);
+        session = await exchangeOpenIdForSession(consumed[0].openid, undefined, {
+          writeProfile: false,
+        });
       } catch (err) {
         if (err instanceof WeappSessionError) {
           return NextResponse.json(

@@ -79,4 +79,95 @@ describe("exchangeOpenIdForSession", () => {
     expect(err).toBeInstanceOf(WeappSessionError);
     expect(err.code).toBe("link_failed");
   });
+
+  it("新用户传入 nickname + avatarUrl：写入 user_metadata 与 profiles（不覆盖已有）", async () => {
+    const user = { id: "u1", created_at: new Date().toISOString(), user_metadata: {} };
+    mocks.generateLink.mockResolvedValue({
+      data: { user, properties: { hashed_token: "tok" } },
+      error: null,
+    });
+    mocks.updateUserById.mockResolvedValue({ data: { user }, error: null });
+    mocks.upsert.mockResolvedValue({ data: null, error: null });
+    mocks.verifyOtp.mockResolvedValue({
+      data: {
+        session: { access_token: "at", refresh_token: "rt", expires_at: 4102444800 },
+      },
+      error: null,
+    });
+
+    const result = await exchangeOpenIdForSession("o_abc", {
+      nickname: "小明",
+      avatarUrl: "https://r2.example.com/avatar.jpg",
+    });
+
+    expect(result.isNewUser).toBe(true);
+    expect(result.nickname).toBe("小明");
+    expect(result.avatarUrl).toBe("https://r2.example.com/avatar.jpg");
+    expect(mocks.updateUserById.mock.calls[0][1].user_metadata.nickname).toBe("小明");
+    expect(mocks.updateUserById.mock.calls[0][1].user_metadata.avatar_url).toBe(
+      "https://r2.example.com/avatar.jpg"
+    );
+    expect(mocks.upsert).toHaveBeenCalledWith({
+      id: "u1",
+      nickname: "小明",
+      avatar_url: "https://r2.example.com/avatar.jpg",
+    });
+  });
+
+  it("老用户传入 nickname 不覆盖已有资料；profiles.upsert 不传 nickname", async () => {
+    // user.created_at 设为 1 小时前 → createdMinutesAgo > 2 → isNewUser=false
+    const createdAt = new Date(Date.now() - 60 * 60_000).toISOString();
+    const user = { id: "u_old", created_at: createdAt, user_metadata: { nickname: "旧昵称" } };
+    mocks.generateLink.mockResolvedValue({
+      data: { user, properties: { hashed_token: "tok" } },
+      error: null,
+    });
+    mocks.updateUserById.mockResolvedValue({ data: { user }, error: null });
+    mocks.upsert.mockResolvedValue({ data: null, error: null });
+    mocks.verifyOtp.mockResolvedValue({
+      data: {
+        session: { access_token: "at", refresh_token: "rt", expires_at: 4102444800 },
+      },
+      error: null,
+    });
+
+    const result = await exchangeOpenIdForSession("o_old", {
+      nickname: "新昵称",
+      avatarUrl: "https://r2.example.com/new.jpg",
+    });
+
+    expect(result.isNewUser).toBe(false);
+    // 老用户：即使前端传了资料也不写入 user_metadata / profiles（避免覆盖）
+    expect(mocks.updateUserById.mock.calls[0][1].user_metadata.nickname).toBe("旧昵称");
+    // 老用户不会写入 avatar_url（shouldWriteAvatar = isNewUser=false → false）
+    expect(
+      mocks.updateUserById.mock.calls[0][1].user_metadata.avatar_url
+    ).toBeUndefined();
+    expect(mocks.upsert).toHaveBeenCalledWith({ id: "u_old" });
+  });
+
+  it("options.writeProfile=false（login-status 场景）：跳过 updateUserById 与 upsert", async () => {
+    const user = { id: "u1", created_at: new Date().toISOString(), user_metadata: {} };
+    mocks.generateLink.mockResolvedValue({
+      data: { user, properties: { hashed_token: "tok" } },
+      error: null,
+    });
+    mocks.verifyOtp.mockResolvedValue({
+      data: {
+        session: { access_token: "at", refresh_token: "rt", expires_at: 4102444800 },
+      },
+      error: null,
+    });
+
+    const result = await exchangeOpenIdForSession(
+      "o_abc",
+      { nickname: "小明", avatarUrl: "https://r2.example.com/a.jpg" },
+      { writeProfile: false }
+    );
+
+    expect(result.isNewUser).toBe(true);
+    expect(result.accessToken).toBe("at");
+    expect(mocks.updateUserById).not.toHaveBeenCalled();
+    expect(mocks.upsert).not.toHaveBeenCalled();
+  });
 });

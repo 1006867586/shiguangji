@@ -6,7 +6,15 @@ import { code2Session, Code2SessionError } from "@/lib/wechat";
  *
  * 链路：openid → 虚拟邮箱 wx_{openid}@wechat.local → admin.generateLink(magiclink)
  * → 服务端消费 token_hash（verifyOtp）建立 Supabase 会话。
- * 首次登录自动注册（admin.generateLink 自动建用户），新用户补 nickname / profiles。
+ *
+ * 新用户自动注册（admin.generateLink 自动建用户）。可选接收前端传入的
+ * nickname / avatarUrl（小程序确认页 chooseAvatar + Input type="nickname"
+ * 收集后经 R2 直传得到公网 URL），仅在 isNewUser=true 时写入 user_metadata
+ * 与 profiles——**绝不能覆盖老用户已有的昵称和头像**（防止重复扫码登录抹掉资料）。
+ *
+ * options.writeProfile=false：跳过 updateUserById 与 profiles.upsert，仅保留
+ * generateLink + verifyOtp 建会话的能力。PC 扫码的 login-status 命中后调用
+ * 此模式，因为 confirm-login 已经把资料写过了，不应重复 upsert 抹平头像。
  */
 
 export type WeappSessionErrorCode =
@@ -35,6 +43,9 @@ export interface WeappSessionResult {
   isNewUser: boolean;
   openid: string;
   unionid?: string;
+  /** 实际写入的昵称 / 头像（仅新用户且有传入时返回） */
+  nickname?: string;
+  avatarUrl?: string;
 }
 
 const isPlaceholder = (v?: string) =>
@@ -50,7 +61,8 @@ export function buildWeappVirtualEmail(openid: string): string {
  */
 export async function exchangeOpenIdForSession(
   openid: string,
-  extra?: { unionid?: string }
+  extra?: { unionid?: string; nickname?: string; avatarUrl?: string },
+  options?: { writeProfile?: boolean }
 ): Promise<WeappSessionResult> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -75,20 +87,34 @@ export async function exchangeOpenIdForSession(
   const createdMinutesAgo =
     (Date.now() - new Date(linkData.user.created_at).getTime()) / 60_000;
   const isNewUser = createdMinutesAgo < 2;
-  await admin.auth.admin.updateUserById(linkData.user.id, {
-    user_metadata: {
-      ...(linkData.user.user_metadata ?? {}),
-      weapp_openid: openid,
-      ...(extra?.unionid ? { weapp_unionid: extra.unionid } : {}),
-      ...(isNewUser && !linkData.user.user_metadata?.nickname
+  const writeProfile = options?.writeProfile !== false;
+
+  // 仅新用户 + 传入资料时写入；老用户重复扫码绝不覆盖（pc login-status 模式见 options）
+  const shouldWriteNickname = writeProfile && isNewUser && !!extra?.nickname;
+  const shouldWriteAvatar = writeProfile && isNewUser && !!extra?.avatarUrl;
+
+  if (writeProfile) {
+    await admin.auth.admin.updateUserById(linkData.user.id, {
+      user_metadata: {
+        ...(linkData.user.user_metadata ?? {}),
+        weapp_openid: openid,
+        ...(extra?.unionid ? { weapp_unionid: extra.unionid } : {}),
+        ...(isNewUser && !linkData.user.user_metadata?.nickname
+          ? { nickname: `微信用户${openid.slice(-4)}` }
+          : {}),
+        ...(shouldWriteNickname ? { nickname: extra!.nickname } : {}),
+        ...(shouldWriteAvatar ? { avatar_url: extra!.avatarUrl } : {}),
+      },
+    });
+    await admin.from("profiles").upsert({
+      id: linkData.user.id,
+      ...(isNewUser && !shouldWriteNickname
         ? { nickname: `微信用户${openid.slice(-4)}` }
         : {}),
-    },
-  });
-  await admin.from("profiles").upsert({
-    id: linkData.user.id,
-    ...(isNewUser ? { nickname: `微信用户${openid.slice(-4)}` } : {}),
-  });
+      ...(shouldWriteNickname ? { nickname: extra!.nickname } : {}),
+      ...(shouldWriteAvatar ? { avatar_url: extra!.avatarUrl } : {}),
+    });
+  }
 
   const anon = createSupabaseClient(url!, anonKey!, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -110,11 +136,16 @@ export async function exchangeOpenIdForSession(
     isNewUser,
     openid,
     ...(extra?.unionid ? { unionid: extra.unionid } : {}),
+    ...(shouldWriteNickname ? { nickname: extra!.nickname } : {}),
+    ...(shouldWriteAvatar ? { avatarUrl: extra!.avatarUrl } : {}),
   };
 }
 
 /** wx.login code → 会话（code2Session 换 openid 后再建会话） */
-export async function exchangeCodeForSession(code: string): Promise<WeappSessionResult> {
+export async function exchangeCodeForSession(
+  code: string,
+  extra?: { nickname?: string; avatarUrl?: string }
+): Promise<WeappSessionResult> {
   let sessionInfo;
   try {
     sessionInfo = await code2Session(code);
@@ -124,9 +155,15 @@ export async function exchangeCodeForSession(code: string): Promise<WeappSession
     }
     throw new WeappSessionError("wechat_unavailable", "微信登录服务暂不可用，请稍后重试");
   }
-  return exchangeOpenIdForSession(sessionInfo.openid, {
-    unionid: sessionInfo.unionid,
-  });
+  return exchangeOpenIdForSession(
+    sessionInfo.openid,
+    {
+      unionid: sessionInfo.unionid,
+      nickname: extra?.nickname,
+      avatarUrl: extra?.avatarUrl,
+    },
+    { writeProfile: true }
+  );
 }
 
 /** WeappSessionError → HTTP 状态码（与旧 /api/auth/weapp/login 行为一致） */
