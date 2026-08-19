@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import { NameBadges } from "@/components/profile/NameBadges";
 import { PhotoGrid } from "@/components/activity/PhotoGrid";
 import {
   ExternalLinkCard,
@@ -246,6 +247,7 @@ export function FeedCard({
             >
               {activity.author.nickname}
             </Link>
+            <NameBadges achievements={activity.author.achievements ?? []} />
             {activity.type === "repost" ? (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Repeat2 className="h-3 w-3" aria-hidden="true" />
@@ -332,6 +334,9 @@ export function FeedCard({
             <span className="font-medium text-foreground">
               @{activity.repost_of.author.nickname}
             </span>
+            <NameBadges
+              achievements={activity.repost_of.author.achievements ?? []}
+            />
           </div>
           {activity.repost_of.content ? (
             <p className="mt-1 line-clamp-3 text-sm text-foreground/90">

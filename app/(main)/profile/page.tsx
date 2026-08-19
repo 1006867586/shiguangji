@@ -3,7 +3,8 @@ import { ChevronLeft, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
 import { FavoritePlacesSection } from "@/components/profile/FavoritePlacesSection";
-import { getServerProfile, getServerGroups } from "@/lib/server-data";
+import { AchievementsPanel } from "@/components/profile/AchievementsPanel";
+import { getServerProfile, getServerGroups, getServerGamification } from "@/lib/server-data";
 import type { Group } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +12,10 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "个人资料" };
 
 export default async function ProfilePage() {
-  const [profile, { groups }] = await Promise.all([
+  const [profile, { groups }, gamification] = await Promise.all([
     getServerProfile(),
     getServerGroups(),
+    getServerGamification(),
   ]);
 
   return (
@@ -29,7 +31,12 @@ export default async function ProfilePage() {
         </div>
       </header>
 
-      {profile ? <ProfileEditor profile={profile} /> : null}
+      {profile ? (
+        <ProfileEditor
+          profile={profile}
+          achievements={gamification.achievements}
+        />
+      ) : null}
 
       <div className="mt-2 border-t border-border/60 p-4">
         <div className="mb-3 flex items-center justify-between">
@@ -76,6 +83,11 @@ export default async function ProfilePage() {
       </div>
 
       <FavoritePlacesSection />
+
+      <AchievementsPanel
+        gamification={gamification.gamification}
+        achievements={gamification.achievements}
+      />
     </div>
   );
 }

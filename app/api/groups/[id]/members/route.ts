@@ -90,6 +90,22 @@ export async function GET(_request: NextRequest, { params }: Params) {
       });
     }
 
+    // 批量拉取各成员已解锁成就（security definer 函数，绕过仅本人可读的 RLS）
+    const { data: achRows } = await supabase.rpc(
+      "get_unlocked_achievements_for_users",
+      { p_user_ids: userIds }
+    );
+    const achMap = new Map<string, Profile["achievements"]>();
+    for (const row of (achRows ?? []) as Array<{
+      user_id: string;
+      achievements: Profile["achievements"];
+    }>) {
+      achMap.set(row.user_id, row.achievements ?? []);
+    }
+    for (const [uid, profile] of profileMap) {
+      profile.achievements = achMap.get(uid) ?? [];
+    }
+
     const result: GroupMember[] = list.map((m) => ({
       id: m.id,
       group_id: id,

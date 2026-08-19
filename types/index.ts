@@ -31,6 +31,49 @@ export interface Profile {
   nickname: string;
   avatar_url: string | null;
   created_at: string;
+  /** 已解锁成就（成员列表 / 动态流作者名旁徽章使用，可选） */
+  achievements?: Achievement[];
+}
+
+/** 积分 / 连续打卡 / 成就汇总 */
+export interface UserGamification {
+  user_id: UUID;
+  points: number;
+  streak_count: number;
+  last_meal_date: string | null;
+  total_meals: number;
+  meals_this_week: number;
+  circles_joined: number;
+  activities_created: number;
+  updated_at: string;
+}
+
+/** 成就规则类型 */
+export type AchievementRuleType =
+  | "meals_this_week"
+  | "total_meals"
+  | "streak"
+  | "circles_joined"
+  | "activities_created";
+
+/** 成就（含当前用户是否已获得） */
+export interface Achievement {
+  id: UUID;
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  rule_type: AchievementRuleType;
+  threshold: number;
+  sort_order: number;
+  unlocked?: boolean;
+  unlocked_at?: string | null;
+}
+
+/** 个人中心游戏化数据 */
+export interface GamificationResponse {
+  gamification: UserGamification | null;
+  achievements: Achievement[];
 }
 
 /** 圈子 */
@@ -107,7 +150,7 @@ export interface RepostOf {
   content: string | null;
   external_link: ExternalLink | null;
   created_at: string;
-  author: Pick<Profile, "id" | "nickname" | "avatar_url">;
+  author: Pick<Profile, "id" | "nickname" | "avatar_url" | "achievements">;
 }
 
 /** Feed 卡片 / 活动聚合视图 */
@@ -117,7 +160,7 @@ export interface Activity {
   content: string | null;
   external_link: ExternalLink | null;
   created_at: string;
-  author: Pick<Profile, "id" | "nickname" | "avatar_url">;
+  author: Pick<Profile, "id" | "nickname" | "avatar_url" | "achievements">;
   photos: ActivityPhoto[];
   photo_count: number;
   comment_count: number;

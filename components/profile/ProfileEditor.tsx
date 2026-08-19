@@ -10,9 +10,16 @@ import { Label } from "@/components/ui/label";
 import { AvatarUploader } from "@/components/common/AvatarUploader";
 import { useAuthContext } from "@/lib/auth-context";
 import { fetchData } from "@/lib/fetcher";
-import type { Profile } from "@/types";
+import type { Achievement, Profile } from "@/types";
+import { NameBadges } from "@/components/profile/NameBadges";
 
-export function ProfileEditor({ profile }: { profile: Profile }) {
+export function ProfileEditor({
+  profile,
+  achievements = [],
+}: {
+  profile: Profile;
+  achievements?: Achievement[];
+}) {
   const router = useRouter();
   const { signOut: signOutAuth } = useAuthContext();
   const [nickname, setNickname] = useState(profile.nickname);
@@ -73,7 +80,10 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
             className="relative"
           />
         </div>
-        <p className="font-display text-lg font-semibold tracking-tight">{nickname}</p>
+        <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+          <p className="font-display text-lg font-semibold tracking-tight">{nickname}</p>
+          <NameBadges achievements={achievements} />
+        </div>
         <p className="text-xs text-muted-foreground">点击头像上传新图片</p>
       </div>
 
