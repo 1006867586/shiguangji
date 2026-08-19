@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- 高德 JS API 无官方 TS 类型定义 */
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { toast } from "sonner";
 
 declare global {
   interface Window {
@@ -50,6 +51,8 @@ interface AmapMapProps {
   onReady?: (map: any) => void;
   /** 地图实例销毁回调 */
   onDestroy?: () => void;
+  /** 是否渲染右上角控件（缩放 +/- 与 GPS 定位按钮） */
+  showControls?: boolean;
   className?: string;
 }
 
@@ -62,6 +65,7 @@ export function AmapMap({
   zoom = 12,
   onReady,
   onDestroy,
+  showControls = false,
   className,
 }: AmapMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -105,6 +109,9 @@ export function AmapMap({
   return (
     <div className="relative h-full w-full overflow-hidden">
       <div ref={containerRef} className={`h-full w-full ${className ?? ""}`} />
+      {showControls && mapRef.current ? (
+        <MapControls map={mapRef.current} />
+      ) : null}
       {status === "loading" ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60 text-sm text-muted-foreground">
           地图加载中…
@@ -126,6 +133,69 @@ export function AmapMap({
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * 地图右上角控件：缩放 + 与 GPS 定位按钮。
+ * 高德 JS API 无官方 TS 类型，map 标 any。
+ */
+function MapControls({ map }: { map: any }) {
+  const handleZoomIn = () => {
+    map.zoomIn();
+  };
+  const handleZoomOut = () => {
+    map.zoomOut();
+  };
+  const handleLocate = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast.error("当前环境不支持定位");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        // 浏览器定位是 WGS84；高德地图渲染 GCJ-02；直接给 lng/lat 会被高德当作 GCJ-02 渲染，偏差约 100~500m
+        // PC 端演示精度足够；移动端生产环境建议走 AMap.Geolocation plugin（GCJ-02 原生）
+        const { longitude, latitude } = pos.coords;
+        map.setCenter([longitude, latitude]);
+        map.setZoom(14);
+      },
+      (err) => {
+        toast.error(`定位失败：${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+  return (
+    <div className="absolute right-2 top-2 z-10 flex flex-col gap-1 rounded-lg border border-border bg-card/95 p-1 shadow-md backdrop-blur">
+      <button
+        type="button"
+        onClick={handleZoomIn}
+        aria-label="放大"
+        className="inline-flex h-8 w-8 items-center justify-center rounded text-sm text-foreground hover:bg-muted"
+      >
+        +
+      </button>
+      <div className="mx-1 h-px bg-border" />
+      <button
+        type="button"
+        onClick={handleZoomOut}
+        aria-label="缩小"
+        className="inline-flex h-8 w-8 items-center justify-center rounded text-sm text-foreground hover:bg-muted"
+      >
+        −
+      </button>
+      <div className="mx-1 h-px bg-border" />
+      <button
+        type="button"
+        onClick={handleLocate}
+        aria-label="定位"
+        title="定位到当前位置"
+        className="inline-flex h-8 w-8 items-center justify-center rounded text-sm text-foreground hover:bg-muted"
+      >
+        ◎
+      </button>
     </div>
   );
 }

@@ -1,13 +1,25 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- 高德 JS API 无官方 TS 类型定义 */
+/* eslint-disable @typescript-eslint/no-explicit-any -- 高德地图实例无官方 TS 类型定义 */
 
 import { useEffect, useState, useRef } from "react";
-import { X, MapPinned, Check, Loader2 } from "lucide-react";
+import {
+  X,
+  MapPinned,
+  Check,
+  Loader2,
+  Navigation,
+  Share2,
+  Bookmark,
+  BookmarkCheck,
+  Compass,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapLauncher } from "@/components/common/MapLauncher";
 import { MapPin } from "lucide-react";
+import { fetchData } from "@/lib/fetcher";
 import type { MapPlace } from "@/types";
 
 interface PlaceMapOverlayProps {
@@ -19,17 +31,25 @@ interface PlaceMapOverlayProps {
   onClose: () => void;
   onCheckin?: (place: MapPlace) => void;
   onRemoveCheckin?: (place: MapPlace) => void;
+  /** 触发附近查询的回调（MapPage 调 /api/map/places/nearby 并在地图上画临时 marker） */
+  onSearchNearby?: (place: MapPlace) => void;
   removing?: boolean;
 }
 
-const CARD_WIDTH = 280; // 浮层卡片宽度
-const CARD_MARGIN = 12; // 距 marker 的最小间距
-const ANCHOR_OFFSET_Y = -28; // 浮层顶部尖角指向 marker 上方
+const CARD_WIDTH = 280;
+const CARD_MARGIN = 12;
+const ANCHOR_OFFSET_Y = -28;
 
 /**
  * 地图内嵌卡片浮层：从 marker 位置"长出"。
  * - PC 端：浮在 marker 上方，水平居中
  * - 移动端：底部抽屉式（避免遮挡地图中心）
+ *
+ * 按钮：
+ * - 导航：唤起高德/百度 App（复用 MapLauncher）
+ * - 分享：复制地图链接（含 place.id）到剪贴板 / 调 native share
+ * - 收藏：调 /api/favorite-places 加到我的收藏
+ * - 去打卡 / 撤销打卡：原 onCheckin / onRemoveCheckin
  */
 export function PlaceMapOverlay({
   place,
@@ -38,11 +58,14 @@ export function PlaceMapOverlay({
   onClose,
   onCheckin,
   onRemoveCheckin,
+  onSearchNearby,
   removing,
 }: PlaceMapOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: 0, top: 0 });
   const [isMobile, setIsMobile] = useState(false);
+  const [favoriting, setFavoriting] = useState(false);
+  const [favorited, setFavorited] = useState(false);
 
   // 检测移动端（< 640px）
   useEffect(() => {
@@ -59,10 +82,9 @@ export function PlaceMapOverlay({
     const update = () => {
       const mapSize = mapInstance.getSize();
       const w = CARD_WIDTH;
-      const h = containerRef.current?.offsetHeight ?? 220;
+      const h = containerRef.current?.offsetHeight ?? 240;
 
       if (isMobile) {
-        // 移动端：底部抽屉
         setPos({
           left: 0,
           top: mapSize.height - h,
@@ -70,11 +92,9 @@ export function PlaceMapOverlay({
         return;
       }
 
-      // PC：根据 marker 屏幕坐标定位（marker 自身已经被 CheckinMapView 算过）
-      // 上方优先；若上方空间不够则放到 marker 下方
       const preferTop = screenPos.y + ANCHOR_OFFSET_Y - h;
-      const finalTop = preferTop >= CARD_MARGIN ? preferTop : screenPos.y + CARD_MARGIN + 28;
-      // 水平居中 + 边界保护
+      const finalTop =
+        preferTop >= CARD_MARGIN ? preferTop : screenPos.y + CARD_MARGIN + 28;
       let left = screenPos.x - w / 2;
       const maxLeft = mapSize.width - w - CARD_MARGIN;
       left = Math.max(CARD_MARGIN, Math.min(left, maxLeft));
@@ -91,12 +111,71 @@ export function PlaceMapOverlay({
     };
   }, [mapInstance, screenPos.x, screenPos.y, isMobile]);
 
+  // 分享：优先 navigator.share（移动端 native），降级为剪贴板复制
+  const handleShare = async () => {
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/map?focus=${place.id}`
+        : `/map?focus=${place.id}`;
+    const text = `我在「${place.name}」打了个卡，推荐给你`;
+    try {
+      if (
+        typeof navigator !== "undefined" &&
+        typeof navigator.share === "function"
+      ) {
+        await navigator.share({ title: place.name, text, url });
+        return;
+      }
+      // 降级：复制到剪贴板
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        toast.success("链接已复制到剪贴板");
+      } else {
+        toast.info(url);
+      }
+    } catch (err) {
+      // 用户取消分享时不报错
+      if (err instanceof Error && err.name !== "AbortError") {
+        toast.error(err.message || "分享失败");
+      }
+    }
+  };
+
+  // 收藏：调 /api/favorite-places（单店变体）
+  const handleFavorite = async () => {
+    if (favoriting || favorited) return;
+    setFavoriting(true);
+    try {
+      await fetchData("/api/favorite-places", {
+        method: "POST",
+        body: JSON.stringify({
+          platform: "manual",
+          city: place.city ?? undefined,
+          places: [
+            {
+              title: place.name,
+              address: place.address ?? null,
+              category: place.category ?? null,
+              // 当前 API 不收 lng/lat；places 表与 favorite_places 表解耦
+              // （迁移 019 已为 favorite_places 加 lng/lat 字段，后续可扩展）
+            },
+          ],
+        }),
+      });
+      setFavorited(true);
+      toast.success("已加入收藏");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "收藏失败");
+    } finally {
+      setFavoriting(false);
+    }
+  };
+
   const checked = Boolean(place.i_checked);
 
   return (
     <div
       ref={containerRef}
-      // 浮层不拦截地图事件（pointer-events 只命中关闭按钮和卡片本身）
       className="pointer-events-none absolute z-50"
       style={{
         left: `${pos.left}px`,
@@ -145,6 +224,7 @@ export function PlaceMapOverlay({
             </MapLauncher>
           ) : null}
 
+          {/* 主操作：打卡 / 撤销打卡 */}
           <div className="flex gap-2 pt-1">
             {checked ? (
               <Button
@@ -172,6 +252,61 @@ export function PlaceMapOverlay({
               </Button>
             )}
           </div>
+
+          {/* 次操作：导航 / 分享 / 收藏 */}
+          <div className="flex gap-2">
+            <MapLauncher
+              name={place.name}
+              address={place.address}
+              city={place.city}
+            >
+              <button
+                type="button"
+                aria-label="导航"
+                className="flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <Navigation className="h-3 w-3" aria-hidden="true" />
+                导航
+              </button>
+            </MapLauncher>
+            <button
+              type="button"
+              onClick={handleShare}
+              aria-label="分享"
+              className="flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <Share2 className="h-3 w-3" aria-hidden="true" />
+              分享
+            </button>
+            <button
+              type="button"
+              onClick={handleFavorite}
+              disabled={favoriting || favorited}
+              aria-label="收藏"
+              className="flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-60"
+            >
+              {favoriting ? (
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              ) : favorited ? (
+                <BookmarkCheck className="h-3 w-3 text-primary" aria-hidden="true" />
+              ) : (
+                <Bookmark className="h-3 w-3" aria-hidden="true" />
+              )}
+              {favorited ? "已收藏" : "收藏"}
+            </button>
+          </div>
+
+          {/* 附近 500m 探索 */}
+          {onSearchNearby ? (
+            <button
+              type="button"
+              onClick={() => onSearchNearby(place)}
+              className="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background/50 px-2 py-1.5 text-[11px] text-muted-foreground transition hover:border-primary hover:bg-primary/5 hover:text-foreground"
+            >
+              <Compass className="h-3 w-3" aria-hidden="true" />
+              查看附近 500m 的店
+            </button>
+          ) : null}
         </div>
 
         {/* PC 端：浮层顶部尖角（指向 marker） */}

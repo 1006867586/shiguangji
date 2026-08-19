@@ -23,6 +23,8 @@ interface CheckinMapViewProps {
   zoom?: number;
   /** 外部触发地图定位（如搜索结果），变化时 setCenter */
   focusPoint?: { lng: number; lat: number } | null;
+  /** 是否渲染右上角控件（缩放 +/- 与 GPS 定位） */
+  showControls?: boolean;
   className?: string;
 }
 
@@ -55,6 +57,7 @@ export function CheckinMapView({
   center = [114.3054, 30.5931],
   zoom = 12,
   focusPoint,
+  showControls = false,
   className,
 }: CheckinMapViewProps) {
   const mapRef = useRef<any>(null);
@@ -193,6 +196,7 @@ export function CheckinMapView({
       zoom={zoom}
       onReady={handleReady}
       onDestroy={handleDestroy}
+      showControls={showControls}
       className={className}
     />
   );
