@@ -10,9 +10,9 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "飨刻 - 圈子聚餐记录",
+    name: "飨刻 - 今天吃什么转盘",
     short_name: "飨刻",
-    description: "面向小团体的聚餐记录应用",
+    description: "今天吃什么转盘与店铺收藏",
     start_url: "/",
     scope: "/",
     display: "standalone",
@@ -20,7 +20,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#f97316",
     lang: "zh-CN",
     orientation: "portrait",
-    categories: ["social", "lifestyle"],
+    categories: ["food", "lifestyle", "utilities"],
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
