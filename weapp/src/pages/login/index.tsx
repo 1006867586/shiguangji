@@ -43,13 +43,14 @@ export default function LoginPage() {
     const res = await Taro.showModal({
       title: "同意协议后继续",
       content: "请确认你已阅读并同意《用户协议》和《隐私政策》，是否继续登录？",
-      confirmText: "同意并继续",
-      cancelText: "不同意",
+      // 微信小程序限制：confirmText / cancelText ≤ 4 个中文字符
+      confirmText: "同意",
+      cancelText: "拒绝",
       confirmColor: "#ff6b35",
     });
     if (!res.confirm) {
-      // 不同意：明确告知不会登录，给出转回工具页的入口提示
-      Taro.showToast({ title: "你已拒绝，可先体验转盘", icon: "none", duration: 1800 });
+      // 拒绝：明确告知不会登录，给出转回工具页的入口提示
+      Taro.showToast({ title: "已拒绝，可先体验转盘", icon: "none", duration: 1800 });
       return;
     }
     // 同意 → 真正走登录
