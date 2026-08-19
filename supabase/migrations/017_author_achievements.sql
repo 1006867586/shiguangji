@@ -40,7 +40,7 @@ as $$
   from public.user_achievements ua
   join public.achievements a on a.id = ua.achievement_id
   where ua.user_id = any(p_user_ids)
-    and ua.unlocked = true
+    and ua.unlocked_at is not null
   group by ua.user_id
 $$;
 
