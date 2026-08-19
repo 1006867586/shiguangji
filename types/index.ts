@@ -520,6 +520,8 @@ export interface FavoritePlace {
   cover_image_url: string | null;
   /** 联网搜索补齐的店铺链接（美团/点评/官网等） */
   store_url: string | null;
+  /** 城市（019 迁移新增列，可空；用于打卡搜索限定） */
+  city?: string | null;
 }
 
 /** 批量创建店铺收藏请求体 */
@@ -591,3 +593,85 @@ export interface ImportMealRouletteItemsBody {
     signatureDishes?: string[];
   }>;
 }
+
+// ============================================================
+// 美食打卡地图（places / checkins）
+// ============================================================
+
+export type PlaceSource = "amap" | "baidu" | "tencent" | "manual";
+export type PlaceStatus = "approved" | "pending_review" | "rejected";
+
+/** 打卡地点主档（对应 public.places，坐标为 GCJ-02） */
+export interface MapPlace {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  district: string | null;
+  category: string | null;
+  lng: number;
+  lat: number;
+  source: PlaceSource;
+  poi_id: string | null;
+  status: PlaceStatus;
+  created_at: string;
+  /** 当前用户是否已在该地点打过卡（仅列表接口附带） */
+  i_checked?: boolean;
+  /** 当前用户在该地点最近一条打卡记录 id（撤销打卡用） */
+  i_checkin_id?: string | null;
+}
+
+/** 打卡记录（对应 public.checkins） */
+export interface Checkin {
+  id: string;
+  user_id: string;
+  place_id: string;
+  activity_id: string | null;
+  note: string | null;
+  checked_at: string;
+  created_at: string;
+  place?: MapPlace;
+  activity?: {
+    id: string;
+    group_id: string;
+    content: string | null;
+  } | null;
+}
+
+/** 打卡请求体 */
+export interface CreateCheckinBody {
+  place: {
+    name: string;
+    address?: string | null;
+    city?: string | null;
+    district?: string | null;
+    category?: string | null;
+    lng: number;
+    lat: number;
+    source?: PlaceSource;
+    poi_id?: string | null;
+  };
+  activity_id?: string | null;
+  note?: string | null;
+}
+
+/** 打卡结果（upsert place + insert checkin 后返回） */
+export interface CreateCheckinResult {
+  checkin: Checkin;
+  place: MapPlace;
+  /** 是否本次新建的地点（false 表示命中已有地点） */
+  place_created: boolean;
+}
+
+/** 圈子打卡聚合结果（脱敏：无打卡人信息） */
+export interface CircleCheckinPlace {
+  place_id: string;
+  name: string;
+  address: string | null;
+  category: string | null;
+  lng: number;
+  lat: number;
+  checkin_count: number;
+  last_checked_at: string | null;
+}
+

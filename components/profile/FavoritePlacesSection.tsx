@@ -7,6 +7,7 @@ import {
   Loader2,
   Trash2,
   MapPin,
+  MapPinned,
   Phone,
   Utensils,
   Star,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MapLauncher } from "@/components/common/MapLauncher";
+import { CheckinSheet } from "@/components/map/CheckinSheet";
 import { useUpload } from "@/hooks/useUpload";
 import {
   useFavoritePlaces,
@@ -91,6 +93,10 @@ export function FavoritePlacesSection() {
   /** 正在编辑的店铺（编辑对话框开关由 editingPlace 是否为空控制） */
   const [editingPlace, setEditingPlace] = useState<FavoritePlace | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  /** 正在打卡的收藏店铺（打开打卡表单，收藏夹无坐标时先在表单内搜索确认） */
+  const [checkinTarget, setCheckinTarget] = useState<FavoritePlace | null>(
+    null
+  );
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -486,6 +492,15 @@ export function FavoritePlacesSection() {
                     ) : null}
                     <button
                       type="button"
+                      onClick={() => setCheckinTarget(p)}
+                      aria-label="去打卡"
+                      title="去打卡"
+                      className="rounded-full p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+                    >
+                      <MapPinned className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setEditingPlace(p)}
                       aria-label="编辑店铺信息"
                       title="编辑店铺信息"
@@ -534,6 +549,23 @@ export function FavoritePlacesSection() {
         }}
         onSave={handleSaveEdit}
         saving={savingEdit}
+      />
+
+      {/* 收藏夹一键打卡：收藏夹暂无坐标，表单内先搜索确认地点再打卡 */}
+      <CheckinSheet
+        open={Boolean(checkinTarget)}
+        onOpenChange={(v) => {
+          if (!v) setCheckinTarget(null);
+        }}
+        initialPlace={
+          checkinTarget
+            ? {
+                name: checkinTarget.title,
+                address: checkinTarget.address,
+                city: checkinTarget.city ?? null,
+              }
+            : null
+        }
       />
     </div>
   );

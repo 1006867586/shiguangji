@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, MapPinned } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { FeedCardSkeleton } from "@/components/feed/FeedCardSkeleton";
@@ -11,6 +11,7 @@ import { PhotoGrid } from "@/components/activity/PhotoGrid";
 import { PhotoUploader } from "@/components/activity/PhotoUploader";
 import { PhotoCaptionEditor } from "@/components/activity/PhotoCaptionEditor";
 import { EmptyState } from "@/components/common/EmptyState";
+import { CheckinSheet } from "@/components/map/CheckinSheet";
 import { useActivity } from "@/hooks/useActivity";
 import type { Activity } from "@/types";
 
@@ -42,6 +43,8 @@ export function ActivityDetailView({
     photoId: string;
     caption: string | null;
   } | null>(null);
+  // 聚餐打卡表单
+  const [checkinOpen, setCheckinOpen] = useState(false);
 
   if (loading && !current) {
     return (
@@ -96,6 +99,15 @@ export function ActivityDetailView({
             </Link>
           </Button>
           <h1 className="font-display text-lg font-semibold tracking-tight">详情</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto h-8 text-xs"
+            onClick={() => setCheckinOpen(true)}
+          >
+            <MapPinned className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+            去打卡
+          </Button>
         </div>
       </header>
 
@@ -179,6 +191,13 @@ export function ActivityDetailView({
         open={editorOpen}
         onOpenChange={setEditorOpen}
         onSaved={handleCaptionSaved}
+      />
+
+      {/* 聚餐打卡：预填活动 id，校验圈内成员由服务端完成 */}
+      <CheckinSheet
+        open={checkinOpen}
+        onOpenChange={setCheckinOpen}
+        activityId={current.id}
       />
     </div>
   );
