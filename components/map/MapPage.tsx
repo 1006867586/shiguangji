@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- 高德地图实例无官方 TS 类型 */
+
 import { useMemo, useState, useCallback } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";

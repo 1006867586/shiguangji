@@ -57,7 +57,6 @@ export function PlaceMapOverlay({
   useEffect(() => {
     if (!mapInstance) return;
     const update = () => {
-      const container = mapInstance.getContainer();
       const mapSize = mapInstance.getSize();
       const w = CARD_WIDTH;
       const h = containerRef.current?.offsetHeight ?? 220;
