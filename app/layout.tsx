@@ -28,10 +28,10 @@ export const metadata: Metadata = {
     normalizeEnvUrl(process.env.NEXT_PUBLIC_APP_URL, "http://localhost:3000")
   ),
   title: {
-    default: `${APP_NAME} · 圈子聚餐记录`,
+    default: `${APP_NAME} · 今天吃什么转盘与店铺收藏`,
     template: `%s · ${APP_NAME}`,
   },
-  description: "记录每一次与朋友的飨聚时刻——圈子聚餐分享应用",
+  description: "今天吃什么转盘随机选餐，店铺收藏管理",
   applicationName: APP_NAME,
   manifest: "/manifest.json",
   appleWebApp: {
