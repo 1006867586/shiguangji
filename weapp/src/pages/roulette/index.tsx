@@ -4,18 +4,12 @@ import { View, Text, Canvas, Button, Picker, Input, ScrollView } from "@tarojs/c
 import { isLoggedIn } from "@/utils/auth";
 import { setSelectedTab } from "@/custom-tab-bar/tabStore";
 import {
-  fetchGroups,
-  fetchMealRoulette,
-  addMealRouletteItem,
-  deleteMealRouletteItem,
-  importMealRouletteItems,
   fetchFavoritePlaces,
   createRoulettePool,
   fetchRoulettePool,
   addRoulettePoolItem,
   deleteRoulettePoolItem,
   PLATFORM_LABELS,
-  type GroupLite,
   type MealRouletteItem,
   type RoulettePool,
   type FavoritePlace,
@@ -44,7 +38,7 @@ const DEFAULT_CUISINES: MealRouletteItem[] = [
   { id: "c6", group_id: "", title: "西餐", address: null, phone: null, signature_dishes: [], added_by: "", created_at: "" },
 ];
 
-/** 转盘条目统一形态（饭搭子池 / 分享池 / 本地） */
+/** 转盘条目统一形态（分享池 / 本地默认菜系；饭搭子池已去除） */
 interface WheelItem {
   id: string;
   title: string;
@@ -113,13 +107,11 @@ interface Canvas2DNode {
 
 type Source =
   | { type: "local" }
-  | { type: "pool"; code: string; name: string }
-  | { type: "group"; group: GroupLite };
+  | { type: "pool"; code: string; name: string };
 
 export default function RoulettePage() {
   // 登录态用 state（登录页返回后 useDidShow 里更新，触发重渲染）
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
-  const [groups, setGroups] = useState<GroupLite[]>([]);
   const [localPools, setLocalPools] = useState<LocalPool[]>(loadLocalPools());
   const [source, setSource] = useState<Source>({ type: "local" });
   const [sourceIdx, setSourceIdx] = useState(0);
@@ -142,11 +134,10 @@ export default function RoulettePage() {
   /** 缓动：easeOutCubic（先快后慢） */
   const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
-  // ---- 候选池选择列表：默认菜系 / 分享池 / 饭搭子池 ----
+  // ---- 候选池选择列表：默认菜系 / 分享池（去社交化后无饭搭子池分支） ----
   const pickerList = [
     "默认菜系",
     ...localPools.map((p) => (p.name || "分享池") + "（分享）"),
-    ...groups.map((g) => g.name),
   ];
 
   const resolveSource = (idx: number): Source => {
@@ -156,8 +147,7 @@ export default function RoulettePage() {
       const p = localPools[idx - 1];
       return { type: "pool", code: p.code, name: p.name };
     }
-    const g = groups[idx - 1 - poolCount];
-    return g ? { type: "group", group: g } : { type: "local" };
+    return { type: "local" };
   };
 
   // ---- 加载候选池 ----
@@ -176,10 +166,9 @@ export default function RoulettePage() {
           itemsRef.current = list.length ? list : DEFAULT_CUISINES;
           setItems(list.length ? list : DEFAULT_CUISINES);
         } else {
-          const list = await fetchMealRoulette(src.group.id);
-          const finalList = list?.length ? list : DEFAULT_CUISINES;
-          itemsRef.current = finalList;
-          setItems(finalList);
+          // 兜底：未识别的类型走默认菜系
+          itemsRef.current = DEFAULT_CUISINES;
+          setItems(DEFAULT_CUISINES);
         }
       } catch {
         itemsRef.current = DEFAULT_CUISINES;
@@ -205,12 +194,12 @@ export default function RoulettePage() {
       setSource(src);
       void loadItems(src);
     },
-    [localPools, groups, loadItems, resolveSource, spinning]
+    [localPools, loadItems, resolveSource, spinning]
   );
 
   // ---- 首次进入 / 分享链接进入 / 登录态刷新 ----
   useDidShow(() => {
-    setSelectedTab(3);
+    setSelectedTab(1);
     // 每次显示都重读登录态（登录页返回后更新）
     const cur = isLoggedIn();
     if (cur !== loggedIn) setLoggedIn(cur);
@@ -221,21 +210,7 @@ export default function RoulettePage() {
       void enterPool(poolCode);
       return;
     }
-    if (cur && groups.length === 0) {
-      fetchGroups()
-        .then((list) => setGroups(list ?? []))
-        .catch(() => {});
-    }
   });
-
-  // 登录态变为已登录后加载饭搭子池
-  useEffect(() => {
-    if (loggedIn && groups.length === 0) {
-      fetchGroups()
-        .then((list) => setGroups(list ?? []))
-        .catch(() => {});
-    }
-  }, [loggedIn, groups.length]);
 
   const enterPool = async (code: string) => {
     try {
@@ -307,8 +282,6 @@ export default function RoulettePage() {
     try {
       if (source.type === "pool") {
         await addRoulettePoolItem(source.code, { title, createdBy: anonId });
-      } else if (source.type === "group") {
-        await addMealRouletteItem(source.group.id, { title });
       } else {
         Taro.showToast({ title: "默认菜系不可编辑", icon: "none" });
         return;
@@ -320,7 +293,7 @@ export default function RoulettePage() {
     }
   };
 
-  // ---- 删除候选（分享池仅删自己的；饭搭子池成员可删） ----
+  // ---- 删除候选（分享池仅删自己的） ----
   const removeItem = async (item: WheelItem) => {
     if (spinning) return;
     if (source.type === "pool" && item.created_by !== anonId) {
@@ -339,8 +312,6 @@ export default function RoulettePage() {
     try {
       if (source.type === "pool") {
         await deleteRoulettePoolItem(item.id, anonId);
-      } else if (source.type === "group") {
-        await deleteMealRouletteItem(source.group.id, item.id);
       }
       if (winner?.id === item.id) setWinner(null);
       void loadItems(source);
@@ -349,7 +320,7 @@ export default function RoulettePage() {
     }
   };
 
-  // ---- 饭搭子池专属：导入收藏（可选部分条目） ----
+  // ---- 饭搭子池已移除：导入收藏入口只用于分享池 —— 把收藏条目复制进当前分享池 ----
   const [favOpen, setFavOpen] = useState(false);
   const [favList, setFavList] = useState<FavoritePlace[] | null>(null);
   const [favLoading, setFavLoading] = useState(false);
@@ -371,7 +342,7 @@ export default function RoulettePage() {
   }, [favLoading]);
 
   const openFavorites = () => {
-    if (source.type !== "group") return;
+    if (source.type !== "pool") return;
     if (spinning) {
       Taro.showToast({ title: "转盘转动中，请稍候", icon: "none" });
       return;
@@ -402,7 +373,7 @@ export default function RoulettePage() {
   };
 
   const confirmImportFavorites = async () => {
-    if (source.type !== "group" || importing) return;
+    if (source.type !== "pool" || importing) return;
     const picked = (favList ?? []).filter((p) => favSelected.has(p.id));
     if (picked.length === 0) {
       Taro.showToast({ title: "请至少选择一家", icon: "none" });
@@ -411,19 +382,24 @@ export default function RoulettePage() {
     setImporting(true);
     Taro.showLoading({ title: "导入中…", mask: true });
     try {
-      const res = await importMealRouletteItems(
-        source.group.id,
-        picked.map((p) => ({
-          title: p.title,
-          address: p.address ?? undefined,
-          phone: p.phone ?? undefined,
-          signatureDishes: p.signature_dishes ?? [],
-        }))
-      );
+      let inserted = 0;
+      let failed = 0;
+      // 分享池逐条 addRoulettePoolItem（无批量接口）
+      for (const p of picked) {
+        try {
+          await addRoulettePoolItem(source.code, {
+            title: p.title,
+            createdBy: anonId,
+          });
+          inserted += 1;
+        } catch {
+          failed += 1;
+        }
+      }
       Taro.hideLoading();
       setFavOpen(false);
       Taro.showToast({
-        title: `导入 ${res.inserted} 家${res.duplicated ? `，${res.duplicated} 家已存在` : ""}`,
+        title: `导入 ${inserted} 家${failed ? `，${failed} 家失败` : ""}`,
         icon: "none",
         duration: 2500,
       });
@@ -616,8 +592,6 @@ export default function RoulettePage() {
     Taro.makePhoneCall({ phoneNumber: phone }).catch(() => {});
   };
 
-  const currentGroupId = source.type === "group" ? source.group.id : null;
-
   return (
     <View className="roulette-page has-tabbar">
       {/* 标题区 */}
@@ -718,7 +692,7 @@ export default function RoulettePage() {
         </View>
       )}
 
-      {/* 候选池管理（默认菜系不可编辑；分享池/饭搭子池可增删） */}
+      {/* 候选池管理（默认菜系不可编辑；分享池可增删/导入收藏） */}
       {source.type !== "local" && (
         <View className="pool-card">
           <View className="pool-header">
@@ -731,7 +705,7 @@ export default function RoulettePage() {
               <Button size="mini" onClick={() => void addItem()}>
                 ＋ 添加
               </Button>
-              {source.type === "group" && (
+              {source.type === "pool" && (
                 <Button
                   size="mini"
                   type="primary"
@@ -755,9 +729,6 @@ export default function RoulettePage() {
               <View className="pool-item-main">
                 <View className="pool-item-title-row">
                   <Text className="pool-item-title">{it.title}</Text>
-                  {it.added_by && (
-                    <Text className="pool-item-adder">成员添加</Text>
-                  )}
                   {source.type === "pool" && it.created_by === anonId && (
                     <Text className="pool-item-adder">我添加的</Text>
                   )}
@@ -780,10 +751,10 @@ export default function RoulettePage() {
       )}
 
       {/* 未登录提示（不影响默认菜系/分享池使用） */}
-      {!loggedIn && source.type !== "pool" && (
+      {!loggedIn && (
         <View className="login-hint">
           <Text className="text-muted">
-            登录后可使用饭搭子候选池；分享池免登录即可用
+            登录后可同步你的收藏；分享池免登录即可用
           </Text>
         </View>
       )}

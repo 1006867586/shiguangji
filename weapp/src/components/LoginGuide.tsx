@@ -12,7 +12,7 @@ interface Props {
 /** 统一登录引导：所有页面未登录占位共用同一视觉 */
 export default function LoginGuide({
   title = "欢迎使用「飨刻」",
-  subtitle = "登录后开启你的聚餐社交",
+  subtitle = "登录后同步你的收藏",
 }: Props) {
   return (
     <View className="login-guide">

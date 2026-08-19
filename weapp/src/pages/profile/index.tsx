@@ -4,8 +4,6 @@ import { View, Text, Button, Image, Input, OpenData } from "@tarojs/components";
 import { isLoggedIn, logout } from "@/utils/auth";
 import { setSelectedTab } from "@/custom-tab-bar/tabStore";
 import {
-  fetchUnreadCount,
-  fetchGroups,
   fetchMyProfile,
   updateMyProfile,
   type ProfileLite,
@@ -15,14 +13,13 @@ import LoginGuide from "@/components/LoginGuide";
 import "./index.scss";
 
 /**
- * 个人中心 — 渐变 Hero + 统计数据 + 菜单卡片。
- * 昵称/头像：已编辑过后端资料则显示后端值，否则回退微信 OpenData。
+ * 个人中心 — 渐变 Hero + 菜单卡片。
+ *
+ * 去社交化后只保留：资料编辑 / 我的收藏 / 产品介绍 / 退出登录。
+ * 移除：饭搭子、通知、未读数、动态相关入口。
  */
 export default function ProfilePage() {
   const [logged, setLogged] = useState(isLoggedIn());
-  const [unread, setUnread] = useState(0);
-  const [groupCount, setGroupCount] = useState(0);
-  // 后端资料（null=未加载；created_at 为空表示从未编辑过）
   const [profile, setProfile] = useState<ProfileLite | null>(null);
 
   // 编辑面板
@@ -34,16 +31,10 @@ export default function ProfilePage() {
 
   const hasProfile = !!profile && !!profile.created_at;
 
-  const loadStats = useCallback(async () => {
+  const loadProfile = useCallback(async () => {
     if (!isLoggedIn()) return;
     try {
-      const [unreadRes, groups, prof] = await Promise.all([
-        fetchUnreadCount().catch(() => null),
-        fetchGroups().catch(() => null),
-        fetchMyProfile().catch(() => null),
-      ]);
-      if (unreadRes) setUnread(unreadRes.count ?? 0);
-      if (groups) setGroupCount(groups.length);
+      const prof = await fetchMyProfile().catch(() => null);
       if (prof) setProfile(prof);
     } catch {
       // 静默失败
@@ -51,9 +42,9 @@ export default function ProfilePage() {
   }, []);
 
   useDidShow(() => {
-    setSelectedTab(4);
+    setSelectedTab(2);
     setLogged(isLoggedIn());
-    void loadStats();
+    void loadProfile();
   });
 
   const handleLogout = () => {
@@ -117,14 +108,11 @@ export default function ProfilePage() {
   };
 
   const goLogin = () => Taro.navigateTo({ url: "/pages/login/index" });
-  const goGroups = () => Taro.switchTab({ url: "/pages/groups/index" });
-  const goNotifications = () =>
-    Taro.navigateTo({ url: "/pages/notifications/index" });
   const goFavorites = () =>
-    Taro.navigateTo({ url: "/pages/favorites/index" });
+    Taro.switchTab({ url: "/pages/index/index" });
 
   if (!logged) {
-    return <LoginGuide subtitle="登录后开启你的聚餐社交" />;
+    return <LoginGuide subtitle="登录后同步你的收藏" />;
   }
 
   return (
@@ -140,22 +128,6 @@ export default function ProfilePage() {
         </View>
         <View className="hero-name">
           {hasProfile ? profile?.nickname || "用户" : <OpenData type="userNickName" />}
-        </View>
-        <View className="hero-stats">
-          <View className="stat-item">
-            <Text className="stat-num">{groupCount}</Text>
-            <Text className="stat-label">饭搭子</Text>
-          </View>
-          <View className="stat-divider" />
-          <View className="stat-item" onClick={goNotifications}>
-            <Text className="stat-num">{unread > 0 ? unread : 0}</Text>
-            <Text className="stat-label">通知</Text>
-          </View>
-          <View className="stat-divider" />
-          <View className="stat-item" onClick={goFavorites}>
-            <Text className="stat-num">★</Text>
-            <Text className="stat-label">收藏</Text>
-          </View>
         </View>
       </View>
 
@@ -221,22 +193,6 @@ export default function ProfilePage() {
             <Text className="menu-label">编辑资料</Text>
             <Text className="menu-arrow">›</Text>
           </View>
-          <View className="menu-item" onClick={goGroups}>
-            <Text className="menu-icon">👥</Text>
-            <Text className="menu-label">我的饭搭子</Text>
-            {unread > 0 && (
-              <Text className="menu-badge">{unread > 99 ? "99+" : unread}</Text>
-            )}
-            <Text className="menu-arrow">›</Text>
-          </View>
-          <View className="menu-item" onClick={goNotifications}>
-            <Text className="menu-icon">🔔</Text>
-            <Text className="menu-label">通知中心</Text>
-            {unread > 0 && (
-              <Text className="menu-badge">{unread > 99 ? "99+" : unread}</Text>
-            )}
-            <Text className="menu-arrow">›</Text>
-          </View>
           <View className="menu-item" onClick={goFavorites}>
             <Text className="menu-icon">⭐</Text>
             <Text className="menu-label">我的收藏</Text>
@@ -245,14 +201,6 @@ export default function ProfilePage() {
         </View>
 
         <View className="menu-card">
-          <View
-            className="menu-item"
-            onClick={() => Taro.navigateTo({ url: "/pages/demo/index" })}
-          >
-            <Text className="menu-icon">📖</Text>
-            <Text className="menu-label">产品介绍</Text>
-            <Text className="menu-arrow">›</Text>
-          </View>
           <View className="menu-item logout" onClick={handleLogout}>
             <Text className="menu-icon">🚪</Text>
             <Text className="menu-label">退出登录</Text>

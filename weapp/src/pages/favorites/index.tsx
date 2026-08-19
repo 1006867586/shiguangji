@@ -11,9 +11,8 @@ import { formatRelativeTime } from "@/utils/time";
 import "./index.scss";
 
 /**
- * 收藏夹列表页。
- * 卡片展示店铺信息，点卡片发起聚餐（跳发布页带链接参数），
- * 编辑跳编辑页，删除为乐观删除 + 失败恢复。
+ * 收藏夹列表页（深链入口，tabBar 主入口是 pages/index/index）。
+ * 卡片展示店铺信息，点卡片复制地址，编辑跳编辑页，删除为乐观删除 + 失败恢复。
  */
 export default function FavoritesPage() {
   const [list, setList] = useState<FavoritePlace[] | null>(null);
@@ -71,17 +70,16 @@ export default function FavoritesPage() {
     });
   };
 
-  // 发起聚餐：标题/地址带去发布页（发布页 link 解析草稿）
-  const startDinner = (p: FavoritePlace) => {
-    const query = [
-      `title=${encodeURIComponent(p.title)}`,
-      p.address ? `address=${encodeURIComponent(p.address)}` : "",
-    ]
-      .filter(Boolean)
-      .join("&");
-    // publish 是 tabBar 页：navigateTo 无法打开 tab 页，switchTab 不能带参，
-    // 用 reLaunch（可带参数打开 tab 页）
-    Taro.reLaunch({ url: `/pages/publish/index?${query}` });
+  // 点店铺主区域：复制地址到剪贴板（去社交化后不再"发起聚餐"）
+  const openAddress = (p: FavoritePlace) => {
+    if (!p.address) {
+      Taro.showToast({ title: "暂无地址", icon: "none" });
+      return;
+    }
+    Taro.setClipboardData({
+      data: p.address,
+      success: () => Taro.showToast({ title: "地址已复制", icon: "success" }),
+    });
   };
 
   const callStore = (p: FavoritePlace) => {
@@ -114,7 +112,7 @@ export default function FavoritesPage() {
 
       {list?.map((p) => (
         <View key={p.id} className="fav-card">
-          <View className="fav-main" onClick={() => startDinner(p)}>
+          <View className="fav-main" onClick={() => openAddress(p)}>
             <View className="fav-title-row">
               <Text className="fav-title">{p.title}</Text>
               {p.rating != null && (
@@ -158,9 +156,6 @@ export default function FavoritesPage() {
                 电话
               </Button>
             )}
-            <Button size="mini" type="primary" onClick={() => startDinner(p)}>
-              发起聚餐
-            </Button>
             <Button size="mini" onClick={() => goEdit(p)}>
               编辑
             </Button>

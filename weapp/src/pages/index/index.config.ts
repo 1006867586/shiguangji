@@ -1,4 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: "动态",
+  navigationBarTitleText: "收藏",
   enablePullDownRefresh: true,
 });

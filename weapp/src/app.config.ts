@@ -1,20 +1,13 @@
 export default defineAppConfig({
   pages: [
-    "pages/demo/index",
     "pages/index/index",
-    "pages/groups/index",
-    "pages/publish/index",
     "pages/roulette/index",
     "pages/profile/index",
     "pages/login/index",
     "pages/login-confirm/index",
-    "pages/detail/index",
-    "pages/group-detail/index",
-    "pages/notifications/index",
     "pages/favorites/index",
     "pages/favorites-import/index",
     "pages/favorite-edit/index",
-    "pages/poster/index",
     "pages/webview/index",
   ],
   tabBar: {
@@ -24,9 +17,7 @@ export default defineAppConfig({
     backgroundColor: "#ffffff",
     borderStyle: "white",
     list: [
-      { pagePath: "pages/index/index", text: "打卡" },
-      { pagePath: "pages/groups/index", text: "饭搭子" },
-      { pagePath: "pages/publish/index", text: "发布" },
+      { pagePath: "pages/index/index", text: "收藏" },
       { pagePath: "pages/roulette/index", text: "转盘" },
       { pagePath: "pages/profile/index", text: "我的" },
     ],

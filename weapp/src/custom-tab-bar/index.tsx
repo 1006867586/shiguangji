@@ -9,13 +9,11 @@ interface TabItem {
   key: string;
   pagePath: string;
   text: string;
-  icon: "home" | "groups" | "plus" | "wheel" | "user";
+  icon: "home" | "wheel" | "user";
 }
 
 const TABS: TabItem[] = [
-  { key: "index", pagePath: "/pages/index/index", text: "打卡", icon: "home" },
-  { key: "groups", pagePath: "/pages/groups/index", text: "饭搭子", icon: "groups" },
-  { key: "publish", pagePath: "/pages/publish/index", text: "发布", icon: "plus" },
+  { key: "favorites", pagePath: "/pages/index/index", text: "收藏", icon: "home" },
   { key: "roulette", pagePath: "/pages/roulette/index", text: "转盘", icon: "wheel" },
   { key: "profile", pagePath: "/pages/profile/index", text: "我的", icon: "user" },
 ];
