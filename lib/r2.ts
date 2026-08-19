@@ -80,3 +80,30 @@ export function isR2Configured(): boolean {
     return false;
   }
 }
+
+/**
+ * 服务端直传 Buffer 到 R2（不经浏览器），返回公开访问 URL。
+ * 用途：服务端合成图片（海报等）后直接落桶。
+ */
+export async function uploadBufferToR2(opts: {
+  buffer: Buffer;
+  contentType: string;
+  ext: string;
+}): Promise<{ publicUrl: string; key: string }> {
+  const { bucket, publicUrl } = getR2Config();
+  const key = generateObjectKey(opts.ext);
+  const client = getClient();
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: opts.buffer,
+      ContentType: opts.contentType,
+    })
+  );
+  const baseUrl = publicUrl.replace(/\/$/, "");
+  const baseWithProto = /^https?:\/\//i.test(baseUrl)
+    ? baseUrl
+    : `https://${baseUrl}`;
+  return { publicUrl: `${baseWithProto}/${key}`, key };
+}

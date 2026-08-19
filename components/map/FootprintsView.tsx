@@ -10,6 +10,7 @@ import {
   Trash2,
   ArrowDown,
   CalendarDays,
+  ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { CheckinMapView } from "@/components/map/CheckinMapView";
 import { PlaceCard } from "@/components/map/PlaceCard";
+import { PosterPreviewDialog } from "@/components/map/PosterPreviewDialog";
 import { EmptyState } from "@/components/common/EmptyState";
 import { fetcher, fetchData } from "@/lib/fetcher";
 import { formatRelativeTime } from "@/lib/utils";
@@ -45,6 +47,7 @@ export function FootprintsView() {
   const [selected, setSelected] = useState<Checkin | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [posterOpen, setPosterOpen] = useState(false);
 
   const { data, isLoading, mutate } = useSWR<CheckinPage>(
     "/api/map/checkins/me?limit=20",
@@ -112,6 +115,16 @@ export function FootprintsView() {
           <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
             {checkins.length}
           </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto h-8 text-xs"
+            disabled={checkins.length === 0}
+            onClick={() => setPosterOpen(true)}
+          >
+            <ImageIcon className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+            生成海报
+          </Button>
         </div>
       </header>
 
@@ -247,6 +260,13 @@ export function FootprintsView() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {/* 我的打卡海报 */}
+      <PosterPreviewDialog
+        open={posterOpen}
+        onOpenChange={setPosterOpen}
+        type="footprints"
+      />
     </div>
   );
 }

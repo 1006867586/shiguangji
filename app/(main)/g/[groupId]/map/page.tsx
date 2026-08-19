@@ -86,7 +86,7 @@ export default async function CircleMapPage({ params }: Params) {
         </div>
       </header>
 
-      <CircleMapView places={places} />
+      <CircleMapView places={places} groupId={groupId} />
     </div>
   );
 }

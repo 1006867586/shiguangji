@@ -3,14 +3,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- 高德 JS API 无官方 TS 类型定义 */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MapPin, Users, Clock } from "lucide-react";
+import { MapPin, Users, Clock, ImageIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { MapLauncher } from "@/components/common/MapLauncher";
+import { PosterPreviewDialog } from "./PosterPreviewDialog";
 import { AmapMap } from "./AmapMap";
 import { formatRelativeTime } from "@/lib/utils";
 import type { CircleCheckinPlace } from "@/types";
@@ -18,6 +20,8 @@ import type { CircleCheckinPlace } from "@/types";
 interface CircleMapViewProps {
   /** 圈子打卡聚合（脱敏：门店 + 打卡数 + 最近打卡时间） */
   places: CircleCheckinPlace[];
+  /** 圈子 id（用于生成圈子海报） */
+  groupId?: string;
   center?: [number, number];
   zoom?: number;
 }
@@ -28,6 +32,7 @@ interface CircleMapViewProps {
  */
 export function CircleMapView({
   places,
+  groupId,
   center = [114.3054, 30.5931], // 默认武汉
   zoom = 11,
 }: CircleMapViewProps) {
@@ -35,6 +40,7 @@ export function CircleMapView({
   const markersRef = useRef<any[]>([]);
   const [map, setMap] = useState<any>(null);
   const [selected, setSelected] = useState<CircleCheckinPlace | null>(null);
+  const [posterOpen, setPosterOpen] = useState(false);
 
   const handleReady = useCallback((instance: any) => {
     mapRef.current = instance;
@@ -107,6 +113,16 @@ export function CircleMapView({
           打卡次数
         </span>
         <span className="ml-auto">{places.length} 家门店</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs"
+          disabled={places.length === 0}
+          onClick={() => setPosterOpen(true)}
+        >
+          <ImageIcon className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+          生成海报
+        </Button>
       </div>
 
       <div className="flex-1" />
@@ -173,6 +189,14 @@ export function CircleMapView({
           </p>
         </div>
       ) : null}
+
+      {/* 圈子打卡海报 */}
+      <PosterPreviewDialog
+        open={posterOpen}
+        onOpenChange={setPosterOpen}
+        type="circle"
+        groupId={groupId}
+      />
     </div>
   );
 }
