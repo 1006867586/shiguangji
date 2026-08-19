@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Download, Link2, Check } from "lucide-react";
+import {
+  Loader2,
+  Download,
+  Link2,
+  Check,
+  Palette,
+  Eye,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +32,7 @@ interface PosterResult {
   points: number;
 }
 
-/** 打卡地图海报：打开后自动生成，展示 + 下载 + 复制链接 */
+/** 打卡地图海报：打开后自动生成，展示 + 下载 + 复制链接 + 手绘风（二期） */
 export function PosterPreviewDialog({
   open,
   onOpenChange,
@@ -35,12 +42,17 @@ export function PosterPreviewDialog({
   const [loading, setLoading] = useState(false);
   const [poster, setPoster] = useState<PosterResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [styling, setStyling] = useState(false);
+  const [styledUrl, setStyledUrl] = useState<string | null>(null);
+  const [showStyled, setShowStyled] = useState(true);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     setLoading(true);
     setPoster(null);
+    setStyledUrl(null);
+    setShowStyled(true);
     setCopied(false);
     fetchData<PosterResult>("/api/map/poster", {
       method: "POST",
@@ -63,10 +75,9 @@ export function PosterPreviewDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, type, groupId]);
 
-  const handleCopy = async () => {
-    if (!poster) return;
+  const handleCopy = async (url: string) => {
     try {
-      await navigator.clipboard.writeText(poster.url);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       toast.success("链接已复制");
       setTimeout(() => setCopied(false), 2000);
@@ -74,6 +85,27 @@ export function PosterPreviewDialog({
       toast.error("复制失败，请长按图片保存");
     }
   };
+
+  const handleStyle = async () => {
+    if (!poster) return;
+    setStyling(true);
+    try {
+      const res = await fetchData<{ url: string }>("/api/map/poster/style", {
+        method: "POST",
+        body: JSON.stringify({ url: poster.url }),
+      });
+      setStyledUrl(res.url);
+      setShowStyled(true);
+      toast.success("手绘风海报已生成");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "手绘风生成失败");
+    } finally {
+      setStyling(false);
+    }
+  };
+
+  const currentUrl = showStyled && styledUrl ? styledUrl : poster?.url;
+  const downloadUrl = currentUrl ?? poster?.url ?? "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,22 +127,70 @@ export function PosterPreviewDialog({
             </div>
           ) : poster ? (
             <div className="space-y-3">
-              <div className="overflow-hidden rounded-lg border border-border">
+              <div className="relative overflow-hidden rounded-lg border border-border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={poster.url}
+                  src={currentUrl}
                   alt="打卡地图海报"
                   className="max-h-[24rem] w-full object-contain"
                 />
+                {styling ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-sm">
+                    <Loader2
+                      className="h-6 w-6 animate-spin text-primary"
+                      aria-hidden="true"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      手绘风生成中，约需 1 分钟…
+                    </p>
+                  </div>
+                ) : null}
               </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant={styledUrl ? "outline" : "default"}
+                  size="sm"
+                  className="flex-1"
+                  disabled={styling}
+                  onClick={handleStyle}
+                >
+                  {styling ? (
+                    <Loader2
+                      className="mr-1 h-3.5 w-3.5 animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <Palette className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  {styledUrl ? "重新生成手绘风" : "生成手绘风"}
+                </Button>
+                {styledUrl ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setShowStyled((v) => !v)}
+                  >
+                    <Eye className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                    {showStyled ? "查看原始" : "查看手绘风"}
+                  </Button>
+                ) : null}
+              </div>
+
               <div className="flex gap-2">
                 <Button asChild variant="outline" size="sm" className="flex-1">
-                  <a href={poster.url} download target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={downloadUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Download className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
                     下载海报
                   </a>
                 </Button>
-                <Button size="sm" className="flex-1" onClick={handleCopy}>
+                <Button size="sm" className="flex-1" onClick={() => handleCopy(downloadUrl)}>
                   {copied ? (
                     <Check className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
                   ) : (

@@ -4,6 +4,7 @@
 // - 文字：sharp 合成 SVG（Noto Sans SC 思源黑体，随包分发，
 //   以 data URI 内嵌，解决 Vercel 无系统中文字体问题）
 // - 版式：借鉴 map-creator 海报工作流（数据→取框→底图→版式）
+// 二期：GPT Image edits 手绘风风格化（stylizePoster）
 // ============================================================
 
 import fs from "node:fs";
@@ -191,4 +192,88 @@ export async function generatePoster(opts: PosterOptions): Promise<Buffer> {
     ])
     .png({ compressionLevel: 9 })
     .toBuffer();
+}
+
+// ============================================================
+// 二期 · GPT Image 手绘风风格化
+// ============================================================
+
+const OPENAI_IMAGES_EDIT_URL = "https://api.openai.com/v1/images/edits";
+const STYLE_MODEL = "gpt-image-2";
+const STYLE_SIZE = "1024x1536"; // 竖版海报
+
+/** 手绘风提示词（改编自 map-creator 的 prompts/01_手绘风城市导览地图.md） */
+const HAND_DRAWN_PROMPT = [
+  "请基于我上传的美食打卡地图海报底稿，重新绘制成一张高端手绘城市美食地图海报。",
+  "目标风格：高端生活方式杂志插画 / 城市漫游指南 / 精品街区手绘地图。",
+  "需要有手绘质感，但仍保持清晰、克制、精致；不要卡通化，不要儿童绘本风，不要廉价旅游地图风。",
+  "内容准确性（优先于所有风格描述）：",
+  "1. 严格以底稿为准，保留地图区域的道路结构、街区比例和点位相对位置。",
+  "2. 不要移动任何编号点位，不要新增或删除地点。",
+  "3. 保留底稿中的所有红色编号标记，编号必须清晰可读，顺序不能改变。",
+  "4. 保留底部标题区：主标题、副标题、统计文字与署名，文字必须与底稿一致，中文清晰可读，不要乱码或错别字。",
+  "5. 看不清的文字宁可弱化或省略，也不要生成错误文字。",
+  "6. 不要出现任何地图平台的界面风格、导航 UI、比例尺控件、搜索框或水印。",
+  "视觉设计：米白色纸张底色，可带轻微纸纹；地图区域转化为手绘线条与水彩淡彩的手绘插画风；",
+  "红色编号标记保留为手绘风格的小标记；整体排版高端克制，适合分享到社交平台。",
+].join("\n");
+
+/** 是否已配置 OpenAI API Key（手绘风风格化依赖） */
+export function isStyleConfigured(): boolean {
+  return Boolean(process.env.OPENAI_API_KEY);
+}
+
+/**
+ * GPT Image edits 手绘风风格化。
+ * 输入一期海报 PNG Buffer，输出风格化后 PNG Buffer。
+ */
+export async function stylizePoster(imageBuffer: Buffer): Promise<Buffer> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("未配置 OPENAI_API_KEY，无法生成手绘风海报");
+
+  // 等比缩放到目标尺寸（contain 保留全部内容，避免裁剪底部文字区）
+  const resized = await sharp(imageBuffer)
+    .resize(1024, 1536, {
+      fit: "contain",
+      background: { r: 247, g: 244, b: 238 },
+    })
+    .png()
+    .toBuffer();
+
+  const form = new FormData();
+  form.append("model", STYLE_MODEL);
+  form.append(
+    "image",
+    new Blob([new Uint8Array(resized)], { type: "image/png" }),
+    "poster.png"
+  );
+  form.append("prompt", HAND_DRAWN_PROMPT);
+  form.append("size", STYLE_SIZE);
+
+  const res = await fetch(OPENAI_IMAGES_EDIT_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`GPT Image 接口失败: HTTP ${res.status} ${text.slice(0, 200)}`);
+  }
+
+  const json = (await res.json()) as {
+    data?: Array<{ b64_json?: string; url?: string }>;
+  };
+  const item = json?.data?.[0];
+  if (!item) throw new Error("GPT Image 返回为空");
+
+  if (item.b64_json) {
+    return Buffer.from(item.b64_json, "base64");
+  }
+  if (item.url) {
+    const imgRes = await fetch(item.url, { signal: AbortSignal.timeout(60_000) });
+    if (!imgRes.ok) throw new Error("GPT Image 结果下载失败");
+    return Buffer.from(await imgRes.arrayBuffer());
+  }
+  throw new Error("GPT Image 返回格式异常");
 }
