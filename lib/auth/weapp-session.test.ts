@@ -114,7 +114,7 @@ describe("exchangeOpenIdForSession", () => {
     });
   });
 
-  it("老用户传入 nickname 不覆盖已有资料；profiles.upsert 不传 nickname", async () => {
+  it("老用户传入 nickname + avatarUrl：确认页预填+可选改，传入则覆盖更新", async () => {
     // user.created_at 设为 1 小时前 → createdMinutesAgo > 2 → isNewUser=false
     const createdAt = new Date(Date.now() - 60 * 60_000).toISOString();
     const user = { id: "u_old", created_at: createdAt, user_metadata: { nickname: "旧昵称" } };
@@ -137,13 +137,16 @@ describe("exchangeOpenIdForSession", () => {
     });
 
     expect(result.isNewUser).toBe(false);
-    // 老用户：即使前端传了资料也不写入 user_metadata / profiles（避免覆盖）
-    expect(mocks.updateUserById.mock.calls[0][1].user_metadata.nickname).toBe("旧昵称");
-    // 老用户不会写入 avatar_url（shouldWriteAvatar = isNewUser=false → false）
-    expect(
-      mocks.updateUserById.mock.calls[0][1].user_metadata.avatar_url
-    ).toBeUndefined();
-    expect(mocks.upsert).toHaveBeenCalledWith({ id: "u_old" });
+    // 老用户确认页传入新资料 → 按前端传入值更新（预填+可选改，不区分新老用户）
+    expect(mocks.updateUserById.mock.calls[0][1].user_metadata.nickname).toBe("新昵称");
+    expect(mocks.updateUserById.mock.calls[0][1].user_metadata.avatar_url).toBe(
+      "https://r2.example.com/new.jpg"
+    );
+    expect(mocks.upsert).toHaveBeenCalledWith({
+      id: "u_old",
+      nickname: "新昵称",
+      avatar_url: "https://r2.example.com/new.jpg",
+    });
   });
 
   it("options.writeProfile=false（login-status 场景）：跳过 updateUserById 与 upsert", async () => {
