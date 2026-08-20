@@ -61,8 +61,8 @@ export async function GET(_request: NextRequest, { params }: Params) {
     const declined = all.filter((r) => r.status === "declined");
     const myStatus = all.find((r) => r.user_id === user.id)?.status ?? null;
 
-    // 出席者最多取前 10 个，按登记顺序
-    const attendingIds = attending.slice(0, 10).map((r) => r.user_id);
+    // 出席者返回完整名单（列表页/详情页按需展示），按登记顺序
+    const attendingIds = attending.map((r) => r.user_id);
     let attendees: { id: string; nickname: string; avatar_url: string | null }[] = [];
     if (attendingIds.length > 0) {
       const { data: profiles } = await supabase

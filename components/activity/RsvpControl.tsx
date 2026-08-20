@@ -134,10 +134,10 @@ export function RsvpControl({ activityId }: RsvpControlProps) {
         </div>
       ) : null}
 
-      {/* 参加人员头像列表 */}
+      {/* 参加人员名单（完整列出） */}
       {expanded && attendees.length > 0 ? (
         <div className="flex items-center gap-1">
-          {attendees.slice(0, 5).map((p) => (
+          {attendees.map((p) => (
             <UserAvatar
               key={p.id}
               profile={p}
@@ -145,11 +145,6 @@ export function RsvpControl({ activityId }: RsvpControlProps) {
               className="ring-2 ring-emerald-500/40"
             />
           ))}
-          {attendees.length > 5 ? (
-            <span className="text-xs text-muted-foreground">
-              +{attendees.length - 5}
-            </span>
-          ) : null}
         </div>
       ) : null}
 

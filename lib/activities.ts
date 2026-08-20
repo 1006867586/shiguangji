@@ -5,6 +5,7 @@ import type {
   ActivityPhoto,
   Comment,
   ExternalLink,
+  RsvpStatus,
 } from "@/types";
 
 /** 将 jsonb 字段安全转换为 ExternalLink */
@@ -136,6 +137,58 @@ export async function fetchFeed(opts: {
     }
   }
 
+  // 批量补充 RSVP：每个活动统计 3 种状态人数 + 当前用户状态，
+  // 使列表页可直接展示/切换参加状态而不依赖详情页
+  const rsvpActivityIds = activities.map((a) => a.id);
+  if (rsvpActivityIds.length > 0) {
+    const { data: rsvpRows, error: rsvpErr } = await supabase
+      .from("activity_rsvp")
+      .select("activity_id, user_id, status")
+      .in("activity_id", rsvpActivityIds);
+
+    if (rsvpErr) {
+      throw new Error(`获取 RSVP 失败: ${rsvpErr.message}`);
+    }
+
+    const byActivity = new Map<
+      string,
+      { attending: number; maybe: number; declined: number; myStatus: RsvpStatus | null }
+    >();
+    for (const ap of (rsvpRows ?? []) as {
+      activity_id: string;
+      user_id: string;
+      status: RsvpStatus;
+    }[]) {
+      const entry = byActivity.get(ap.activity_id) ?? {
+        attending: 0,
+        maybe: 0,
+        declined: 0,
+        myStatus: null,
+      };
+      if (ap.status === "attending") entry.attending += 1;
+      else if (ap.status === "maybe") entry.maybe += 1;
+      else if (ap.status === "declined") entry.declined += 1;
+      if (ap.user_id === opts.userId) entry.myStatus = ap.status;
+      byActivity.set(ap.activity_id, entry);
+    }
+
+    for (const a of activities) {
+      const e = byActivity.get(a.id);
+      let attending = 0;
+      let maybe = 0;
+      let declined = 0;
+      let myStatus: RsvpStatus | null = null;
+      if (e) {
+        attending = e.attending;
+        maybe = e.maybe;
+        declined = e.declined;
+        myStatus = e.myStatus;
+      }
+      a.rsvp_summary = { attending, maybe, declined };
+      a.rsvp = myStatus ? { status: myStatus } : null;
+    }
+  }
+
   const next_cursor =
     activities.length === limit && activities.length > 0
       ? activities[activities.length - 1].created_at
@@ -166,7 +219,7 @@ export async function fetchActivityDetail(opts: {
 
   const a = activity as Record<string, unknown>;
 
-  // 并行发起无依赖的查询（photos/comments/photoCount/commentCount/likeCount/myLike/repostOf）
+  // 并行发起无依赖的查询（photos/comments/photoCount/commentCount/likeCount/myLike/repostOf/rsvp）
   const [
     photosRes,
     commentsRes,
@@ -175,6 +228,7 @@ export async function fetchActivityDetail(opts: {
     likeCountRes,
     myLikeRes,
     repostOfRes,
+    rsvpRes,
   ] = await Promise.all([
     supabase
       .from("activity_photos")
@@ -218,6 +272,10 @@ export async function fetchActivityDetail(opts: {
           .eq("id", a.repost_of_id as string)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    supabase
+      .from("activity_rsvp")
+      .select("user_id, status")
+      .eq("activity_id", opts.activityId),
   ]);
 
   const photos = photosRes.data;
@@ -226,6 +284,23 @@ export async function fetchActivityDetail(opts: {
   const commentCount = commentCountRes.count;
   const likeCount = likeCountRes.count;
   const myLike = myLikeRes.data;
+
+  // RSVP 汇总：统计 3 种状态人数 + 当前用户状态，与 fetchFeed 保持一致，
+  // 使详情页复用 FeedCard 的紧凑「参加」按钮在刷新后仍能正确显示
+  const rsvpRows = (rsvpRes.data ?? []) as {
+    user_id: string;
+    status: RsvpStatus;
+  }[];
+  let attending = 0;
+  let maybe = 0;
+  let declined = 0;
+  let myRsvpStatus: RsvpStatus | null = null;
+  for (const r of rsvpRows) {
+    if (r.status === "attending") attending += 1;
+    else if (r.status === "maybe") maybe += 1;
+    else if (r.status === "declined") declined += 1;
+    if (r.user_id === opts.userId) myRsvpStatus = r.status;
+  }
 
   // 转发源
   let repostOf: Activity["repost_of"] = null;
@@ -298,5 +373,7 @@ export async function fetchActivityDetail(opts: {
     repost_of: repostOf,
     repost_comment: (a.repost_comment as string) ?? null,
     group_id: a.group_id as string,
+    rsvp_summary: { attending, maybe, declined },
+    rsvp: myRsvpStatus ? { status: myRsvpStatus } : null,
   };
 }
