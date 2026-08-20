@@ -103,7 +103,7 @@ async function fetchAmapDetail(poiId: string): Promise<AmapDetailResp | null> {
   const url = new URL("https://restapi.amap.com/v5/place/detail");
   url.searchParams.set("key", AMAP_KEY!);
   url.searchParams.set("id", poiId);
-  url.searchParams.set("show_fields", "business");
+  url.searchParams.set("show_fields", "business,photos");
   const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
   if (!res.ok) return null;
   return (await res.json()) as AmapDetailResp;
@@ -119,7 +119,7 @@ async function searchAmapByNameAndLocation(
   url.searchParams.set("key", AMAP_KEY!);
   url.searchParams.set("keywords", name);
   url.searchParams.set("location", `${lng},${lat}`);
-  url.searchParams.set("show_fields", "business");
+  url.searchParams.set("show_fields", "business,photos");
   url.searchParams.set("page_size", "3");
   const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
   if (!res.ok) return null;
