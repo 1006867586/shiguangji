@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import Taro from "@tarojs/taro";
 import { View, Text, Button, Image, Input } from "@tarojs/components";
 import { request, ApiError } from "@/utils/request";
-import { saveSession, type WeappSession } from "@/utils/auth";
+import { saveSession, getAccessToken, type WeappSession } from "@/utils/auth";
+import { fetchMyProfile } from "@/utils/api";
 import { uploadToR2 } from "@/utils/upload";
 import "./index.scss";
 
@@ -23,6 +24,8 @@ import "./index.scss";
  * 老用户重复扫码不会被覆盖。
  */
 const NICKNAME_MAX = 20;
+/** 新用户默认昵称占位（用户可直接确认，也可在输入框修改） */
+const DEFAULT_NICKNAME = "微信用户";
 
 export default function LoginConfirmPage() {
   const [uuid, setUuid] = useState<string | null>(null);
@@ -33,7 +36,7 @@ export default function LoginConfirmPage() {
   const [avatarLocal, setAvatarLocal] = useState<string | null>(null); // 微信临时路径
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null); // R2 公网 URL
   const [uploading, setUploading] = useState(false);
-  const [nickname, setNickname] = useState("");
+  const [nickname, setNickname] = useState(DEFAULT_NICKNAME);
 
   useEffect(() => {
     const params = Taro.getCurrentInstance().router?.params ?? {};
@@ -42,6 +45,20 @@ export default function LoginConfirmPage() {
       setHint("无效的登录二维码，请回到 PC 端重新生成");
     } else {
       setUuid(scene);
+    }
+
+    // 预填已有资料：本地若已登录（老用户扫码），拉取既有昵称/头像填进表单，
+    // 用户无需重新选择即可确认；未登录（新用户）保留默认昵称 + 占位头像。
+    if (getAccessToken()) {
+      fetchMyProfile()
+        .then((prof) => {
+          if (!prof) return;
+          setNickname(prof.nickname || DEFAULT_NICKNAME);
+          if (prof.avatar_url) setAvatarUrl(prof.avatar_url);
+        })
+        .catch(() => {
+          // 拉取失败不阻塞，保留默认值
+        });
     }
   }, []);
 
