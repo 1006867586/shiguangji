@@ -103,7 +103,9 @@ interface AmapPoi {
   cityname?: string;
   pcityname?: string;
   tel?: string;
-  business?: { tel?: string; rating?: string; cost?: string } | null;
+  business?: { tel?: string; rating?: string; cost?: string; opening_hours?: string; tag?: string } | null;
+  /** 高德 POI photos 字段：每张照片一个对象，包含 url/title */
+  photos?: Array<{ url?: string; title?: string }> | null;
 }
 
 export async function searchAmapPois(
@@ -150,6 +152,7 @@ export async function searchAmapPois(
       rating: toNumberOrNull(p.business?.rating),
       price: toNumberOrNull(p.business?.cost),
       url: null,
+      photos: extractPhotoUrls(p.photos),
       location: {
         lng: Number.isFinite(lng) ? lng : 0,
         lat: Number.isFinite(lat) ? lat : 0,
@@ -157,6 +160,22 @@ export async function searchAmapPois(
       },
     };
   });
+}
+
+/** 从高德 POI photos 字段提取 url 列表（去空、去重） */
+function extractPhotoUrls(
+  photos: Array<{ url?: string; title?: string }> | null | undefined
+): string[] {
+  if (!Array.isArray(photos)) return [];
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const p of photos) {
+    if (!p?.url) continue;
+    if (seen.has(p.url)) continue;
+    seen.add(p.url);
+    urls.push(p.url);
+  }
+  return urls;
 }
 
 // ---------------- 百度 ----------------
@@ -228,6 +247,7 @@ export async function searchBaiduPois(
     rating: null,
     price: null,
     url: p.detail_info?.detail_url || null,
+    photos: [], // 百度 v2 检索接口不带 photos（需详情接口单独拉取），保持空数组
     location: {
       lng: p.location?.lng ?? 0,
       lat: p.location?.lat ?? 0,

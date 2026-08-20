@@ -460,6 +460,8 @@ export interface ParsedScreenshot {
   averagePrice: string | null;
   /** 餐厅分类，如 火锅/烤肉/烧烤/川菜；识别不到为 null */
   category: string | null;
+  /** 封面图 URL（AI 不产生，由地图 POI 兜底补全）；未补全时可为空 */
+  coverImage?: string | null;
 }
 
 /** 账单小票识别结果 */
@@ -626,6 +628,8 @@ export interface MapPlace {
   business_hours?: string | null;
   description?: string | null;
   tags?: string[] | null;
+  /** 封面图 URL（来自迁移 022，高德 POI photos[0]） */
+  cover_image_url?: string | null;
   updated_at?: string;
 }
 
@@ -665,6 +669,8 @@ export interface CreateCheckinBody {
     business_hours?: string | null;
     description?: string | null;
     tags?: string[] | null;
+    /** 封面图 URL（迁移 022） */
+    cover_image_url?: string | null;
   };
   activity_id?: string | null;
   note?: string | null;

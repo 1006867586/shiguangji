@@ -22,6 +22,7 @@ function makeCandidate(partial: Partial<PoiCandidate>): PoiCandidate {
     price: 67,
     url: null,
     location: { lng: 114.3, lat: 30.6, coordType: "gcj02" },
+    photos: ["https://store.is.autonavi.com/showpic/f25258d2954c1ceea9d3eaa888b68255"],
     ...partial,
   };
 }
@@ -69,6 +70,40 @@ describe("enrichLinkWithPoi", () => {
     expect(result.tier).toBe("high");
   });
 
+  it("人均为空时用 POI 人均补齐为统一格式", async () => {
+    const matchFn = vi.fn(async () => makeMatchResult({}));
+
+    const result = await enrichLinkWithPoi(makeLink({ price: null }), {
+      matchFn,
+    });
+
+    expect(result.link.price).toBe("¥67/人");
+  });
+
+  it("人均带小数时补齐为四舍五入整数", async () => {
+    const matchFn = vi.fn(async () =>
+      makeMatchResult({ candidate: makeCandidate({ price: 67.4 }) })
+    );
+
+    const result = await enrichLinkWithPoi(makeLink({ price: null }), {
+      matchFn,
+    });
+
+    expect(result.link.price).toBe("¥67/人");
+  });
+
+  it("封面为空时用 POI 首张照片补全", async () => {
+    const matchFn = vi.fn(async () => makeMatchResult({}));
+
+    const result = await enrichLinkWithPoi(makeLink({ coverImage: null }), {
+      matchFn,
+    });
+
+    expect(result.link.coverImage).toBe(
+      "https://store.is.autonavi.com/showpic/f25258d2954c1ceea9d3eaa888b68255"
+    );
+  });
+
   it("已有字段不覆盖（价格字符串格式保留，不套用 POI 人均数字）", async () => {
     const matchFn = vi.fn(async () => makeMatchResult({}));
 
@@ -95,7 +130,13 @@ describe("enrichLinkWithPoi", () => {
     const matchFn = vi.fn(async () => makeMatchResult({}));
 
     await enrichLinkWithPoi(
-      makeLink({ phone: "1", address: "a", category: "c", rating: 4.5 }),
+      makeLink({
+        phone: "1",
+        address: "a",
+        category: "c",
+        rating: 4.5,
+        price: "¥50/人",
+      }),
       { matchFn }
     );
 

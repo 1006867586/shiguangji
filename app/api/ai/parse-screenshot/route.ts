@@ -8,7 +8,8 @@ import {
   parseJsonContent,
 } from "@/lib/ai/minimax";
 import { checkAiQuota, recordAiGeneration } from "@/lib/ai/quota";
-import type { ParsedScreenshot } from "@/types";
+import { enrichLinkWithPoi } from "@/lib/poi/enrich";
+import type { ExternalLink, ParsedScreenshot } from "@/types";
 
 export const dynamic = "force-dynamic";
 // 视觉识别耗时较长（MiniMax-M3 通常 15-30s），默认 10s 会触发 Vercel 函数超时导致前端 "failed to fetch"
@@ -99,7 +100,11 @@ export async function POST(req: NextRequest) {
       throw aiErr;
     }
 
-    // 5. 记录成功
+    // 5. 识别结果含店名但存在空白字段时，用地图 POI 兜底补齐（点评/美团网页现强制登录，
+    //    截图识别不到的电话/地址/评分/人均可借店名匹配地图数据补全）
+    parsed = await poiBackfill(parsed);
+
+    // 6. 记录成功
     await recordAiGeneration({
       userId: user.id,
       type: "parse_screenshot",
@@ -133,6 +138,43 @@ function buildAiErrorMessage(e: unknown, fallbackPrefix: string): string {
     return `${fallbackPrefix} ${code}${e.message}`;
   }
   return safeErrorMessage(e, `${fallbackPrefix}，请稍后重试`);
+}
+
+/**
+ * 识别结果为空白的字段用店名跑地图 POI 兜底补齐。
+ * 仅当店名存在且地址/电话/评分/人均/品类有缺失时匹配，只填空字段；
+ * 地图接口失败或未命中时静默返回原结果，不阻塞主流程。
+ */
+async function poiBackfill(parsed: ParsedScreenshot): Promise<ParsedScreenshot> {
+  const title = parsed.title?.trim();
+  if (!title || title === "未知店铺") return parsed;
+
+  const link: ExternalLink = {
+    platform: "other",
+    url: "",
+    title,
+    coverImage: null,
+    rating: parsed.rating,
+    address: parsed.address,
+    phone: parsed.phone,
+    price: null, // 人均以 POI 补齐为准（网页观测不到时可借地图人均）
+    category: parsed.category,
+  };
+
+  try {
+    const { link: enriched } = await enrichLinkWithPoi(link);
+    return {
+      ...parsed,
+      address: parsed.address ?? enriched.address ?? null,
+      phone: parsed.phone ?? enriched.phone ?? null,
+      rating: parsed.rating ?? enriched.rating ?? null,
+      category: parsed.category ?? enriched.category ?? null,
+      averagePrice: parsed.averagePrice ?? enriched.price ?? null,
+      coverImage: parsed.coverImage ?? enriched.coverImage ?? null,
+    };
+  } catch {
+    return parsed;
+  }
 }
 
 /** 构造视觉识别 prompt */

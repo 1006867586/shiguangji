@@ -21,6 +21,8 @@ export interface PoiCandidate {
   price: number | null;
   /** 详情页链接（百度 detail_url，高德通常无） */
   url: string | null;
+  /** 店铺封面图 URL 列表（高德 POI 详情 photos 字段，0~N 张） */
+  photos: string[];
   location: {
     lng: number;
     lat: number;
