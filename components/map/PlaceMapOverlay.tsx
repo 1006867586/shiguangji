@@ -70,6 +70,7 @@ export function PlaceMapOverlay({
   const [isMobile, setIsMobile] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
   const [favorited, setFavorited] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   // 检测移动端（< 640px）
   useEffect(() => {
@@ -114,6 +115,11 @@ export function PlaceMapOverlay({
       mapInstance.off("resize", update);
     };
   }, [mapInstance, screenPos.x, screenPos.y, isMobile]);
+
+  // 切店时重置图片错误
+  useEffect(() => {
+    setImageError(false);
+  }, [place.id, place.cover_image_url]);
 
   // 分享：优先 navigator.share（移动端 native），降级为剪贴板复制
   const handleShare = async () => {
@@ -187,18 +193,37 @@ export function PlaceMapOverlay({
         width: isMobile ? "100%" : `${CARD_WIDTH}px`,
       }}
     >
-      <div className="pointer-events-auto relative rounded-xl border border-border bg-card p-3 shadow-lg">
-        {/* 关闭按钮 */}
+      <div className="pointer-events-auto relative overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+        {/* 封面图（顶部，圆角裁切） */}
+        {place.cover_image_url && !imageError ? (
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element -- 动态用户/高德图片，next/image 远程域名配置繁琐 */}
+            <img
+              src={place.cover_image_url}
+              alt={place.name}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setImageError(true)}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : null}
+
+        {/* 关闭按钮：移到封面图右上角（仅当有封面图时）；否则保持原位 */}
         <button
           type="button"
           onClick={onClose}
           aria-label="关闭"
-          className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          className={`absolute right-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-full transition ${
+            place.cover_image_url && !imageError
+              ? "top-2 bg-black/40 text-white hover:bg-black/60"
+              : "top-2 bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
 
-        <div className="space-y-2.5 pr-6">
+        <div className="space-y-2.5 p-3">
           <div>
             <div className="flex items-start justify-between gap-2">
               <h3 className="text-sm font-semibold leading-snug">{place.name}</h3>

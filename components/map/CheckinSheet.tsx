@@ -51,6 +51,8 @@ type PlaceDraft = {
   business_hours?: string | null;
   description?: string | null;
   tags?: string[] | null;
+  /** 封面图 URL（迁移 022） */
+  cover_image_url?: string | null;
 };
 
 function candidateToDraft(c: PoiCandidate): PlaceDraft {
@@ -68,6 +70,7 @@ function candidateToDraft(c: PoiCandidate): PlaceDraft {
     rating: c.rating,
     average_price: c.price != null ? `¥${c.price}` : null,
     phone: c.phone,
+    cover_image_url: c.photos && c.photos.length > 0 ? c.photos[0] : null,
   } as PlaceDraft;
 }
 

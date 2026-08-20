@@ -67,6 +67,7 @@ interface AmapDetailResp {
     name?: string;
     address?: string;
     tel?: string;
+    photos?: Array<{ url?: string; title?: string }>;
     business?: {
       rating?: string;
       cost?: string;
@@ -86,6 +87,8 @@ interface AmapSearchResp {
     name?: string;
     location?: string;
     address?: string;
+    tel?: string;
+    photos?: Array<{ url?: string; title?: string }>;
     business?: {
       rating?: string;
       cost?: string;
@@ -157,6 +160,17 @@ function haversine(lng1: number, lat1: number, lng2: number, lat2: number): numb
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/** 从高德 POI photos 字段取第一张图 URL */
+function extractCoverImageUrl(
+  photos: Array<{ url?: string; title?: string }> | null | undefined
+): string | null {
+  if (!Array.isArray(photos)) return null;
+  for (const p of photos) {
+    if (p?.url) return p.url;
+  }
+  return null;
+}
+
 interface PlaceRow {
   id: string;
   name: string;
@@ -200,6 +214,7 @@ async function main() {
     try {
       let biz: Record<string, string | undefined> = {};
       let tel: string | undefined;
+      let coverImageUrl: string | null = null;
       let extraPatch: Record<string, unknown> = {};
 
       if (row.poi_id) {
@@ -214,6 +229,7 @@ async function main() {
         const poi = detail.pois[0];
         biz = (poi.business ?? {}) as Record<string, string | undefined>;
         tel = biz.tel ?? poi.tel;
+        coverImageUrl = extractCoverImageUrl(poi.photos);
       } else {
         // 无 poi_id（如手动添加的店）：用名称+坐标搜高德 POI 找候选
         const search = await searchAmapByNameAndLocation(row.name, row.lng, row.lat);
@@ -241,6 +257,7 @@ async function main() {
         }
         biz = (candidate.business ?? {}) as Record<string, string | undefined>;
         tel = biz.tel ?? candidate.tel;
+        coverImageUrl = extractCoverImageUrl(candidate.photos);
         // 回写 poi_id + source 给后续直接走详情路径
         extraPatch.poi_id = candidate.id;
         extraPatch.source = "amap";
@@ -251,6 +268,7 @@ async function main() {
         phone: tel ?? null,
         business_hours: biz.opening_hours ?? null,
         tags: parseTags(biz.tag),
+        cover_image_url: coverImageUrl,
         ...extraPatch,
       };
       // 仅写入非空字段，避免覆盖已有非空值

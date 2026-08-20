@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("places")
       .select(
-        "id, name, address, city, district, category, lng, lat, source, poi_id, status, created_at, updated_at, rating, average_price, phone, business_hours, description, tags"
+        "id, name, address, city, district, category, lng, lat, source, poi_id, status, created_at, updated_at, rating, average_price, phone, business_hours, description, tags, cover_image_url"
       )
       .eq("status", "approved")
       .order("created_at", { ascending: false });
@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
       business_hours: (r.business_hours as string | null) ?? null,
       description: (r.description as string | null) ?? null,
       tags: (r.tags as string[] | null) ?? null,
+      cover_image_url: (r.cover_image_url as string | null) ?? null,
       updated_at: (r.updated_at as string | null) ?? undefined,
       i_checked: checkedSet.has(r.id as string),
       i_checkin_id: checkinIdByPlace.get(r.id as string) ?? null,

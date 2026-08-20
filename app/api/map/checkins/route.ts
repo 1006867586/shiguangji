@@ -125,6 +125,10 @@ export async function POST(request: NextRequest) {
         tags: Array.isArray(body.place.tags)
           ? body.place.tags.filter((s): s is string => typeof s === "string").filter(Boolean)
           : null,
+        cover_image_url:
+          typeof body.place.cover_image_url === "string" && body.place.cover_image_url.trim()
+            ? body.place.cover_image_url.trim()
+            : null,
       };
       const { data: inserted, error: insertErr } = await supabase
         .from("places")
