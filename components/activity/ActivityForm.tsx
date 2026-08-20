@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Link2, Sparkles, X, Camera, ChevronDown, Bookmark } from "lucide-react";
+import { Loader2, Link2, Sparkles, X, Camera, ChevronDown, Bookmark, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import {
 import { GroupSelector } from "@/components/group/GroupSelector";
 import { ExternalLinkCard } from "@/components/activity/ExternalLinkCard";
 import { FavoritePlacePicker } from "@/components/activity/FavoritePlacePicker";
+import { ActivityPlaceSearch } from "@/components/activity/ActivityPlaceSearch";
 import { createActivity } from "@/hooks/useActivity";
 import { useAiParseScreenshot, useAiCopywrite } from "@/hooks/useAi";
 import { useUpload } from "@/hooks/useUpload";
@@ -30,6 +31,7 @@ import { useAiEnabled } from "@/hooks/useAiEnabled";
 import { fetchData } from "@/lib/fetcher";
 import { isUrl, detectPlatform, extractUrlFromText } from "@/lib/utils";
 import type { ExternalLink, ExternalPlatform, FavoritePlace, Group } from "@/types";
+import type { PoiCandidate } from "@/lib/poi/types";
 
 /** 文案风格选项 */
 const COPY_STYLES = [
@@ -119,6 +121,26 @@ export function ActivityForm({
 
   const triggerScreenshot = () => {
     screenshotInputRef.current?.click();
+  };
+
+  // ---- 从高德地图选点：自动回填 externalLink 空字段（不覆盖美团信息） ----
+  const handlePickPoi = (poi: PoiCandidate) => {
+    setExternalLink((prev) => ({
+      // 平台：美团/点评优先（已有则保留），否则记为 other（高德作为来源）
+      platform:
+        prev?.platform === "meituan" || prev?.platform === "dianping"
+          ? prev.platform
+          : prev?.platform ?? "other",
+      url: prev?.url || "",
+      title: prev?.title || poi.name || "",
+      coverImage: prev?.coverImage ?? ((poi.photos && poi.photos[0]) || null),
+      rating: prev?.rating ?? (poi.rating ?? null),
+      address: prev?.address || poi.address || null,
+      phone: prev?.phone || poi.phone || null,
+      price: prev?.price ?? (poi.price != null ? `¥${poi.price}` : null),
+      category: prev?.category ?? (poi.category ?? null),
+    }));
+    toast.success("已从高德地图填入");
   };
 
   // ---- 从收藏夹选取：选中后回填 externalLink + 招牌菜追加到 content ----
@@ -375,7 +397,17 @@ export function ActivityForm({
 
       {/* 外部链接 */}
       {repostOfId ? null : (
-        <div className="space-y-1.5">
+        <>
+          {/* 高德地图店铺搜索：选中后自动填充下方链接卡片（美团信息优先保留） */}
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+              高德地图店铺搜索（可选）
+            </Label>
+            <ActivityPlaceSearch onPick={handlePickPoi} />
+          </div>
+
+          <div className="space-y-1.5">
           <Label htmlFor="link-url">美团/点评链接（可选）</Label>
           <div className="flex gap-2">
             <Input
@@ -549,7 +581,8 @@ export function ActivityForm({
               <ExternalLinkCard link={externalLink} />
             </div>
           ) : null}
-        </div>
+          </div>
+        </>
       )}
 
       {/* 提交 */}
