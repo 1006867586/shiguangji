@@ -77,6 +77,25 @@ interface AmapDetailResp {
   }>;
 }
 
+interface AmapSearchResp {
+  status: string;
+  info: string;
+  infocode: string;
+  pois?: Array<{
+    id: string;
+    name?: string;
+    location?: string;
+    address?: string;
+    business?: {
+      rating?: string;
+      cost?: string;
+      tel?: string;
+      opening_hours?: string;
+      tag?: string;
+    };
+  }>;
+}
+
 async function fetchAmapDetail(poiId: string): Promise<AmapDetailResp | null> {
   const url = new URL("https://restapi.amap.com/v5/place/detail");
   url.searchParams.set("key", AMAP_KEY!);
@@ -85,6 +104,23 @@ async function fetchAmapDetail(poiId: string): Promise<AmapDetailResp | null> {
   const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
   if (!res.ok) return null;
   return (await res.json()) as AmapDetailResp;
+}
+
+/** 用名称+坐标搜高德 v5 POI；返回最接近的候选（如果直接返回 business 也行，省一次 detail 调用） */
+async function searchAmapByNameAndLocation(
+  name: string,
+  lng: number,
+  lat: number
+): Promise<AmapSearchResp | null> {
+  const url = new URL("https://restapi.amap.com/v5/place/text");
+  url.searchParams.set("key", AMAP_KEY!);
+  url.searchParams.set("keywords", name);
+  url.searchParams.set("location", `${lng},${lat}`);
+  url.searchParams.set("show_fields", "business");
+  url.searchParams.set("page_size", "3");
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) return null;
+  return (await res.json()) as AmapSearchResp;
 }
 
 function parseRating(s: string | undefined): number | null {
@@ -110,15 +146,36 @@ function parseCost(cost: string | undefined): string | null {
   return /^¥/.test(trimmed) ? trimmed : `¥${trimmed}`;
 }
 
+function haversine(lng1: number, lat1: number, lng2: number, lat2: number): number {
+  const R = 6371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+interface PlaceRow {
+  id: string;
+  name: string;
+  lng: number;
+  lat: number;
+  poi_id: string | null;
+  source: string;
+  rating: number | null;
+}
+
 async function main() {
   console.log(`[backfill] 开始回填（DRY_RUN=${DRY_RUN}, FORCE=${FORCE}, LIMIT=${LIMIT}）`);
 
-  // 1) 查询待回填记录
+  // 1) 查询待回填记录：所有 source='amap' 的（先做 amap），后续可扩展 manual
+  //    先把 manual 店也带上，但 manual 的要走"搜索"路径
   let query = supabase
     .from("places")
-    .select("id, name, poi_id, source, rating")
-    .eq("source", "amap")
-    .not("poi_id", "is", null)
+    .select("id, name, lng, lat, poi_id, source, rating")
+    .in("source", ["amap", "manual", "baidu"])
     .order("created_at", { ascending: false })
     .limit(LIMIT);
 
@@ -131,34 +188,70 @@ async function main() {
     console.error("[backfill] 查询失败:", error.message);
     process.exit(1);
   }
-  console.log(`[backfill] 待处理记录: ${rows?.length ?? 0}`);
+  const placeRows = (rows ?? []) as PlaceRow[];
+  console.log(`[backfill] 待处理记录: ${placeRows.length}`);
 
   let updated = 0;
   let skipped = 0;
   let failed = 0;
 
-  for (const row of rows ?? []) {
-    if (!row.poi_id) {
-      skipped++;
-      continue;
-    }
-    process.stdout.write(`[${row.id}] ${row.name} (poi=${row.poi_id}) ... `);
+  for (const row of placeRows) {
+    process.stdout.write(`[${row.id}] ${row.name} (source=${row.source}) ... `);
     try {
-      const detail = await fetchAmapDetail(row.poi_id);
-      if (!detail || detail.status !== "1" || !detail.pois?.[0]) {
-        console.log("SKIP (no detail)");
-        skipped++;
-        await sleep(60_000 / 5); // QPS 5 保护
-        continue;
+      let biz: Record<string, string | undefined> = {};
+      let tel: string | undefined;
+      let extraPatch: Record<string, unknown> = {};
+
+      if (row.poi_id) {
+        // 有 poi_id 走详情接口
+        const detail = await fetchAmapDetail(row.poi_id);
+        if (!detail || detail.status !== "1" || !detail.pois?.[0]) {
+          console.log("SKIP (no detail)");
+          skipped++;
+          await sleep(60_000 / 5);
+          continue;
+        }
+        const poi = detail.pois[0];
+        biz = (poi.business ?? {}) as Record<string, string | undefined>;
+        tel = biz.tel ?? poi.tel;
+      } else {
+        // 无 poi_id（如手动添加的店）：用名称+坐标搜高德 POI 找候选
+        const search = await searchAmapByNameAndLocation(row.name, row.lng, row.lat);
+        if (!search || search.status !== "1" || !search.pois?.[0]) {
+          console.log("SKIP (search empty)");
+          skipped++;
+          await sleep(60_000 / 5);
+          continue;
+        }
+        // 取第一个候选（高德按距离+名称匹配排序）
+        const candidate = search.pois[0];
+        // 验证距离（候选 location 应在 200m 内，避免误匹配）
+        const candidateLoc = (candidate.location ?? "").split(",");
+        if (candidateLoc.length === 2) {
+          const cLng = parseFloat(candidateLoc[0]);
+          const cLat = parseFloat(candidateLoc[1]);
+          if (Number.isFinite(cLng) && Number.isFinite(cLat)) {
+            const dist = haversine(row.lng, row.lat, cLng, cLat);
+            if (dist > 200) {
+              console.log(`SKIP (candidate too far: ${Math.round(dist)}m)`);
+              await sleep(60_000 / 5);
+              continue;
+            }
+          }
+        }
+        biz = (candidate.business ?? {}) as Record<string, string | undefined>;
+        tel = biz.tel ?? candidate.tel;
+        // 回写 poi_id + source 给后续直接走详情路径
+        extraPatch.poi_id = candidate.id;
+        extraPatch.source = "amap";
       }
-      const poi = detail.pois[0];
-      const biz = poi.business ?? {};
-      const patch = {
+      const patch: Record<string, unknown> = {
         rating: parseRating(biz.rating),
         average_price: parseCost(biz.cost),
-        phone: biz.tel ?? poi.tel ?? null,
+        phone: tel ?? null,
         business_hours: biz.opening_hours ?? null,
         tags: parseTags(biz.tag),
+        ...extraPatch,
       };
       // 仅写入非空字段，避免覆盖已有非空值
       const cleanPatch: Record<string, unknown> = {};
