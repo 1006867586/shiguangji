@@ -13,7 +13,7 @@ import "./index.scss";
  * 进入方式：微信扫 PC 端展示的小程序码（getwxacodeunlimit，scene=sessionId）。
  * scene 参数由微信自动写入 onLoad options（Taro 中为 router.params.scene）。
  *
- * 用户可选：
+ * 用户可选（新用户进入即自动聚焦昵称输入框，微信直接弹出微信昵称候选）：
  * - 选头像（chooseAvatar → R2 直传 → 拿到公网 URL 传给服务端）
  * - 改昵称（Input type="nickname"，微信原生会自动预填用户微信昵称，可改）
  *
@@ -37,6 +37,9 @@ export default function LoginConfirmPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null); // R2 公网 URL
   const [uploading, setUploading] = useState(false);
   const [nickname, setNickname] = useState(DEFAULT_NICKNAME);
+  // 新用户进入即自动聚焦昵称输入框：微信原生会直接弹出当前微信昵称候选，
+  // 点一下即回填真实昵称，省去手动点输入框这步（少交互）。老用户已预填资料，不强弹键盘。
+  const [nicknameFocused, setNicknameFocused] = useState(!getAccessToken());
 
   useEffect(() => {
     const params = Taro.getCurrentInstance().router?.params ?? {};
@@ -182,6 +185,8 @@ export default function LoginConfirmPage() {
             value={nickname}
             placeholder="点击输入昵称"
             maxlength={NICKNAME_MAX}
+            focus={nicknameFocused}
+            onFocus={() => setNicknameFocused(true)}
             onInput={(e) => setNickname(e.detail.value)}
           />
         </View>
