@@ -136,9 +136,8 @@ export function FeedCard({
     }
   };
 
-  const { comments, addComment, removeComment } = useComments(
-    showComments ? activity.id : null
-  );
+  const { comments, addComment, removeComment, loading: commentsLoading } =
+    useComments(showComments ? activity.id : null);
 
   const isMine = activity.author.id === currentUserId;
 
@@ -561,6 +560,7 @@ export function FeedCard({
               await addComment({ content, parentId });
             }}
             onDelete={removeComment}
+            loading={commentsLoading}
             inline
           />
         </div>
