@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Link2, Sparkles, X } from "lucide-react";
+import { Loader2, Link2, Sparkles, X, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -15,10 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ExternalLinkCard } from "@/components/activity/ExternalLinkCard";
+import { ActivityPlaceSearch } from "@/components/activity/ActivityPlaceSearch";
 import { updateActivity } from "@/hooks/useActivity";
 import { fetchData } from "@/lib/fetcher";
 import { isUrl, detectPlatform, extractUrlFromText } from "@/lib/utils";
 import type { Activity, ExternalLink } from "@/types";
+import type { PoiCandidate } from "@/lib/poi/types";
 
 interface EditActivityDialogProps {
   activity: Activity;
@@ -133,6 +135,25 @@ export function EditActivityDialog({
     );
   };
 
+  // 高德地图选点：填空不覆盖（已填美团信息优先保留）
+  const handlePickPoi = (poi: PoiCandidate) => {
+    setExternalLink((prev) => ({
+      platform:
+        prev?.platform === "meituan" || prev?.platform === "dianping"
+          ? prev.platform
+          : prev?.platform ?? "other",
+      url: prev?.url || "",
+      title: prev?.title || poi.name || "",
+      coverImage: prev?.coverImage ?? ((poi.photos && poi.photos[0]) || null),
+      rating: prev?.rating ?? (poi.rating ?? null),
+      address: prev?.address || poi.address || null,
+      phone: prev?.phone || poi.phone || null,
+      price: prev?.price ?? (poi.price != null ? `¥${poi.price}` : null),
+      category: prev?.category ?? (poi.category ?? null),
+    }));
+    toast.success("已从高德地图填入");
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
@@ -160,6 +181,16 @@ export function EditActivityDialog({
           </div>
 
           {/* 外部链接 */}
+          <div className="space-y-3">
+          {/* 高德地图店铺搜索：选中后自动填入下方卡片 */}
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+              高德地图店铺搜索（可选）
+            </Label>
+            <ActivityPlaceSearch onPick={handlePickPoi} />
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="edit-link-url">美团/点评链接（可选）</Label>
             <div className="flex gap-2">
@@ -272,6 +303,7 @@ export function EditActivityDialog({
                 <ExternalLinkCard link={externalLink} />
               </div>
             ) : null}
+          </div>
           </div>
         </div>
 
