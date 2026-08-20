@@ -9,8 +9,9 @@ import { code2Session, Code2SessionError } from "@/lib/wechat";
  *
  * 新用户自动注册（admin.generateLink 自动建用户）。可选接收前端传入的
  * nickname / avatarUrl（小程序确认页 chooseAvatar + Input type="nickname"
- * 收集后经 R2 直传得到公网 URL），仅在 isNewUser=true 时写入 user_metadata
- * 与 profiles——**绝不能覆盖老用户已有的昵称和头像**（防止重复扫码登录抹掉资料）。
+ * 收集后经 R2 直传得到公网 URL）。只要确认页传入有效资料就写入
+ * user_metadata 与 profiles——前端确认页会「预填已有资料」，老用户不改则回传
+ * 原值，不会丢资料；未传/空值不写入，避免用默认占位抹掉已有资料。
  *
  * options.writeProfile=false：跳过 updateUserById 与 profiles.upsert，仅保留
  * generateLink + verifyOtp 建会话的能力。PC 扫码的 login-status 命中后调用
@@ -89,9 +90,12 @@ export async function exchangeOpenIdForSession(
   const isNewUser = createdMinutesAgo < 2;
   const writeProfile = options?.writeProfile !== false;
 
-  // 仅新用户 + 传入资料时写入；老用户重复扫码绝不覆盖（pc login-status 模式见 options）
-  const shouldWriteNickname = writeProfile && isNewUser && !!extra?.nickname;
-  const shouldWriteAvatar = writeProfile && isNewUser && !!extra?.avatarUrl;
+  // 只要确认页传入有效资料即写入昵称/头像（不限定 isNewUser）：
+  // - 前端确认页已「预填已有资料」，老用户不改则回传原值、改则回传新值，不会丢资料；
+  // - 新老用户由此都能在确认页更新头像/昵称（PC 扫码登录默认回显已有资料）。
+  // 注意：传入空值/未传（undefined）时不写，避免用默认占位抹掉已有资料。
+  const shouldWriteNickname = writeProfile && !!extra?.nickname;
+  const shouldWriteAvatar = writeProfile && !!extra?.avatarUrl;
 
   if (writeProfile) {
     await admin.auth.admin.updateUserById(linkData.user.id, {

@@ -83,7 +83,8 @@ export async function POST(request: Request) {
     }
 
     // 2. 微信登录 + 自动注册（返回 token，小程序端顺带自动登录）。
-    //    仅当新用户时才会把 nickname / avatarUrl 写入 user_metadata + profiles。
+    //    传入了有效的 nickname / avatarUrl 即写入 user_metadata + profiles；
+    //    确认页已预填已有资料，老用户不改则回传原值，不会丢资料。
     const session = await exchangeCodeForSession(code, { nickname, avatarUrl });
 
     // 3. 幂等登记 openid/user_id → PC 轮询端消费；影响 0 行视为已被消费/过期
