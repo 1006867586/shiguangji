@@ -255,10 +255,7 @@ export function MapPage() {
       </div>
 
       {/* 地图（relative 包裹以容纳浮层） */}
-      <div
-        className="relative mx-3 mt-3 h-[46dvh] overflow-hidden rounded-xl border border-border"
-        onClick={handleMapClick}
-      >
+      <div className="relative mx-3 mt-3 h-[46dvh] overflow-hidden rounded-xl border border-border">
         <CheckinMapView
           places={displayPlaces}
           center={center}
@@ -266,6 +263,7 @@ export function MapPage() {
           focusPoint={focus}
           onPlaceClick={handlePlaceClick}
           onMapReady={handleMapReady}
+          onMapClick={handleMapClick}
           showControls
         />
         {mapInstance && selected && selectedScreenPos ? (

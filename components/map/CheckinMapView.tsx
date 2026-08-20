@@ -19,6 +19,8 @@ interface CheckinMapViewProps {
   onPlaceClick?: (payload: PlaceClickPayload) => void;
   /** 高德地图实例就绪回调（供浮层订阅 move/zoom） */
   onMapReady?: (mapInstance: any) => void;
+  /** 点击地图空白处回调（不响应 marker 点击） */
+  onMapClick?: () => void;
   center?: [number, number];
   zoom?: number;
   /** 外部触发地图定位（如搜索结果），变化时 setCenter */
@@ -46,7 +48,11 @@ function buildMarkerContent(checked: boolean): HTMLDivElement {
 function buildClusterContent(count: number, hasChecked: boolean): HTMLDivElement {
   const div = document.createElement("div");
   const bg = hasChecked ? "#E24B4A" : "#378ADD";
-  div.style.cssText = `min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:${bg};color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);box-sizing:border-box;cursor:pointer`;
+  // 已打卡加更显眼的环（"打孔"标记）
+  const ring = hasChecked
+    ? "0 0 0 3px rgba(255,255,255,0.95), 0 0 0 6px rgba(226,75,74,0.5), 0 2px 6px rgba(0,0,0,0.45)"
+    : "0 0 0 2.5px rgba(255,255,255,0.95), 0 1px 4px rgba(0,0,0,0.35)";
+  div.style.cssText = `min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:${bg};color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:${ring};box-sizing:border-box;cursor:pointer`;
   div.textContent = String(count);
   return div;
 }
@@ -101,6 +107,7 @@ export function CheckinMapView({
   places,
   onPlaceClick,
   onMapReady,
+  onMapClick,
   center = [114.3054, 30.5931],
   zoom = 12,
   focusPoint,
@@ -120,6 +127,8 @@ export function CheckinMapView({
   onPlaceClickRef.current = onPlaceClick;
   const onMapReadyRef = useRef(onMapReady);
   onMapReadyRef.current = onMapReady;
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
 
   const handleReady = useCallback((instance: any) => {
     mapRef.current = instance;
@@ -149,7 +158,7 @@ export function CheckinMapView({
 
     const currentZoom = map.getZoom();
     const GRID_SIZE = 60;
-    const MIN_ZOOM_TO_CLUSTER = 14; // >= 14 显示单点，否则按 grid 聚合
+    const MIN_ZOOM_TO_CLUSTER = 13; // >= 13 显示单点，否则按 grid 聚合
 
     if (currentZoom >= MIN_ZOOM_TO_CLUSTER) {
       // 单 marker 模式：每个 place 一个 marker
@@ -179,6 +188,8 @@ export function CheckinMapView({
     } else {
       // 聚合模式：按 grid 分桶，每个桶一个聚合气泡
       const clusters = clusterByGrid(places, map, GRID_SIZE);
+      // eslint-disable-next-line no-console
+      console.debug("[CheckinMapView] aggregate clusters:", clusters.length, "from", places.length, "places; first cluster hasChecked =", clusters[0]?.hasChecked);
       const markers: any[] = [];
       for (const cluster of clusters) {
         const div = buildClusterContent(cluster.count, cluster.hasChecked);
@@ -223,6 +234,16 @@ export function CheckinMapView({
     return () => {
       map.off("moveend", handler);
       map.off("zoomend", handler);
+    };
+  }, [map]);
+
+  // 点击地图空白处（不响应 marker 点击；高德 SDK 自身区分）
+  useEffect(() => {
+    if (!map) return;
+    const handler = () => onMapClickRef.current?.();
+    map.on("click", handler);
+    return () => {
+      map.off("click", handler);
     };
   }, [map]);
 
