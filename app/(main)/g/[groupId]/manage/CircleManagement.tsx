@@ -15,6 +15,7 @@ import {
   Check,
   Loader2,
   LayoutDashboard,
+  ImagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { useGroupSettings } from "@/hooks/useGroupSettings";
 import { fetcher } from "@/lib/fetcher";
+import { GroupPosterDialog } from "@/components/group/GroupPosterDialog";
 import type { Group } from "@/types";
 
 interface CircleManagementProps {
@@ -57,11 +59,13 @@ export function CircleManagement({
   const [copied, setCopied] = useState(false);
   const [dissolveOpen, setDissolveOpen] = useState(false);
   const [dissolving, setDissolving] = useState(false);
+  const [posterOpen, setPosterOpen] = useState(false);
+
+  const inviteUrl = `${window.location.origin}/join?code=${inviteCode}`;
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}/join?code=${inviteCode}`;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       toast.success("邀请链接已复制");
       setTimeout(() => setCopied(false), 1500);
@@ -165,12 +169,35 @@ export function CircleManagement({
       {/* 邀请管理 */}
       <section className="space-y-3 rounded-xl border border-border bg-card p-4">
         <div className="text-sm font-medium">邀请管理</div>
+
+        {/* 生成海报入口 */}
+        <button
+          type="button"
+          onClick={() => setPosterOpen(true)}
+          className="flex w-full items-center justify-between gap-3 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-3.5 text-left transition-colors hover:from-amber-100 hover:to-orange-100 touch-manipulation active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500 text-white shadow-sm">
+              <ImagePlus className="h-5 w-5" />
+            </span>
+            <div>
+              <div className="text-sm font-semibold text-amber-900">
+                生成邀请海报
+              </div>
+              <div className="text-[11px] text-amber-800/80">
+                生成带群头像与二维码的海报，可分享到社交平台或微信
+              </div>
+            </div>
+          </div>
+          <span className="text-xs font-medium text-amber-700/80">立即生成 →</span>
+        </button>
+
         <div className="space-y-1.5">
           <div className="text-xs text-muted-foreground">邀请链接</div>
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted px-3 py-2 font-mono text-xs">
               {typeof window !== "undefined"
-                ? `${window.location.origin}/join?code=${inviteCode}`
+                ? inviteUrl
                 : `/join?code=${inviteCode}`}
             </span>
             <Button
@@ -235,6 +262,14 @@ export function CircleManagement({
           </Button>
         </section>
       ) : null}
+
+      <GroupPosterDialog
+        group={group}
+        shareUrl={inviteUrl}
+        memberCount={memberCount}
+        open={posterOpen}
+        onOpenChange={setPosterOpen}
+      />
 
       <Dialog
         open={dissolveOpen}
