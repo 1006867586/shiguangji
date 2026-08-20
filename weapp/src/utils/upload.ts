@@ -23,6 +23,32 @@ interface PresignResult {
 /** 单文件字节上限（超出的直接提示，避免 readFile 撑爆内存） */
 const MAX_BYTES = 10 * 1024 * 1024;
 
+/**
+ * 把可读路径归一化：
+ * - chooseAvatar 在部分机型/基础库返回的是 `http://tmp/xxx`（http 临时协议）路径，
+ *   FileSystemManager.readFile 读不了 http 路径，会比失败。这里先 downloadFile
+ *   落盘到本地可读文件，再返回给 readFile。
+ * - 其余本地路径（wxfile://tmp、chooseMedia 的 tempFilePath）原样返回。
+ */
+function toReadablePath(filePath: string): Promise<string> {
+  // 非 http 开头的直接用
+  if (!/^https?:\/\/\S+/.test(filePath)) return Promise.resolve(filePath);
+
+  return new Promise((resolve, reject) => {
+    const fs = Taro.getFileSystemManager();
+    // 落盘到用户目录下的稳定路径，避免临时目录被回收
+    const dest = `${Taro.env.USER_DATA_PATH}/r2_upload_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}${filePath.split("?")[0].split(".").pop() ? "." + filePath.split("?")[0].split(".").pop() : ""}`;
+    fs.downloadFile({
+      url: filePath,
+      filePath: dest,
+      success: () => resolve(dest),
+      fail: (err) => reject(new Error(err.errMsg || "文件下载失败")),
+    });
+  });
+}
+
 function readFileAsArrayBuffer(filePath: string): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     Taro.getFileSystemManager().readFile({
@@ -97,8 +123,9 @@ export async function uploadToR2(
     throw new Error("获取上传凭证失败");
   }
 
-  // 2. 读文件 → ArrayBuffer
-  const buffer = await readFileAsArrayBuffer(filePath);
+  // 2. 归一化路径（http://tmp 等临时路径落盘可读）→ 读为 ArrayBuffer
+  const readablePath = await toReadablePath(filePath);
+  const buffer = await readFileAsArrayBuffer(readablePath);
 
   // 3. PUT 直传（presignedUrl 是 R2 域名，不走 API_BASE_URL，也不带鉴权头）
   const res = await Taro.request({
