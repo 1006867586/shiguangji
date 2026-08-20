@@ -13,6 +13,10 @@ import {
   Bookmark,
   BookmarkCheck,
   Compass,
+  Star,
+  Phone,
+  Clock,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -214,6 +218,64 @@ export function PlaceMapOverlay({
               </p>
             ) : null}
           </div>
+
+          {/* 评分 / 人均 / 营业时间（富信息行） */}
+          {(place.rating != null ||
+            place.average_price ||
+            place.business_hours) && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+              {typeof place.rating === "number" ? (
+                <span className="inline-flex items-center gap-0.5">
+                  <Star
+                    className="h-3 w-3 fill-amber-400 text-amber-400"
+                    aria-hidden="true"
+                  />
+                  <span className="font-medium text-foreground">
+                    {place.rating.toFixed(1)}
+                  </span>
+                </span>
+              ) : null}
+              {place.average_price ? (
+                <span className="inline-flex items-center gap-0.5">
+                  <Wallet className="h-3 w-3" aria-hidden="true" />
+                  {place.average_price}
+                </span>
+              ) : null}
+              {place.business_hours ? (
+                <span className="inline-flex items-center gap-0.5">
+                  <Clock className="h-3 w-3" aria-hidden="true" />
+                  <span className="truncate max-w-[160px]">
+                    {place.business_hours}
+                  </span>
+                </span>
+              ) : null}
+            </div>
+          )}
+
+          {/* 标签（高德返回的特色标签） */}
+          {place.tags && place.tags.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {place.tags.slice(0, 4).map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {/* 电话（可点击拨号） */}
+          {place.phone ? (
+            <a
+              href={`tel:${place.phone}`}
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              <Phone className="h-3 w-3" aria-hidden="true" />
+              <span>{place.phone}</span>
+            </a>
+          ) : null}
 
           {place.address ? (
             <MapLauncher name={place.name} address={place.address} city={place.city}>

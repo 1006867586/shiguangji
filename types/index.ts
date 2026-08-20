@@ -619,6 +619,14 @@ export interface MapPlace {
   i_checked?: boolean;
   /** 当前用户在该地点最近一条打卡记录 id（撤销打卡用） */
   i_checkin_id?: string | null;
+  /** 富文本字段（来自迁移 021，可空） */
+  rating?: number | null;
+  average_price?: string | null;
+  phone?: string | null;
+  business_hours?: string | null;
+  description?: string | null;
+  tags?: string[] | null;
+  updated_at?: string;
 }
 
 /** 打卡记录（对应 public.checkins） */
@@ -650,6 +658,13 @@ export interface CreateCheckinBody {
     lat: number;
     source?: PlaceSource;
     poi_id?: string | null;
+    /** 富文本字段（来自迁移 021，可选；前端从高德 POI 详情带入） */
+    rating?: number | null;
+    average_price?: string | null;
+    phone?: string | null;
+    business_hours?: string | null;
+    description?: string | null;
+    tags?: string[] | null;
   };
   activity_id?: string | null;
   note?: string | null;

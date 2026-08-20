@@ -116,6 +116,15 @@ export async function POST(request: NextRequest) {
         poi_id: poiId,
         created_by: user.id,
         status: "approved" as const,
+        // 富文本字段（来自迁移 021，可选）
+        rating: typeof body.place.rating === "number" ? body.place.rating : null,
+        average_price: typeof body.place.average_price === "string" ? body.place.average_price.trim() || null : null,
+        phone: typeof body.place.phone === "string" ? body.place.phone.trim() || null : null,
+        business_hours: typeof body.place.business_hours === "string" ? body.place.business_hours.trim() || null : null,
+        description: typeof body.place.description === "string" ? body.place.description.trim() || null : null,
+        tags: Array.isArray(body.place.tags)
+          ? body.place.tags.filter((s): s is string => typeof s === "string").filter(Boolean)
+          : null,
       };
       const { data: inserted, error: insertErr } = await supabase
         .from("places")

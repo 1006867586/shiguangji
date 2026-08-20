@@ -44,6 +44,13 @@ type PlaceDraft = {
   lat: number;
   source: "amap" | "baidu" | "tencent" | "manual";
   poi_id: string | null;
+  /** 富信息（来自高德 POI 详情，迁移 021） */
+  rating?: number | null;
+  average_price?: string | null;
+  phone?: string | null;
+  business_hours?: string | null;
+  description?: string | null;
+  tags?: string[] | null;
 };
 
 function candidateToDraft(c: PoiCandidate): PlaceDraft {
@@ -57,7 +64,11 @@ function candidateToDraft(c: PoiCandidate): PlaceDraft {
     lat: c.location.lat,
     source: c.provider,
     poi_id: c.id,
-  };
+    // 富信息（来自 PoiCandidate；tags/business_hours/description 暂未在 POI 接口返回，留待扩展）
+    rating: c.rating,
+    average_price: c.price != null ? `¥${c.price}` : null,
+    phone: c.phone,
+  } as PlaceDraft;
 }
 
 /** 打卡表单：地点搜索/确认 + 备注 + 提交 */
@@ -98,7 +109,7 @@ export function CheckinSheet({
         lat: initialPlace.lat,
         source: "manual",
         poi_id: null,
-      });
+      } as PlaceDraft);
     } else {
       setSelected(null);
     }

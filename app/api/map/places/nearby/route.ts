@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("places")
       .select(
-        "id, name, address, city, district, category, lng, lat, source, poi_id, status, created_at"
+        "id, name, address, city, district, category, lng, lat, source, poi_id, status, created_at, updated_at, rating, average_price, phone, business_hours, description, tags"
       )
       .eq("status", "approved")
       .gte("lng", lng - degLng)
@@ -104,6 +104,13 @@ export async function GET(request: NextRequest) {
         poi_id: (r.poi_id as string | null) ?? null,
         status: r.status as MapPlace["status"],
         created_at: r.created_at as string,
+        rating: r.rating != null ? Number(r.rating) : null,
+        average_price: (r.average_price as string | null) ?? null,
+        phone: (r.phone as string | null) ?? null,
+        business_hours: (r.business_hours as string | null) ?? null,
+        description: (r.description as string | null) ?? null,
+        tags: (r.tags as string[] | null) ?? null,
+        updated_at: (r.updated_at as string | null) ?? undefined,
         i_checked: checkedSet.has(r.id as string),
         i_checkin_id: null,
         distance_m: Math.round(distance),
