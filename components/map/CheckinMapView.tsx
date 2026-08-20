@@ -48,7 +48,7 @@ function buildMarkerContent(checked: boolean): HTMLDivElement {
 
 /**
  * 打卡点地图视图：聚合展示 + 点击标记回调（含屏幕坐标）。
- * 内部使用高德 MarkerClusterer，自定义聚合与单点样式。
+ * 内部使用高德 MarkerCluster，自定义聚合与单点样式。
  */
 export function CheckinMapView({
   places,
@@ -93,12 +93,12 @@ export function CheckinMapView({
   useEffect(() => {
     if (!map) return;
     const AMap = window.AMap;
-    if (!AMap?.MarkerClusterer) {
+    if (!AMap?.MarkerCluster) {
       clustererRef.current = null;
       return;
     }
     try {
-      const clusterer = new AMap.MarkerClusterer(map, [], {
+      const clusterer = new AMap.MarkerCluster(map, [], {
         gridSize: 60,
         maxZoom: 18,
         renderClusterMarker: (context: any) => {

@@ -78,7 +78,7 @@ export function AmapMap({
   const initMap = useCallback(async () => {
     if (!containerRef.current || mapRef.current) return;
     try {
-      const AMap = await loadAmap(["AMap.MarkerClusterer"]);
+      const AMap = await loadAmap(["AMap.MarkerCluster"]);
       const map = new AMap.Map(containerRef.current, {
         zoom,
         center: new AMap.LngLat(center[0], center[1]),
