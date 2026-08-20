@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -17,6 +17,8 @@ import {
   Smile,
   Pin,
   Flag,
+  Check,
+  Soup,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -59,8 +61,9 @@ import { useIsFavorited } from "@/hooks/useFavorites";
 import { useReactions } from "@/hooks/useReactions";
 import { togglePin } from "@/hooks/usePin";
 import { fetcher } from "@/lib/fetcher";
+import { randomFoodTrivia, type FoodTrivia } from "@/lib/food-trivia";
 import { formatRelativeTime, cn } from "@/lib/utils";
-import type { Activity, ReactionEmoji, ReportReason } from "@/types";
+import type { Activity, ReactionEmoji, ReportReason, RsvpStatus } from "@/types";
 
 /** 点赞朱砂粒子：8 个方向飞出，距离略有变化更自然 */
 const HEART_PARTICLES = Array.from({ length: 8 }, (_, i) => {
@@ -119,6 +122,73 @@ export function FeedCard({
   const [pinning, setPinning] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
+  // ---- 紧凑 RSVP（列表页）：optimistic 更新，不经过详情页 ----
+  // 从 feed 已携带的 rsvp/rsvp_summary 初始化，本地维护，操作后直接调 API
+  const [rsvpStatus, setRsvpStatusState] = useState<RsvpStatus | null>(
+    activity.rsvp?.status ?? null
+  );
+  const [rsvpAttending, setRsvpAttending] = useState(
+    activity.rsvp_summary?.attending ?? 0
+  );
+  const rsvpLoading = useRef(false);
+
+  // ---- 冷知识彩蛋：初始为空，点击时抽一条；可再抽（排除重复）或收起 ----
+  const [triviaOpen, setTriviaOpen] = useState(false);
+  const [trivia, setTrivia] = useState<FoodTrivia | null>(null);
+  const usedTrivia = useRef<string[]>([]);
+
+  const handleToggleTrivia = () => {
+    if (triviaOpen) {
+      setTriviaOpen(false);
+      return;
+    }
+    const next = randomFoodTrivia(usedTrivia.current);
+    usedTrivia.current.push(next.id);
+    setTrivia(next);
+    setTriviaOpen(true);
+  };
+
+  const handleNextTrivia = () => {
+    const next = randomFoodTrivia(usedTrivia.current);
+    usedTrivia.current.push(next.id);
+    setTrivia(next);
+  };
+
+  // 列表页参加/取消：点一下切换为「参加」，已在参加则取消
+  const handleToggleRsvp = async () => {
+    if (rsvpLoading.current) return;
+    rsvpLoading.current = true;
+    const next = rsvpStatus === "attending" ? null : "attending";
+    const prevStatus = rsvpStatus;
+    const prevCount = rsvpAttending;
+    // optimistic
+    setRsvpStatusState(next);
+    setRsvpAttending((c) =>
+      next ? c + 1 : Math.max(0, c - 1)
+    );
+    try {
+      if (next === null) {
+        await fetcher<{ success: boolean }>(
+          `/api/activities/${activity.id}/rsvp`,
+          { method: "DELETE" }
+        );
+      } else {
+        await fetcher<{ status: RsvpStatus }>(
+          `/api/activities/${activity.id}/rsvp`,
+          { method: "POST", body: JSON.stringify({ status: "attending" }) }
+        );
+      }
+      toast.success(next === null ? "已取消参加" : "已标记为参加");
+    } catch (e) {
+      // 失败回滚
+      setRsvpStatusState(prevStatus);
+      setRsvpAttending(prevCount);
+      toast.error(e instanceof Error ? e.message : "操作失败");
+    } finally {
+      rsvpLoading.current = false;
+    }
+  };
 
   // 收藏状态（乐观更新 + 失败回滚由 hook 内部处理）
   const { favorited, toggle: toggleFav } = useIsFavorited(
@@ -391,6 +461,26 @@ export function FeedCard({
       <div className="mt-3.5 flex items-center gap-1 border-t border-border/40 pt-2.5 text-muted-foreground">
         <button
           type="button"
+          onClick={handleToggleRsvp}
+          disabled={rsvpLoading.current}
+          aria-pressed={rsvpStatus === "attending"}
+          aria-label={rsvpStatus === "attending" ? "取消参加" : "参加"}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97] disabled:opacity-60",
+            rsvpStatus === "attending" &&
+              "border-transparent bg-emerald-500 text-white hover:bg-emerald-500/90"
+          )}
+        >
+          <Check className="h-4 w-4" aria-hidden="true" />
+          <span>{rsvpStatus === "attending" ? "已参加" : "参加"}</span>
+          {rsvpAttending > 0 ? (
+            <span className="tabular-nums opacity-80">
+              {rsvpAttending}
+            </span>
+          ) : null}
+        </button>
+        <button
+          type="button"
           onClick={handleLike}
           disabled={pending}
           aria-pressed={liked}
@@ -486,6 +576,19 @@ export function FeedCard({
           <Repeat2 className="h-4 w-4" aria-hidden="true" />
           转发
         </button>
+        <button
+          type="button"
+          onClick={handleToggleTrivia}
+          aria-expanded={triviaOpen}
+          aria-label="美食冷知识"
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors hover:bg-muted touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]",
+            triviaOpen && "text-primary bg-muted"
+          )}
+        >
+          <Soup className="h-4 w-4" aria-hidden="true" />
+          冷知识
+        </button>
         {/* 右侧：收藏 + 照片数 */}
         <div className="ml-auto flex items-center gap-1">
           <button
@@ -515,6 +618,34 @@ export function FeedCard({
           ) : null}
         </div>
       </div>
+
+      {/* 美食冷知识彩蛋：点击「冷知识」展开，可再抽新一条或收起 */}
+      {triviaOpen ? (
+        <div className="mt-3 animate-fade-in rounded-lg border border-amber-200/60 bg-amber-50/60 p-3 dark:border-amber-500/20 dark:bg-amber-500/5">
+          <div className="flex items-start gap-2.5">
+            <Soup className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
+            <p className="flex-1 text-[13px] leading-relaxed text-foreground/90">
+              {trivia?.text}
+            </p>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleNextTrivia}
+              className="rounded-full px-2.5 py-1 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-500/10 touch-manipulation"
+            >
+              换一条
+            </button>
+            <button
+              type="button"
+              onClick={() => setTriviaOpen(false)}
+              className="rounded-full px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted touch-manipulation"
+            >
+              收起
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* 反应展示条 */}
       <ReactionBar
