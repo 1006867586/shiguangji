@@ -70,13 +70,12 @@ export default async function GroupsPage() {
       ) : (
         <div className="space-y-2.5 p-3">
           {groups.map((g) => (
-            <Link
+            <div
               key={g.id}
-              href={`/g/${g.id}`}
-              className="block rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:-translate-y-0.5 hover:border-border hover:shadow-md motion-reduce:transform-none"
+              className="rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:-translate-y-0.5 hover:border-border hover:shadow-md motion-reduce:transform-none"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
+                <Link href={`/g/${g.id}/manage`} className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="truncate font-display text-base font-semibold tracking-tight">{g.name}</h3>
                     {g.role === "admin" ? (
@@ -96,10 +95,16 @@ export default async function GroupsPage() {
                       {g.invite_code}
                     </span>
                   </p>
-                </div>
-                <span className="text-muted-foreground">›</span>
+                </Link>
+                <Link
+                  href={`/g/${g.id}`}
+                  aria-label="查看动态"
+                  className="shrink-0 pt-0.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+                >
+                  查看动态 ›
+                </Link>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

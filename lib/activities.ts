@@ -1,5 +1,6 @@
 import { createServerClient } from "./supabase/server";
 import type {
+  Achievement,
   Activity,
   ActivityPhoto,
   Comment,
@@ -238,6 +239,37 @@ export async function fetchActivityDetail(opts: {
       created_at: r.created_at as string,
       author: r.author as Activity["author"],
     };
+  }
+
+  // 批量拉取作者 / 转发作者已解锁成就（security definer 函数，绕过仅本人可读 RLS）
+  const authorId = (a.author as { id?: string } | null)?.id;
+  const repostAuthorId = repostOf?.author?.id;
+  const achUserIds = [authorId, repostAuthorId].filter(
+    (x): x is string => Boolean(x)
+  );
+  const achMap = new Map<string, Achievement[]>();
+  if (achUserIds.length > 0) {
+    const { data: achRows } = await supabase.rpc(
+      "get_unlocked_achievements_for_users",
+      { p_user_ids: achUserIds }
+    );
+    for (const row of (achRows ?? []) as Array<{
+      user_id: string;
+      achievements: Achievement[];
+    }>) {
+      achMap.set(row.user_id, row.achievements ?? []);
+    }
+  }
+  const authorObj = a.author as Activity["author"] & {
+    achievements?: Achievement[];
+  };
+  if (authorObj?.id) {
+    authorObj.achievements = achMap.get(authorObj.id) ?? [];
+  }
+  if (repostOf?.author?.id) {
+    (repostOf.author as Activity["author"] & {
+      achievements?: Achievement[];
+    }).achievements = achMap.get(repostOf.author.id) ?? [];
   }
 
   const commentList = (comments ?? []) as unknown as Comment[];

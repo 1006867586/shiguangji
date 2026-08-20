@@ -174,16 +174,27 @@ export interface LinkPoiEnrichResult {
   confidence: number;
 }
 
-/** 电话/地址/品类/评分均齐全视为完整，无需 POI 兜底 */
+/** 地址/电话/品类/评分/人均/封面均齐全视为完整，无需 POI 兜底 */
 function isLinkComplete(link: ExternalLink): boolean {
   return Boolean(
-    link.phone && link.address && link.category && link.rating != null
+    link.phone &&
+      link.address &&
+      link.category &&
+      link.rating != null &&
+      link.price &&
+      link.coverImage
   );
+}
+
+/** POI 人均数字（元）→ 统一字符串格式 "¥67/人"，与网页抓取格式保持一致 */
+function formatPrice(price: number): string {
+  const n = Number.isInteger(price) ? price : Math.round(price);
+  return `¥${n}/人`;
 }
 
 /**
  * 单条链接 POI 兜底：仅当店名存在且字段缺失时匹配，
- * 只填空字段（价格保持字符串格式，不套用 POI 人均数字）。
+ * 只填空字段；人均缺失时用 POI 人均数字格式化为 "¥X/人"（而非直接套用数字）。
  * 匹配失败不影响原链接，返回原值。
  */
 export async function enrichLinkWithPoi(
@@ -219,6 +230,14 @@ export async function enrichLinkWithPoi(
     if (!enriched.category && cand.category) enriched.category = cand.category;
     if (enriched.rating == null && cand.rating != null) {
       enriched.rating = cand.rating;
+    }
+    if (!enriched.price && cand.price != null) {
+      enriched.price = formatPrice(cand.price);
+    }
+    // 封面图：点评/美团 share 页不返回封面、截图识别也无封面时，
+    // 用地图 POI 返回的真实可访问照片 URL 补全
+    if (!enriched.coverImage && cand.photos && cand.photos.length > 0) {
+      enriched.coverImage = cand.photos[0];
     }
     // 坐标落库（GCJ-02 统一系），供小程序 wx.openLocation / 地图导航使用
     if (!enriched.location && cand.location) {

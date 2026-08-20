@@ -31,6 +31,49 @@ export interface Profile {
   nickname: string;
   avatar_url: string | null;
   created_at: string;
+  /** 已解锁成就（成员列表 / 动态流作者名旁徽章使用，可选） */
+  achievements?: Achievement[];
+}
+
+/** 积分 / 连续打卡 / 成就汇总 */
+export interface UserGamification {
+  user_id: UUID;
+  points: number;
+  streak_count: number;
+  last_meal_date: string | null;
+  total_meals: number;
+  meals_this_week: number;
+  circles_joined: number;
+  activities_created: number;
+  updated_at: string;
+}
+
+/** 成就规则类型 */
+export type AchievementRuleType =
+  | "meals_this_week"
+  | "total_meals"
+  | "streak"
+  | "circles_joined"
+  | "activities_created";
+
+/** 成就（含当前用户是否已获得） */
+export interface Achievement {
+  id: UUID;
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  rule_type: AchievementRuleType;
+  threshold: number;
+  sort_order: number;
+  unlocked?: boolean;
+  unlocked_at?: string | null;
+}
+
+/** 个人中心游戏化数据 */
+export interface GamificationResponse {
+  gamification: UserGamification | null;
+  achievements: Achievement[];
 }
 
 /** 圈子 */
@@ -107,7 +150,7 @@ export interface RepostOf {
   content: string | null;
   external_link: ExternalLink | null;
   created_at: string;
-  author: Pick<Profile, "id" | "nickname" | "avatar_url">;
+  author: Pick<Profile, "id" | "nickname" | "avatar_url" | "achievements">;
 }
 
 /** Feed 卡片 / 活动聚合视图 */
@@ -117,7 +160,7 @@ export interface Activity {
   content: string | null;
   external_link: ExternalLink | null;
   created_at: string;
-  author: Pick<Profile, "id" | "nickname" | "avatar_url">;
+  author: Pick<Profile, "id" | "nickname" | "avatar_url" | "achievements">;
   photos: ActivityPhoto[];
   photo_count: number;
   comment_count: number;
@@ -295,6 +338,26 @@ export interface JoinGroupBody {
   inviteCode: string;
 }
 
+/** 邀请链接预览（按邀请码查询的圈子公开信息） */
+export interface GroupInvitePreview {
+  id: UUID;
+  name: string;
+  description: string | null;
+  avatar_url: string | null;
+  /** 圈子成员数 */
+  member_count: number;
+  /** 当前登录用户是否已是该圈子成员（未登录为 false） */
+  is_member: boolean;
+}
+
+/** 通过邀请码加入圈子的返回结果 */
+export interface JoinGroupResult {
+  /** 圈子 id（用于跳转 /g/{id}） */
+  id: UUID;
+  /** 加入前是否已是成员（true 表示未重复插入） */
+  alreadyMember: boolean;
+}
+
 export interface AddPhotoBody {
   url: string;
   caption?: string;
@@ -397,6 +460,8 @@ export interface ParsedScreenshot {
   averagePrice: string | null;
   /** 餐厅分类，如 火锅/烤肉/烧烤/川菜；识别不到为 null */
   category: string | null;
+  /** 封面图 URL（AI 不产生，由地图 POI 兜底补全）；未补全时可为空 */
+  coverImage?: string | null;
 }
 
 /** 账单小票识别结果 */
@@ -457,6 +522,8 @@ export interface FavoritePlace {
   cover_image_url: string | null;
   /** 联网搜索补齐的店铺链接（美团/点评/官网等） */
   store_url: string | null;
+  /** 城市（019 迁移新增列，可空；用于打卡搜索限定） */
+  city?: string | null;
 }
 
 /** 批量创建店铺收藏请求体 */
@@ -528,3 +595,104 @@ export interface ImportMealRouletteItemsBody {
     signatureDishes?: string[];
   }>;
 }
+
+// ============================================================
+// 美食打卡地图（places / checkins）
+// ============================================================
+
+export type PlaceSource = "amap" | "baidu" | "tencent" | "manual";
+export type PlaceStatus = "approved" | "pending_review" | "rejected";
+
+/** 打卡地点主档（对应 public.places，坐标为 GCJ-02） */
+export interface MapPlace {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  district: string | null;
+  category: string | null;
+  lng: number;
+  lat: number;
+  source: PlaceSource;
+  poi_id: string | null;
+  status: PlaceStatus;
+  created_at: string;
+  /** 当前用户是否已在该地点打过卡（仅列表接口附带） */
+  i_checked?: boolean;
+  /** 当前用户在该地点最近一条打卡记录 id（撤销打卡用） */
+  i_checkin_id?: string | null;
+  /** 富文本字段（来自迁移 021，可空） */
+  rating?: number | null;
+  average_price?: string | null;
+  phone?: string | null;
+  business_hours?: string | null;
+  description?: string | null;
+  tags?: string[] | null;
+  /** 封面图 URL（来自迁移 022，高德 POI photos[0]） */
+  cover_image_url?: string | null;
+  updated_at?: string;
+}
+
+/** 打卡记录（对应 public.checkins） */
+export interface Checkin {
+  id: string;
+  user_id: string;
+  place_id: string;
+  activity_id: string | null;
+  note: string | null;
+  checked_at: string;
+  created_at: string;
+  place?: MapPlace;
+  activity?: {
+    id: string;
+    group_id: string;
+    content: string | null;
+  } | null;
+}
+
+/** 打卡请求体 */
+export interface CreateCheckinBody {
+  place: {
+    name: string;
+    address?: string | null;
+    city?: string | null;
+    district?: string | null;
+    category?: string | null;
+    lng: number;
+    lat: number;
+    source?: PlaceSource;
+    poi_id?: string | null;
+    /** 富文本字段（来自迁移 021，可选；前端从高德 POI 详情带入） */
+    rating?: number | null;
+    average_price?: string | null;
+    phone?: string | null;
+    business_hours?: string | null;
+    description?: string | null;
+    tags?: string[] | null;
+    /** 封面图 URL（迁移 022） */
+    cover_image_url?: string | null;
+  };
+  activity_id?: string | null;
+  note?: string | null;
+}
+
+/** 打卡结果（upsert place + insert checkin 后返回） */
+export interface CreateCheckinResult {
+  checkin: Checkin;
+  place: MapPlace;
+  /** 是否本次新建的地点（false 表示命中已有地点） */
+  place_created: boolean;
+}
+
+/** 圈子打卡聚合结果（脱敏：无打卡人信息） */
+export interface CircleCheckinPlace {
+  place_id: string;
+  name: string;
+  address: string | null;
+  category: string | null;
+  lng: number;
+  lat: number;
+  checkin_count: number;
+  last_checked_at: string | null;
+}
+

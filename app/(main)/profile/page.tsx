@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ChevronLeft, Users } from "lucide-react";
+import { ChevronLeft, Users, MapPin, Footprints } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
 import { FavoritePlacesSection } from "@/components/profile/FavoritePlacesSection";
-import { getServerProfile, getServerGroups } from "@/lib/server-data";
+import { AchievementsPanel } from "@/components/profile/AchievementsPanel";
+import { getServerProfile, getServerGroups, getServerGamification } from "@/lib/server-data";
 import type { Group } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +12,10 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "个人资料" };
 
 export default async function ProfilePage() {
-  const [profile, { groups }] = await Promise.all([
+  const [profile, { groups }, gamification] = await Promise.all([
     getServerProfile(),
     getServerGroups(),
+    getServerGamification(),
   ]);
 
   return (
@@ -29,7 +31,46 @@ export default async function ProfilePage() {
         </div>
       </header>
 
-      {profile ? <ProfileEditor profile={profile} /> : null}
+      {profile ? (
+        <ProfileEditor
+          profile={profile}
+          achievements={gamification.achievements}
+        />
+      ) : null}
+
+      {/* 美食打卡地图入口 */}
+      <div className="mt-2 border-t border-border/60 p-4">
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            href="/map"
+            className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3 py-3 shadow-xs transition-all hover:-translate-y-0.5 hover:border-border hover:shadow-md motion-reduce:transform-none"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <MapPin className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">美食地图</span>
+              <span className="block truncate text-[11px] text-muted-foreground">
+                探索打卡点
+              </span>
+            </span>
+          </Link>
+          <Link
+            href="/me/footprints"
+            className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3 py-3 shadow-xs transition-all hover:-translate-y-0.5 hover:border-border hover:shadow-md motion-reduce:transform-none"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-500">
+              <Footprints className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">我的足迹</span>
+              <span className="block truncate text-[11px] text-muted-foreground">
+                打卡记录
+              </span>
+            </span>
+          </Link>
+        </div>
+      </div>
 
       <div className="mt-2 border-t border-border/60 p-4">
         <div className="mb-3 flex items-center justify-between">
@@ -76,6 +117,11 @@ export default async function ProfilePage() {
       </div>
 
       <FavoritePlacesSection />
+
+      <AchievementsPanel
+        gamification={gamification.gamification}
+        achievements={gamification.achievements}
+      />
     </div>
   );
 }

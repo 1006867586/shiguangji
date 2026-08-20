@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import { NameBadges } from "@/components/profile/NameBadges";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -173,6 +174,7 @@ export function MembersList({
                   <span className="truncate text-sm font-semibold">
                     {m.profile?.nickname ?? "未知用户"}
                   </span>
+                  <NameBadges achievements={m.profile?.achievements ?? []} />
                   {isSelf ? (
                     <Badge variant="outline" className="text-[10px]">
                       我

@@ -99,7 +99,7 @@ export function ActivityForm({
         platform: prev?.platform ?? "other",
         url: prev?.url ?? "",
         title: parsed.title || prev?.title || "",
-        coverImage: prev?.coverImage ?? null,
+        coverImage: parsed.coverImage ?? prev?.coverImage ?? null,
         rating: parsed.rating ?? prev?.rating ?? null,
         address: parsed.address || prev?.address || null,
         phone: parsed.phone || prev?.phone || null,
