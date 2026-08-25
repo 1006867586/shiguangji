@@ -245,3 +245,79 @@ export function clearCartForMerchant(merchantUserId: string): CartItem[] {
 export function cartTotal(items: CartItem[]): string {
   return items.reduce((s, it) => s + it.price * it.qty, 0).toFixed(2);
 }
+
+// ---- 店铺配置（商家）----
+
+/** /api/diancan/shop GET 返回的店铺配置（含配对码） */
+export interface MyShopConfig {
+  merchantUserId: string;
+  shopName: string;
+  displayShopName: string;
+  tagline: string;
+  notice: string;
+  themeColor: string;
+  themeColorHex: string;
+  logoUrl: string | null;
+  pairingCode: string | null;
+  updatedAt: string;
+}
+
+export function fetchMyShop(merchantUserId: string): Promise<{
+  config: MyShopConfig;
+  banners: unknown[];
+}> {
+  return request(`/api/diancan/shop?merchantUserId=${encodeURIComponent(merchantUserId)}`, {
+    silent: true,
+  });
+}
+
+export function updateShopConfig(patch: {
+  shopName?: string;
+  tagline?: string;
+  notice?: string;
+  themeColor?: string;
+  logoUrl?: string | null;
+}): Promise<{ config: MyShopConfig }> {
+  return request("/api/diancan/shop", { method: "PUT", data: patch });
+}
+
+// ---- 菜单管理（商家）----
+
+export function createCategory(name: string, sort = 0): Promise<{ category: DishCategory }> {
+  return request("/api/diancan/categories", { method: "POST", data: { name, sort } });
+}
+
+export function deleteCategory(id: string): Promise<void> {
+  return request(`/api/diancan/categories/${id}`, { method: "DELETE" });
+}
+
+export function createDish(body: {
+  name: string;
+  categoryId: string;
+  description?: string;
+  emoji?: string;
+  price: number;
+  available?: boolean;
+  thumbnailUrl?: string;
+}): Promise<{ dish: Dish }> {
+  return request("/api/diancan/dishes", { method: "POST", data: body });
+}
+
+export function updateDish(
+  id: string,
+  patch: {
+    name?: string;
+    description?: string;
+    emoji?: string;
+    price?: number;
+    categoryId?: string;
+    available?: boolean;
+    thumbnailUrl?: string;
+  }
+): Promise<{ dish: Dish }> {
+  return request(`/api/diancan/dishes/${id}`, { method: "PUT", data: patch });
+}
+
+export function deleteDish(id: string): Promise<void> {
+  return request(`/api/diancan/dishes/${id}`, { method: "DELETE" });
+}

@@ -79,21 +79,24 @@ export default function DiancanIndex() {
         <View className="dc-btn" onClick={() => Taro.navigateTo({ url: "/pages/diancan/pair" })}>
           去配对
         </View>
+        <View className="dc-btn-secondary" onClick={() => Taro.navigateTo({ url: "/pages/diancan/shop" })}>
+          我是老板，我要开店
+        </View>
       </View>
     );
   }
 
-  // 商家角色：管理菜单/订单（商家端后续完善，先给出入口）
+  // 商家角色：进入商家中心（配对码/配菜/接单）
   if (me?.role === "merchant") {
     return (
       <View className="dc-empty">
         <View className="dc-empty-icon">👨‍🍳</View>
         <Text className="dc-empty-title">我是商家</Text>
-        <Text className="dc-empty-sub">菜单管理、接单与菜谱本功能将在此接入</Text>
-        <View
-          className="dc-btn"
-          onClick={() => Taro.navigateTo({ url: "/pages/diancan/orders" })}
-        >
+        <Text className="dc-empty-sub">进入商家中心管理配对码、菜单与订单</Text>
+        <View className="dc-btn" onClick={() => Taro.navigateTo({ url: "/pages/diancan/shop" })}>
+          商家中心
+        </View>
+        <View className="dc-btn-secondary" onClick={() => Taro.navigateTo({ url: "/pages/diancan/orders" })}>
           查看订单
         </View>
       </View>

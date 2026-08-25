@@ -369,3 +369,247 @@
   padding: 120rpx 0;
   font-size: 28rpx;
 }
+
+/* ---- 次级按钮（引导页双按钮）---- */
+.dc-btn-secondary {
+  margin-top: 24rpx;
+  padding: 20rpx 72rpx;
+  border-radius: 44rpx;
+  border: 2rpx solid #d1d5db;
+  color: #6b7280;
+  font-size: 30rpx;
+  background: #fff;
+}
+
+/* ---- 商家中心 ---- */
+.dc-shop-card {
+  margin: 20rpx 24rpx 0;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+}
+.dc-shop-card-label {
+  display: block;
+  font-size: 26rpx;
+  color: #9ca3af;
+  margin-bottom: 16rpx;
+}
+.dc-shop-card-empty {
+  font-size: 32rpx;
+  color: #6b7280;
+}
+.dc-shop-card-tip {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+.dc-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dc-code {
+  font-size: 64rpx;
+  font-weight: 800;
+  letter-spacing: 8rpx;
+  color: #1f2937;
+}
+.dc-code-copy {
+  padding: 12rpx 24rpx;
+  border-radius: 32rpx;
+  background: #fff7ed;
+  color: #ff6b35;
+  font-size: 26rpx;
+}
+.dc-shop-form {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.dc-shop-input {
+  flex: 1;
+  padding: 16rpx 20rpx;
+  background: #f7f7f7;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+}
+.dc-shop-save {
+  margin: 0 !important;
+  padding: 0 32rpx !important;
+  line-height: 68rpx !important;
+  background: #ff6b35 !important;
+  color: #fff !important;
+  border-radius: 36rpx !important;
+  font-size: 28rpx !important;
+}
+.dc-manage-cards {
+  display: flex;
+  gap: 20rpx;
+  margin: 20rpx 24rpx 0;
+}
+.dc-manage-card {
+  flex: 1;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.dc-manage-card-icon {
+  font-size: 44rpx;
+}
+.dc-manage-card-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+.dc-manage-card-sub {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+.dc-switch-customer {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 26rpx;
+  margin-top: 40rpx;
+  padding: 20rpx;
+}
+
+/* ---- 配菜页 ---- */
+.dc-cat-bar {
+  padding: 20rpx 24rpx 0;
+}
+.dc-cat-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.dc-cat-chip {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
+  border-radius: 32rpx;
+  background: #fff;
+  color: #374151;
+  font-size: 28rpx;
+}
+.dc-cat-chip-on {
+  background: #ff6b35;
+  color: #fff;
+}
+.dc-cat-chip-x {
+  font-size: 28rpx;
+  color: #c0c4cc;
+  padding: 0 4rpx;
+}
+.dc-cat-chip-on .dc-cat-chip-x {
+  color: #fff3ea;
+}
+.dc-cat-add {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.dc-cat-add-input {
+  flex: 1;
+  padding: 14rpx 20rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+.dc-cat-add-btn {
+  margin: 0 !important;
+  padding: 0 28rpx !important;
+  line-height: 64rpx !important;
+  background: #1f2937 !important;
+  color: #fff !important;
+  border-radius: 32rpx !important;
+  font-size: 26rpx !important;
+}
+.dc-manage-list {
+  padding: 20rpx 24rpx;
+}
+.dc-manage-row {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+}
+.dc-manage-emoji {
+  width: 88rpx;
+  height: 88rpx;
+  font-size: 44rpx;
+  margin-right: 20rpx;
+}
+.dc-manage-ops {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.dc-manage-switch {
+  transform: scale(0.8);
+}
+.dc-manage-edit {
+  padding: 10rpx 20rpx;
+  border-radius: 28rpx;
+  background: #fff7ed;
+  color: #ff6b35;
+  font-size: 24rpx;
+}
+.dc-manage-del {
+  padding: 10rpx 20rpx;
+  border-radius: 28rpx;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 24rpx;
+}
+
+/* ---- 菜品编辑弹层 ---- */
+.dc-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+}
+.dc-sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx 40rpx calc(env(safe-area-inset-bottom) + 32rpx);
+}
+.dc-sheet-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 28rpx;
+}
+.dc-field {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.dc-field-label {
+  width: 140rpx;
+  font-size: 28rpx;
+  color: #374151;
+}
+.dc-field-input {
+  flex: 1;
+  font-size: 28rpx;
+}

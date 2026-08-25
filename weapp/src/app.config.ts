@@ -13,6 +13,8 @@ export default defineAppConfig({
     "pages/diancan/cart",
     "pages/diancan/pair",
     "pages/diancan/orders",
+    "pages/diancan/shop",
+    "pages/diancan/manage",
   ],
   tabBar: {
     custom: true,
