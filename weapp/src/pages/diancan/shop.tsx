@@ -69,17 +69,29 @@ export default function DiancanShop() {
     setGenerating(true);
     try {
       const { code } = await generatePairCode();
-      Taro.setClipboardData({
-        data: code,
-        success: () => Taro.showToast({ title: `配对码 ${code} 已复制`, icon: "none" }),
-        fail: () => Taro.showToast({ title: `配对码：${code}`, icon: "none" }),
-      });
       await load();
+      // 剪贴板依赖小程序后台「剪贴板」隐私声明；未声明时会 reject（errno 112），降级为弹窗展示
+      try {
+        await Taro.setClipboardData({ data: code });
+        Taro.showToast({ title: `配对码 ${code} 已复制`, icon: "none" });
+      } catch {
+        showCodeModal(code);
+      }
     } catch {
       // 错误 toast 已弹出
     } finally {
       setGenerating(false);
     }
+  }
+
+  /** 剪贴板不可用时的配对码弹窗展示 */
+  function showCodeModal(code: string) {
+    Taro.showModal({
+      title: "配对码",
+      content: `${code}\n\n顾客在小程序「点餐 → 绑定餐厅」输入此 6 位码即可点单`,
+      confirmText: "知道了",
+      showCancel: false,
+    });
   }
 
   async function saveShop() {

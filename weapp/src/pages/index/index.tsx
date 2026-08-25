@@ -87,10 +87,9 @@ export default function IndexPage() {
       return;
     }
     // 复制地址到剪贴板（不依赖社交元素；wx.openLocation 需要 POI 经纬度，留作未来）
-    Taro.setClipboardData({
-      data: p.address,
-      success: () => Taro.showToast({ title: "地址已复制", icon: "success" }),
-    });
+    Taro.setClipboardData({ data: p.address })
+      .then(() => Taro.showToast({ title: "地址已复制", icon: "success" }))
+      .catch(() => Taro.showToast({ title: "复制失败，请手动复制", icon: "none" }));
   };
 
   return (

@@ -76,10 +76,9 @@ export default function FavoritesPage() {
       Taro.showToast({ title: "暂无地址", icon: "none" });
       return;
     }
-    Taro.setClipboardData({
-      data: p.address,
-      success: () => Taro.showToast({ title: "地址已复制", icon: "success" }),
-    });
+    Taro.setClipboardData({ data: p.address })
+      .then(() => Taro.showToast({ title: "地址已复制", icon: "success" }))
+      .catch(() => Taro.showToast({ title: "复制失败，请手动复制", icon: "none" }));
   };
 
   const callStore = (p: FavoritePlace) => {
