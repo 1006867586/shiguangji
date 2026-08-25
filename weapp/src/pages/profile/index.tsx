@@ -42,7 +42,7 @@ export default function ProfilePage() {
   }, []);
 
   useDidShow(() => {
-    setSelectedTab(2);
+    setSelectedTab(3);
     setLogged(isLoggedIn());
     void loadProfile();
   });

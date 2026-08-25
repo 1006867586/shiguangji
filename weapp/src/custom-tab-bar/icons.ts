@@ -9,4 +9,6 @@ export const TAB_ICONS: Record<string, string> = {
   wheel_white: "/assets/tab-icons/wheel-white.png",
   user_gray: "/assets/tab-icons/user-gray.png",
   user_white: "/assets/tab-icons/user-white.png",
+  dish_gray: "/assets/tab-icons/dish-gray.png",
+  dish_white: "/assets/tab-icons/dish-white.png",
 };

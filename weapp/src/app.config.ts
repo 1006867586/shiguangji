@@ -9,6 +9,10 @@ export default defineAppConfig({
     "pages/favorites-import/index",
     "pages/favorite-edit/index",
     "pages/webview/index",
+    "pages/diancan/index",
+    "pages/diancan/cart",
+    "pages/diancan/pair",
+    "pages/diancan/orders",
   ],
   tabBar: {
     custom: true,
@@ -19,6 +23,7 @@ export default defineAppConfig({
     list: [
       { pagePath: "pages/index/index", text: "收藏" },
       { pagePath: "pages/roulette/index", text: "转盘" },
+      { pagePath: "pages/diancan/index", text: "点餐" },
       { pagePath: "pages/profile/index", text: "我的" },
     ],
   },
