@@ -17,6 +17,8 @@ interface CommentSectionProps {
   inline?: boolean;
   /** 是否默认展开输入框（详情页） */
   defaultShowInput?: boolean;
+  /** 评论加载中（懒加载时避免误判空评论） */
+  loading?: boolean;
 }
 
 export function CommentSection({
@@ -27,6 +29,7 @@ export function CommentSection({
   onDelete,
   inline = false,
   defaultShowInput = false,
+  loading = false,
 }: CommentSectionProps) {
   const [showInput, setShowInput] = useState(defaultShowInput);
   const [content, setContent] = useState("");
@@ -52,7 +55,7 @@ export function CommentSection({
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          评论 {comments.length > 0 ? `(${comments.length})` : ""}
+          评论 {loading ? "" : comments.length > 0 ? `(${comments.length})` : ""}
         </div>
         {!defaultShowInput ? (
           <Button
@@ -99,7 +102,7 @@ export function CommentSection({
         ))}
         {comments.length === 0 && !showInput ? (
           <p className="py-2 text-center text-xs text-muted-foreground">
-            还没有评论，来抢沙发
+            {loading ? "加载评论中…" : "还没有评论，来抢沙发"}
           </p>
         ) : null}
       </div>

@@ -222,14 +222,20 @@ export function FavoritePlacesSection() {
         toast.info("未搜索到可补齐的信息");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "联网搜索失败");
+      toast.error(e instanceof Error ? e.message : "高德补齐失败");
     }
   };
 
   const handleEnrichAll = async () => {
-    // 仅补齐缺少封面图或店铺链接的条目，避免重复消耗配额
+    // 仅补齐高德能补且当前缺失的字段，避免重复消耗地图接口配额
     const targets = places.filter(
-      (p) => !p.cover_image_url || !p.store_url || !p.phone || !p.address
+      (p) =>
+        !p.cover_image_url ||
+        !p.phone ||
+        !p.address ||
+        !p.category ||
+        p.rating == null ||
+        !p.price
     );
     if (targets.length === 0) {
       toast.success("所有店铺信息已完整");
@@ -262,14 +268,14 @@ export function FavoritePlacesSection() {
           </span>
         </h2>
         <div className="flex items-center gap-1.5">
-          {aiEnabled && places.length > 0 ? (
+          {places.length > 0 ? (
             <Button
               variant="ghost"
               size="sm"
               className="h-7 gap-1 text-xs"
               disabled={batchRunning || enrichingIds.size > 0}
               onClick={handleEnrichAll}
-              title="联网搜索补齐封面图、店铺链接、电话、地址"
+              title="通过高德地图按店铺名补齐电话、地址、品类、评分、人均、封面"
             >
               {batchRunning ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -360,7 +366,12 @@ export function FavoritePlacesSection() {
           {places.map((p) => {
             const enriching = enrichingIds.has(p.id);
             const needEnrich =
-              !p.cover_image_url || !p.store_url || !p.phone || !p.address;
+              !p.cover_image_url ||
+              !p.phone ||
+              !p.address ||
+              !p.category ||
+              p.rating == null ||
+              !p.price;
             return (
               <div
                 key={p.id}
@@ -470,26 +481,24 @@ export function FavoritePlacesSection() {
                     ) : null}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    {aiEnabled ? (
-                      <button
-                        type="button"
-                        onClick={() => handleEnrichOne(p.id, !needEnrich)}
-                        disabled={enriching || batchRunning}
-                        aria-label="联网搜索补齐"
-                        title={
-                          needEnrich
-                            ? "联网搜索补齐信息"
-                            : "重新联网搜索（覆盖现有信息）"
-                        }
-                        className="rounded-full p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 disabled:opacity-50"
-                      >
-                        {enriching ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Globe className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleEnrichOne(p.id, !needEnrich)}
+                      disabled={enriching || batchRunning}
+                      aria-label="高德补齐"
+                      title={
+                        needEnrich
+                          ? "通过高德按店铺名补齐信息"
+                          : "重新高德补齐（覆盖现有信息）"
+                      }
+                      className="rounded-full p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 disabled:opacity-50"
+                    >
+                      {enriching ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Globe className="h-3.5 w-3.5" />
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={() => setCheckinTarget(p)}

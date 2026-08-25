@@ -151,7 +151,7 @@ export function PlaceMapOverlay({
     }
   };
 
-  // 收藏：调 /api/favorite-places（单店变体）
+  // 收藏：调 /api/favorite-places（单店变体），默认走高德 POI 联网补齐
   const handleFavorite = async () => {
     if (favoriting || favorited) return;
     setFavoriting(true);
@@ -161,6 +161,8 @@ export function PlaceMapOverlay({
         body: JSON.stringify({
           platform: "manual",
           city: place.city ?? undefined,
+          // 默认走高德/百度 POI 联网补齐（未配置地图 Key 时后端静默跳过）
+          enrichPoi: true,
           places: [
             {
               title: place.name,

@@ -53,7 +53,7 @@ function describeNotification(
 /** 从通知 data 字段中提取内容预览片段 */
 function extractPreview(data: Record<string, unknown> | null): string | null {
   if (!data) return null;
-  const candidates = ["preview", "content", "text", "summary", "detail"];
+  const candidates = ["preview", "snippet", "content", "text", "summary", "detail"];
   for (const key of candidates) {
     const v = data[key];
     if (typeof v === "string" && v.trim()) return v.trim();

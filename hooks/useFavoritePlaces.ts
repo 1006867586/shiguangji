@@ -214,7 +214,7 @@ export function useAiParseFavorites(): UseAiParseFavoritesReturn {
 }
 
 // ============================================================
-// useEnrichPlace — 联网搜索补齐单条店铺信息
+// useEnrichPlace — 高德 POI 联网补齐单条店铺信息（纯高德、不消耗 AI 配额）
 // ============================================================
 
 export interface EnrichedInfo {
@@ -222,6 +222,9 @@ export interface EnrichedInfo {
   storeUrl: string | null;
   phone: string | null;
   address: string | null;
+  category: string | null;
+  rating: number | null;
+  price: string | null;
 }
 
 interface EnrichResponse {
@@ -261,7 +264,7 @@ export function useEnrichPlace(
       setEnrichingIds((prev) => new Set(prev).add(placeId));
       setError(null);
       try {
-        const res = await fetcher<EnrichResponse>("/api/ai/enrich-place", {
+        const res = await fetcher<EnrichResponse>("/api/favorite-places/enrich", {
           method: "POST",
           body: JSON.stringify({ placeId, force }),
         });
@@ -271,7 +274,7 @@ export function useEnrichPlace(
         }
         return res;
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "联网搜索失败";
+        const msg = e instanceof Error ? e.message : "高德补齐失败";
         setError(msg);
         throw e;
       } finally {
@@ -298,7 +301,7 @@ export function useEnrichPlace(
       let done = 0;
       let success = 0;
       let failed = 0;
-      // 串行执行，避免并发触发 MiniMax 速率限制
+      // 串行执行，避免并发触发高德 API QPS 限制
       for (const p of places) {
         try {
           await enrichOne(p.id, force);
