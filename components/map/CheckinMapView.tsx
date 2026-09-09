@@ -61,7 +61,7 @@ function buildMarkerContent(checked: boolean, nearby: boolean): HTMLDivElement {
   if (!nearby) return dot;
 
   const wrap = document.createElement("div");
-  wrap.style.cssText = `position:relative;width:${MARKER_SIZE + 10}px;height:${MARKER_SIZE + 10}px;display:flex;align-items:center;justify-content:center;`;
+  wrap.style.cssText = `position:relative;width:${MARKER_SIZE + 10}px;height:${MARKER_SIZE + 10}px;display:flex;align-items:center;justify-content:center;cursor:pointer;`;
   const ring = document.createElement("div");
   ring.style.cssText = `position:absolute;inset:0;border:1.5px dashed rgba(255,255,255,0.9);border-radius:50%;box-sizing:border-box;animation:map-nearby-pulse 1.8s ease-in-out infinite;`;
   const badge = document.createElement("div");
@@ -206,7 +206,10 @@ export function CheckinMapView({
         });
         (marker as any).__placeId = place.id;
         markerByPlaceIdRef.current.set(place.id, marker);
-        marker.on("click", () => {
+        // 高德：点击自定义 content marker 时，事件会冒泡到底层 map 的 click，
+        // 若不 stopPropagation，地图侧"点击空白关闭浮层"会立刻把刚打开的浮层关掉。
+        marker.on("click", (e: any) => {
+          e?.stopPropagation?.();
           const px = map.lngLatToContainer(marker.getPosition());
           onPlaceClickRef.current?.({
             place,
@@ -232,7 +235,8 @@ export function CheckinMapView({
         // 挂 place 引用便于单点解包
         (marker as any).__clusterPlaces = cluster.places;
         (marker as any).__clusterCount = cluster.count;
-        marker.on("click", () => {
+        marker.on("click", (e: any) => {
+          e?.stopPropagation?.();
           if (cluster.count === 1) {
             const only = cluster.places[0];
             const px = map.lngLatToContainer(marker.getPosition());
@@ -270,7 +274,13 @@ export function CheckinMapView({
   // 点击地图空白处（不响应 marker 点击；高德 SDK 自身区分）
   useEffect(() => {
     if (!map) return;
-    const handler = () => onMapClickRef.current?.();
+    const handler = (e: any) => {
+      // 防御：高德外部一般点击 marker 会先 stopPropagation，这里再兜底判断
+      // 命中点击是否落在 marker 的 DOM 上，命中则忽略，避免误关浮层。
+      const target = e?.originalEvent?.target as HTMLElement | undefined;
+      if (target?.closest?.(".amap-marker")) return;
+      onMapClickRef.current?.();
+    };
     map.on("click", handler);
     return () => {
       map.off("click", handler);
