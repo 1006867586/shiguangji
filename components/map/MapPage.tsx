@@ -244,9 +244,13 @@ export function MapPage({ initialFocusId }: { initialFocusId?: string | null }) 
               <select
                 value={city}
                 onChange={(e) => {
-                  setCity(e.target.value);
-                  // 切换城市时关闭浮层
+                  const next = e.target.value;
+                  setCity(next);
+                  // 切换城市时关闭浮层，并清空仅属于旧城市的附近查询结果，
+                  // 避免旧城市标记残留到新城市地图上
                   closeOverlay();
+                  setNearby([]);
+                  setFocusedPlace(null);
                 }}
                 className="h-8 appearance-none rounded-lg border border-border bg-card pl-2.5 pr-7 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="切换城市"
