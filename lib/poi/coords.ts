@@ -73,3 +73,17 @@ export function wgs84ToGcj02(lng: number, lat: number): Gcj02Point {
     (dLng * 180.0) / ((EARTH_RADIUS / sqrtMagic) * Math.cos(radLat) * Math.PI);
   return { lng: lng + dLng, lat: lat + dLat };
 }
+
+/** GCJ-02 → WGS84（迭代逼近，误差 <1m；供 Overpass 等 WGS84 服务查询） */
+export function gcj02ToWgs84(lng: number, lat: number): Gcj02Point {
+  if (outOfChina(lng, lat)) return { lng, lat };
+  // GCJ-02 相对 WGS84 的偏移在数米到数百米，迭代 2-3 次即可收敛
+  let wlng = lng;
+  let wlat = lat;
+  for (let i = 0; i < 3; i++) {
+    const g = wgs84ToGcj02(wlng, wlat);
+    wlng -= g.lng - lng;
+    wlat -= g.lat - lat;
+  }
+  return { lng: wlng, lat: wlat };
+}

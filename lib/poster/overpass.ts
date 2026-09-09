@@ -6,7 +6,7 @@
 // - 进程内内存缓存：同一区域重复生成不重复请求
 // ============================================================
 
-import { wgs84ToGcj02 } from "@/lib/poi/coords";
+import { gcj02ToWgs84, wgs84ToGcj02 } from "@/lib/poi/coords";
 
 export interface RoadLine {
   name: string;
@@ -54,7 +54,8 @@ function parseRoads(json: { elements?: OverpassWay[] }): RoadLine[] {
 }
 
 /**
- * 拉取以 (lat, lng) 为中心、radiusMeters 为半径的命名道路。
+ * 拉取以 (lat, lng) 为中心（GCJ-02，与高德底图一致）、radiusMeters 为半径的命名道路。
+ * Overpass 的 around 按 WGS84 计算，查询前先把中心转成 WGS84。
  * 任何异常均返回空数组，由调用方决定降级行为。
  */
 export async function fetchNamedRoads(
@@ -69,14 +70,19 @@ export async function fetchNamedRoads(
     if (hit) return hit;
   }
   try {
+    const wgs = gcj02ToWgs84(lng, lat);
     const ql = [
       "[out:json][timeout:20];",
-      `way["highway"]["name"](around:${Math.round(radiusMeters)},${lat.toFixed(6)},${lng.toFixed(6)});`,
+      `way["highway"]["name"](around:${Math.round(radiusMeters)},${wgs.lat.toFixed(6)},${wgs.lng.toFixed(6)});`,
       "out geom;",
     ].join("");
     const res = await fetch(getOverpassEndpoint(), {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        // Overpass 官方端点对无 UA 的请求返回 406
+        "User-Agent": "xiangke-poster/1.0",
+      },
       body: `data=${encodeURIComponent(ql)}`,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
