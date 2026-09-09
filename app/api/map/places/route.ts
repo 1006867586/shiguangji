@@ -45,15 +45,17 @@ export async function GET(request: NextRequest) {
     const rows = (data ?? []) as Array<Record<string, unknown>>;
     const placeIds = rows.map((r) => r.id as string);
 
-    // 当前用户已打卡的地点集合（checkins 仅本人可见，走常规查询即可）
+    // 当前用户已打卡的地点集合（checkins 仅本人可见，走常规查询即可）。
+    // 按 created_at 排序后首个即最近一条，保证 i_checkin_id 与单点接口取一致。
     const checkedSet = new Set<string>();
     const checkinIdByPlace = new Map<string, string>();
     if (placeIds.length > 0) {
       const { data: mine } = await supabase
         .from("checkins")
-        .select("id, place_id")
+        .select("id, place_id, created_at")
         .eq("user_id", user.id)
-        .in("place_id", placeIds);
+        .in("place_id", placeIds)
+        .order("created_at", { ascending: false });
       for (const row of mine ?? []) {
         const pid = row.place_id as string;
         if (!checkinIdByPlace.has(pid)) {

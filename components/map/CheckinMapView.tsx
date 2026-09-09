@@ -188,8 +188,6 @@ export function CheckinMapView({
     } else {
       // 聚合模式：按 grid 分桶，每个桶一个聚合气泡
       const clusters = clusterByGrid(places, map, GRID_SIZE);
-      // eslint-disable-next-line no-console
-      console.debug("[CheckinMapView] aggregate clusters:", clusters.length, "from", places.length, "places; first cluster hasChecked =", clusters[0]?.hasChecked);
       const markers: any[] = [];
       for (const cluster of clusters) {
         const div = buildClusterContent(cluster.count, cluster.hasChecked);
@@ -212,8 +210,8 @@ export function CheckinMapView({
             });
             return;
           }
-          // 多 marker：放大到能看见
-          map.setZoomAndCenter(currentZoom + 2, cluster.center);
+          // 多 marker：放大到能看见（用实时 zoom，避免闭包里过期的 currentZoom）
+          map.setZoomAndCenter(map.getZoom() + 2, cluster.center);
         });
         markers.push(marker);
       }

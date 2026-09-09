@@ -206,11 +206,12 @@ export function MapPage({ initialFocusId }: { initialFocusId?: string | null }) 
     }
   };
 
-  // 附近查询：以当前选中 place 为中心，加载 500m 内的打卡点作为临时 marker
+  // 附近查询：以当前选中 place 为中心，加载 500m 内的打卡点作为临时 marker。
+  // city 用选中店所属城市（而非全局 select 城市），避免城市不一致时查不到店。
   const handleSearchNearby = async (center: MapPlace) => {
     try {
       const res = await fetchData<(MapPlace & { distance_m: number })[]>(
-        `/api/map/places/nearby?lng=${center.lng}&lat=${center.lat}&radius=500&exclude_checked=true&city=${encodeURIComponent(city)}`
+        `/api/map/places/nearby?lng=${center.lng}&lat=${center.lat}&radius=500&exclude_checked=true&city=${encodeURIComponent(center.city ?? city)}`
       );
       setNearby(res);
       toast.success(`附近 500m 找到 ${res.length} 家未打卡的店`);
@@ -341,7 +342,11 @@ export function MapPage({ initialFocusId }: { initialFocusId?: string | null }) 
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#E24B4A]" />
           已打卡
         </span>
-        <span className="ml-auto">共 {places.length} 个打卡点</span>
+        <span className="ml-auto">
+          {onlyUnchecked
+            ? `未打卡 ${places.length} / 共 ${rawPlaces.length} 个打卡点`
+            : `共 ${rawPlaces.length} 个打卡点`}
+        </span>
       </div>
 
       {/* 打卡表单 */}
