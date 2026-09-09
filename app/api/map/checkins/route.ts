@@ -16,6 +16,45 @@ function parseCoord(value: unknown): number | null {
 }
 
 /**
+ * 按 名称(大小写不敏感)+城市+坐标 查已有地点。
+ * 语义与唯一索引 uq_places_name_city_lng_lat（lower(trim(name)), city, lng, lat）对齐：
+ * 用 ilike 匹配大小写不敏感的名称；city 为空时不加 city 条件（索引对 NULL city 不去重）。
+ */
+async function findPlaceByNameCityCoord(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  name: string,
+  city: string | null,
+  lng: number,
+  lat: number
+): Promise<Record<string, unknown> | null> {
+  let q = supabase
+    .from("places")
+    .select("*")
+    .ilike("name", name)
+    .eq("lng", lng)
+    .eq("lat", lat);
+  if (city) q = q.eq("city", city);
+  const { data } = await q.maybeSingle();
+  return (data as Record<string, unknown> | null) ?? null;
+}
+
+/** 按 来源平台 + POI ID 查已有地点（与 uq_places_source_poi 索引语义一致）。 */
+async function findPlaceBySourcePoi(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  source: string,
+  poiId: string | null
+): Promise<Record<string, unknown> | null> {
+  if (source === "manual" || !poiId) return null;
+  const { data } = await supabase
+    .from("places")
+    .select("*")
+    .eq("source", source)
+    .eq("poi_id", poiId)
+    .maybeSingle();
+  return (data as Record<string, unknown> | null) ?? null;
+}
+
+/**
  * POST /api/map/checkins
  * 打卡：body = { place: { name, address?, city?, district?, category?, lng, lat, source?, poi_id? }, activity_id?, note? }
  * 流程：若带 activity_id 先校验用户是该活动所属圈子成员；
@@ -77,29 +116,13 @@ export async function POST(request: NextRequest) {
 
     const source = body.place.source ?? "manual";
     const poiId = body.place.poi_id?.trim() || null;
+    const city = body.place.city?.trim() || null;
 
     // ---- upsert place：优先按来源 POI 去重，其次按 名称+城市+坐标 ----
     let place: Record<string, unknown> | null = null;
-
-    if (source !== "manual" && poiId) {
-      const { data } = await supabase
-        .from("places")
-        .select("*")
-        .eq("source", source)
-        .eq("poi_id", poiId)
-        .maybeSingle();
-      place = (data as Record<string, unknown> | null) ?? null;
-    }
+    place = await findPlaceBySourcePoi(supabase, source, poiId);
     if (!place) {
-      const { data } = await supabase
-        .from("places")
-        .select("*")
-        .eq("name", name)
-        .eq("city", body.place.city ?? null)
-        .eq("lng", lng)
-        .eq("lat", lat)
-        .maybeSingle();
-      place = (data as Record<string, unknown> | null) ?? null;
+      place = await findPlaceByNameCityCoord(supabase, name, city, lng, lat);
     }
 
     let placeCreated = false;
@@ -107,7 +130,7 @@ export async function POST(request: NextRequest) {
       const insertPayload = {
         name,
         address: body.place.address?.trim() || null,
-        city: body.place.city?.trim() || null,
+        city,
         district: body.place.district?.trim() || null,
         category: body.place.category?.trim() || null,
         lng,
@@ -145,16 +168,10 @@ export async function POST(request: NextRequest) {
         place = inserted as Record<string, unknown>;
         placeCreated = true;
       } else {
-        // 唯一键冲突：并发写入，回查一次
-        const { data: existing } = await supabase
-          .from("places")
-          .select("*")
-          .eq("name", name)
-          .eq("city", body.place.city ?? null)
-          .eq("lng", lng)
-          .eq("lat", lat)
-          .maybeSingle();
-        place = (existing as Record<string, unknown> | null) ?? null;
+        // 唯一键冲突（并发写入等）：按与索引一致的语义回查现有地点
+        place =
+          (await findPlaceBySourcePoi(supabase, source, poiId)) ??
+          (await findPlaceByNameCityCoord(supabase, name, city, lng, lat));
       }
     }
 

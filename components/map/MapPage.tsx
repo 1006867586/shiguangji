@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- 高德地图实例无官方 TS 类型 */
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import {
@@ -38,7 +38,7 @@ const CITIES = [
 ];
 
 /** 地图页客户端主体：城市切换 + 搜索定位 + 打卡点地图 + 打卡/撤销 */
-export function MapPage() {
+export function MapPage({ initialFocusId }: { initialFocusId?: string | null }) {
   const [city, setCity] = useState("武汉市");
   const [selected, setSelected] = useState<MapPlace | null>(null);
   const [selectedScreenPos, setSelectedScreenPos] = useState<{ x: number; y: number } | null>(null);
@@ -59,6 +59,8 @@ export function MapPage() {
   const [onlyUnchecked, setOnlyUnchecked] = useState(false);
   /** 附近查询结果（临时 marker，独立于当前城市 places） */
   const [nearby, setNearby] = useState<MapPlace[]>([]);
+  /** 分享链接 ?focus=<id> 定位的打卡点 */
+  const [focusedPlace, setFocusedPlace] = useState<MapPlace | null>(null);
 
   const { data, isLoading, mutate } = useSWR<{ data: MapPlace[] }>(
     `/api/map/places?city=${encodeURIComponent(city)}${
@@ -72,13 +74,18 @@ export function MapPage() {
   const places = onlyUnchecked
     ? rawPlaces.filter((p) => !p.i_checked)
     : rawPlaces;
-  // 地图展示 = 当前城市 + 附近查询结果（去重）
+  // 地图展示 = 当前城市 + 附近查询结果 + 分享定位点（去重）
   const displayPlaces = useMemo(() => {
-    if (nearby.length === 0) return places;
     const ids = new Set(places.map((p) => p.id));
-    const extra = nearby.filter((p) => !ids.has(p.id));
+    const extra: MapPlace[] = [];
+    for (const p of [...nearby, ...(focusedPlace ? [focusedPlace] : [])]) {
+      if (!ids.has(p.id)) {
+        ids.add(p.id);
+        extra.push(p);
+      }
+    }
     return [...places, ...extra];
-  }, [places, nearby]);
+  }, [places, nearby, focusedPlace]);
 
   // 当前城市所有品类（从已加载数据去重，前端动态枚举）
   const availableCategories = useMemo(() => {
@@ -109,6 +116,40 @@ export function MapPage() {
   const handleMapReady = useCallback((map: any) => {
     setMapInstance(map);
   }, []);
+
+  // 分享链接 ?focus=<id>：拉取该打卡点 → 同步城市、置中、打开浮层
+  const handledFocusRef = useRef(false);
+  useEffect(() => {
+    if (!initialFocusId || handledFocusRef.current) return;
+    handledFocusRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const place = await fetchData<MapPlace>(
+          `/api/map/places/${encodeURIComponent(initialFocusId)}`
+        );
+        if (cancelled) return;
+        setFocusedPlace(place);
+        // 同步城市选择器（仅当该城市在可选项内，避免 select value 不匹配）
+        if (place.city && CITIES.includes(place.city)) setCity(place.city);
+        setFocus({ lng: place.lng, lat: place.lat });
+      } catch {
+        // 地点不存在或已下架：静默忽略，回到默认地图
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialFocusId]);
+
+  // 地图就绪 + 分享点加载完成 → 计算屏幕坐标并打开浮层
+  useEffect(() => {
+    if (!mapInstance || !focusedPlace) return;
+    const px = mapInstance.lngLatToContainer?.([focusedPlace.lng, focusedPlace.lat]);
+    if (!px || px.x == null || px.y == null) return;
+    setSelected(focusedPlace);
+    setSelectedScreenPos({ x: px.x, y: px.y });
+  }, [mapInstance, focusedPlace]);
 
   // 地图空白点击：关闭浮层（不响应 marker 点击）
   const handleMapClick = useCallback(() => {
