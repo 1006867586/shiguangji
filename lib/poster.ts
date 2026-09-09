@@ -1,6 +1,8 @@
 // ============================================================
 // 打卡地图海报生成（M3 一期 · 静态底图版）
 // - 底图：高德静态图 API（合规服务端调用，AMAP_KEY 不落前端）
+// - 点位：自绘 SVG 覆盖层（编号圆点 + 点位名），LabelPlacer 标签避让
+// - 道路名：Overpass 拉取命名道路 → 道路名自动筛选 → 叠加旋转标注
 // - 文字：sharp 合成 SVG（Noto Sans SC 思源黑体，随包分发，
 //   以 data URI 内嵌，解决 Vercel 无系统中文字体问题）
 // - 版式：借鉴 map-creator 海报工作流（数据→取框→底图→版式）
@@ -10,6 +12,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
+import { fetchNamedRoads } from "@/lib/poster/overpass";
+import { LabelPlacer } from "@/lib/poster/label-placer";
+import {
+  createPosterProjector,
+  projectRoads,
+  rankRoadLabelCandidates,
+} from "@/lib/poster/road-labels";
 
 export type PosterType = "footprints" | "circle";
 
@@ -75,38 +84,187 @@ function markerLabel(index: number): string {
   return index < 9 ? String(index + 1) : "ABC"[index - 9];
 }
 
-/** 构建高德静态图 markers 参数（编号红点，最多 12 个） */
-function buildMarkers(points: PosterPoint[], max = 12): string {
-  return points
-    .slice(0, max)
-    .map(
-      (p, i) =>
-        `mid,0xE24B4A,label:${markerLabel(i)}:${p.lng.toFixed(6)},${p.lat.toFixed(
-          6
-        )}`
-    )
-    .join("|");
-}
+// ---------------- 点位标注与道路名覆盖层 ----------------
 
-/** 调用高德静态图 API 获取底图（scale=2 高清输出 2048*2048） */
-async function fetchStaticMap(
-  center: [number, number],
-  zoom: number,
-  markers: string
-): Promise<Buffer> {
+const MAX_MARKERS = 12;
+const MARKER_RADIUS = 34;
+const MARKER_FONT_SIZE = 44;
+const POINT_NAME_FONT_SIZE = 40;
+const ROAD_NAME_FONT_SIZE = 34;
+
+/** 点位名候选偏移（像素），先右侧/左侧，再上方/下方，全部失败则跳过标注 */
+const POINT_LABEL_OFFSETS: Array<[number, number]> = [
+  [26, 14],
+  [26, -18],
+  [-26, 14],
+  [-26, -18],
+  [48, 22],
+  [-48, -22],
+  [0, 42],
+  [0, -42],
+];
+
+/** 调用高德静态图 API 获取纯底图（scale=2 高清输出 2048*2048） */
+async function fetchStaticMap(center: [number, number], zoom: number): Promise<Buffer> {
   if (!AMAP_KEY) throw new Error("未配置高德 Web 服务 Key（AMAP_KEY）");
   const params = new URLSearchParams({
     location: `${center[0]},${center[1]}`,
     zoom: String(zoom),
     size: "1024*1024",
     scale: "2",
-    markers,
     key: AMAP_KEY,
   });
   const url = `https://restapi.amap.com/v3/staticmap?${params.toString()}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`高德静态图接口失败: HTTP ${res.status}`);
   return Buffer.from(await res.arrayBuffer());
+}
+
+/** 生成点位标注 + 道路名覆盖层 SVG（不依赖底图自带文字） */
+async function buildOverlaySvg(opts: {
+  center: [number, number];
+  zoom: number;
+  points: PosterPoint[];
+}): Promise<Buffer> {
+  const font = loadFontBase64();
+  const projector = createPosterProjector(
+    opts.center[0],
+    opts.center[1],
+    opts.zoom,
+    MAP_SIZE
+  );
+  const placer = new LabelPlacer(MAP_SIZE);
+
+  let body = "";
+
+  // 1. 编号圆点 + 点位名（先登记圆点占用，再放点位名）
+  const markPoints = opts.points.slice(0, MAX_MARKERS);
+  const markerPositions: Array<{ x: number; y: number; label: string }> = [];
+  markPoints.forEach((p, i) => {
+    const px = projector.toPixel(p.lng, p.lat);
+    markerPositions.push({ x: px.x, y: px.y, label: markerLabel(i) });
+    placer.reservePoint(px.x, px.y, MARKER_RADIUS);
+  });
+
+  const pointLabelPositions: Array<{
+    x: number;
+    y: number;
+    text: string;
+    anchor: "start" | "end";
+  }> = [];
+  markPoints.forEach((p) => {
+    const px = projector.toPixel(p.lng, p.lat);
+    const rect = placer.placeAnnotated(
+      px.x,
+      px.y,
+      p.name,
+      POINT_NAME_FONT_SIZE,
+      POINT_LABEL_OFFSETS
+    );
+    if (!rect) return; // 放不下就跳过点位名（保留编号圆点）
+    // rect.x >= 锚点 x ⇒ 用了 dx>=0 的偏移（左对齐），否则右对齐
+    const anchor: "start" | "end" = rect.x >= px.x ? "start" : "end";
+    pointLabelPositions.push({
+      x: anchor === "start" ? rect.x : rect.x + rect.w,
+      y: rect.y + rect.h / 2,
+      text: p.name,
+      anchor,
+    });
+  });
+
+  for (const m of markerPositions) {
+    body += `<circle cx="${m.x.toFixed(1)}" cy="${m.y.toFixed(1)}" r="${MARKER_RADIUS}" fill="#E24B4A"/>`;
+    body += `<text x="${m.x.toFixed(1)}" y="${m.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-family="NotoSC" font-size="${MARKER_FONT_SIZE}" fill="#FFF9ED">${escapeXml(
+      m.label
+    )}</text>`;
+  }
+  for (const l of pointLabelPositions) {
+    body += textLayer(
+      l.x,
+      l.y,
+      l.text,
+      POINT_NAME_FONT_SIZE,
+      "#2C2C2A",
+      l.anchor
+    );
+  }
+
+  // 2. 道路名：Overpass 拉路网 → 投影 → 筛选 → LabelPlacer 避让
+  const spanKm =
+    markPoints.length === 0
+      ? 0
+      : Math.max(
+          Math.max(...markPoints.map((p) => p.lng)) -
+            Math.min(...markPoints.map((p) => p.lng)),
+          Math.max(...markPoints.map((p) => p.lat)) -
+            Math.min(...markPoints.map((p) => p.lat))
+        ) * 111;
+  const radiusMeters = Math.round(
+    (MAP_SIZE / 2) * projector.metersPerPixel * 1.6
+  );
+  const roads = await fetchNamedRoads(opts.center[1], opts.center[0], radiusMeters);
+  const candidates = rankRoadLabelCandidates(projectRoads(roads, projector), projector, {
+    largeMap: spanKm > 3,
+    limit: 6,
+  });
+  let placedRoads = 0;
+  for (const c of candidates) {
+    if (placedRoads >= 6) break;
+    const rect = placer.placeText(
+      c.point.x,
+      c.point.y,
+      c.name,
+      ROAD_NAME_FONT_SIZE,
+      c.angle
+    );
+    if (!rect) continue;
+    body += textLayer(
+      rect.x + rect.w / 2,
+      rect.y + rect.h / 2,
+      c.name,
+      ROAD_NAME_FONT_SIZE,
+      "#6F6252",
+      "middle",
+      c.angle
+    );
+    placedRoads++;
+  }
+
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${MAP_SIZE}" height="${MAP_SIZE}">
+  <defs>
+    <style>
+      @font-face { font-family: 'NotoSC'; src: url('data:font/ttf;base64,${font}') format('truetype'); }
+    </style>
+  </defs>
+  ${body}
+</svg>`
+  );
+}
+
+/**
+ * 生成带背景描边的文字层（先画白字描边垫底，再画文字本身，
+ * 兼容所有 SVG 渲染器，无需 paint-order 支持）。
+ */
+function textLayer(
+  x: number,
+  y: number,
+  text: string,
+  fontSize: number,
+  fill: string,
+  anchor: "middle" | "start" | "end",
+  angle?: number
+): string {
+  const transform = angle != null ? ` transform="rotate(${angle} ${x} ${y})"` : "";
+  const common =
+    `x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}"` +
+    ` dominant-baseline="central"${transform} font-family="NotoSC" font-size="${fontSize}"`;
+  const strokeWidth = Math.max(8, Math.round(fontSize * 0.32));
+  const escaped = escapeXml(text);
+  return (
+    `<text ${common} fill="#F7F4EE" stroke="#F7F4EE" stroke-width="${strokeWidth}" stroke-linejoin="round">${escaped}</text>` +
+    `<text ${common} fill="${fill}">${escaped}</text>`
+  );
 }
 
 function escapeXml(value: string): string {
@@ -161,15 +319,13 @@ export async function generatePoster(opts: PosterOptions): Promise<Buffer> {
   const lats = opts.points.map((p) => p.lat);
   const { center, zoom } = computeCenterAndZoom(lngs, lats);
 
-  const staticMapBuf = await fetchStaticMap(
-    center,
-    zoom,
-    buildMarkers(opts.points)
-  );
+  const staticMapBuf = await fetchStaticMap(center, zoom);
   const baseBuf = await sharp(staticMapBuf)
     .resize(MAP_SIZE, MAP_SIZE, { fit: "cover" })
     .png()
     .toBuffer();
+
+  const overlayBuf = await buildOverlaySvg({ center, zoom, points: opts.points });
 
   const headerBuf = buildHeaderSvg({
     title: opts.title,
@@ -188,6 +344,7 @@ export async function generatePoster(opts: PosterOptions): Promise<Buffer> {
   })
     .composite([
       { input: baseBuf, top: 0, left: 0 },
+      { input: overlayBuf, top: 0, left: 0 },
       { input: headerBuf, top: MAP_SIZE, left: 0 },
     ])
     .png({ compressionLevel: 9 })
