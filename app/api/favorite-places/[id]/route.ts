@@ -18,6 +18,7 @@ const VALID_PLATFORMS: FavoritePlatform[] = [
   "dianping",
   "xiaohongshu",
   "douyin",
+  "amap",
   "unknown",
 ];
 

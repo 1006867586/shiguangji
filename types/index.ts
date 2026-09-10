@@ -480,6 +480,7 @@ export type FavoritePlatform =
   | "dianping"
   | "xiaohongshu"
   | "douyin"
+  | "amap"
   | "unknown";
 
 /** 收藏夹截图识别结果（一张图含多家店） */

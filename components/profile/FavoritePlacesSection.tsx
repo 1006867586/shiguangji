@@ -51,6 +51,7 @@ const PLATFORM_LABEL: Record<FavoritePlatform, string> = {
   dianping: "大众点评",
   xiaohongshu: "小红书",
   douyin: "抖音",
+  amap: "高德",
   unknown: "未知",
 };
 
@@ -67,7 +68,7 @@ type DraftPlace = {
 
 /**
  * FavoritePlacesSection — 店铺收藏夹区块。
- * 上传美团/点评收藏夹截图 → AI 识别多家店 → 预览编辑 → 批量入库。
+ * 上传美团/点评/高德等收藏夹截图 → AI 识别多家店 → 预览编辑 → 批量入库。
  */
 export function FavoritePlacesSection() {
   const aiEnabled = useAiEnabled();
@@ -357,7 +358,7 @@ export function FavoritePlacesSection() {
           title="还没有收藏的店铺"
           description={
             aiEnabled
-              ? "上传美团/大众点评等收藏夹截图，AI 自动识别批量导入"
+              ? "上传美团/大众点评/高德等收藏夹截图，AI 自动识别批量导入"
               : "AI 功能未启用，无法识别截图"
           }
         />

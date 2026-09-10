@@ -25,6 +25,7 @@ const PLATFORM_LABEL: Record<string, string> = {
   dianping: "点评",
   xiaohongshu: "小红书",
   douyin: "抖音",
+  amap: "高德",
   unknown: "未知",
 };
 
