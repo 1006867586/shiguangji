@@ -106,6 +106,45 @@ export async function GET(_request: NextRequest, { params }: Params) {
       profile.achievements = achMap.get(uid) ?? [];
     }
 
+    // 批量拉取成员佩戴配置（security definer 函数）+ 装饰目录，组装头像框 / 徽章
+    const [decorDisplayRes, decorItemsRes] = await Promise.all([
+      supabase.rpc("get_users_decor_display", { p_user_ids: userIds }),
+      supabase
+        .from("decor_items")
+        .select("id, kind, key, name, icon, color, price, unlock_type, achievement_key, sort_order"),
+    ]);
+    const decorItemMap = new Map<string, {
+      id: string;
+      icon: string | null;
+      color: string | null;
+      name: string;
+    }>();
+    for (const item of (decorItemsRes.data ?? []) as Array<{
+      id: string;
+      icon: string | null;
+      color: string | null;
+      name: string;
+    }>) {
+      decorItemMap.set(item.id, item);
+    }
+    for (const row of (decorDisplayRes.data ?? []) as Array<{
+      user_id: string;
+      avatar_frame_id: string | null;
+      badge_ids: string[] | null;
+    }>) {
+      const profile = profileMap.get(row.user_id);
+      if (!profile) continue;
+      profile.frameColor = row.avatar_frame_id
+        ? (decorItemMap.get(row.avatar_frame_id)?.color ?? null)
+        : null;
+      profile.wornBadges = (row.badge_ids ?? [])
+        .map((id) => decorItemMap.get(id))
+        .filter(
+          (it): it is { id: string; icon: string | null; color: string | null; name: string } =>
+            !!it
+        );
+    }
+
     const result: GroupMember[] = list.map((m) => ({
       id: m.id,
       group_id: id,

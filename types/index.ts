@@ -33,6 +33,18 @@ export interface Profile {
   created_at: string;
   /** 已解锁成就（成员列表 / 动态流作者名旁徽章使用，可选） */
   achievements?: Achievement[];
+  /** 头像框环色（hex），装扮系统佩戴展示（可选） */
+  frameColor?: string | null;
+  /** 已佩戴装扮徽章（可选） */
+  wornBadges?: WornDecorBadge[];
+}
+
+/** 佩戴在昵称旁的装扮徽章（精简字段） */
+export interface WornDecorBadge {
+  id: UUID;
+  icon: string | null;
+  color: string | null;
+  name: string;
 }
 
 /** 积分 / 连续打卡 / 成就汇总 */
@@ -253,6 +265,7 @@ export type NotificationType =
   | "split"
   | "group_invite"
   | "report_resolved"
+  | "message"
   | "system";
 
 export interface AppNotification {
@@ -695,5 +708,97 @@ export interface CircleCheckinPlace {
   lat: number;
   checkin_count: number;
   last_checked_at: string | null;
+}
+
+// ============================================================
+// 群组聊天（group_messages）
+// ============================================================
+
+export type GroupMessageType = "text" | "image";
+
+/** 圈子聊天消息 */
+export interface GroupMessage {
+  id: UUID;
+  group_id: UUID;
+  sender_id: UUID;
+  type: GroupMessageType;
+  content: string | null;
+  image_url: string | null;
+  created_at: string;
+  sender?: Pick<Profile, "id" | "nickname" | "avatar_url"> | null;
+}
+
+/** 发送聊天消息请求体 */
+export interface SendMessageBody {
+  content?: string;
+  imageUrl?: string;
+}
+
+/** 聊天消息列表响应 */
+export interface ChatMessagesResponse {
+  data: GroupMessage[];
+  /** 是否还有更早的消息可加载 */
+  has_more: boolean;
+  /** 加载更早消息用的游标（最早一条消息的 created_at，null 表示没有更多） */
+  next_cursor: string | null;
+}
+
+// ============================================================
+// 装饰装扮系统（decor）
+// ============================================================
+
+export type DecorKind = "badge" | "avatar_frame";
+export type DecorUnlockType = "shop" | "achievement" | "system";
+
+/** 装饰目录条目 */
+export interface DecorItem {
+  id: UUID;
+  kind: DecorKind;
+  key: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  /** 样式色（徽章底色 / 头像框环色，hex） */
+  color: string | null;
+  frame_style: string;
+  price: number;
+  unlock_type: DecorUnlockType;
+  achievement_key: string | null;
+  sort_order: number;
+  /** 当前用户是否已拥有（目录接口附带） */
+  owned?: boolean;
+}
+
+/** 当前用户佩戴配置 */
+export interface DecorDisplay {
+  user_id: UUID;
+  avatar_frame_id: UUID | null;
+  badge_ids: UUID[];
+}
+
+/** 装饰数据响应（我的装扮页） */
+export interface DecorResponse {
+  items: DecorItem[];
+  display: DecorDisplay | null;
+  points: number;
+}
+
+/** 更新佩戴配置请求体 */
+export interface SetDecorDisplayBody {
+  avatarFrameId?: UUID | null;
+  badgeIds?: UUID[];
+}
+
+/** 多个用户的佩戴配置（成员列表展示他人徽章用） */
+export interface UserDecorDisplayRow {
+  user_id: UUID;
+  avatar_frame_id: UUID | null;
+  badge_ids: UUID[];
+}
+
+/** 购买装饰响应 */
+export interface PurchaseDecorResult {
+  points: number;
+  item_id: UUID;
 }
 

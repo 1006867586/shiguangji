@@ -24,6 +24,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { NameBadges } from "@/components/profile/NameBadges";
+import { WornBadges } from "@/components/profile/WornBadges";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -168,12 +169,19 @@ export function MembersList({
               key={m.id}
               className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
             >
-              <UserAvatar profile={m.profile} size={44} />
+              <UserAvatar
+                profile={m.profile}
+                size={44}
+                frameColor={m.profile?.frameColor}
+              />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="truncate text-sm font-semibold">
                     {m.profile?.nickname ?? "未知用户"}
                   </span>
+                  {m.profile?.wornBadges && m.profile.wornBadges.length > 0 ? (
+                    <WornBadges badges={m.profile.wornBadges} />
+                  ) : null}
                   <NameBadges achievements={m.profile?.achievements ?? []} />
                   {isSelf ? (
                     <Badge variant="outline" className="text-[10px]">

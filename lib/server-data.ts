@@ -1,5 +1,13 @@
 import { createServerClient, getCurrentUser } from "./supabase/server";
-import type { Group, GamificationResponse, UserGamification, Achievement } from "@/types";
+import type {
+  Group,
+  GamificationResponse,
+  UserGamification,
+  Achievement,
+  DecorItem,
+  DecorDisplay,
+  DecorResponse,
+} from "@/types";
 
 /** 获取当前用户加入的圈子（服务端） */
 export async function getServerGroups(): Promise<
@@ -84,4 +92,54 @@ export async function getServerGamification(): Promise<GamificationResponse> {
   }));
 
   return { gamification: (g as unknown as UserGamification) ?? null, achievements };
+}
+
+/** 获取当前用户的装扮数据（目录 + 已拥有 + 佩戴配置 + 积分） */
+export async function getServerDecor(): Promise<DecorResponse | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const supabase = await createServerClient();
+
+  const [catalog, owned, displayRes, gam] = await Promise.all([
+    supabase
+      .from("decor_items")
+      .select(
+        "id, kind, key, name, description, icon, color, frame_style, price, unlock_type, achievement_key, sort_order"
+      )
+      .order("sort_order"),
+    supabase.from("user_decor_items").select("item_id").eq("user_id", user.id),
+    supabase
+      .from("user_decor_display")
+      .select("user_id, avatar_frame_id, badge_ids")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("user_gamification")
+      .select("points")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
+
+  if (catalog.error || owned.error) {
+    console.error("getServerDecor 失败:", catalog.error?.message, owned.error?.message);
+    return null;
+  }
+
+  const ownedSet = new Set((owned.data ?? []).map((o) => o.item_id as string));
+  const items: DecorItem[] = (catalog.data ?? []).map((it) => ({
+    ...(it as unknown as DecorItem),
+    owned: ownedSet.has(it.id as string),
+  }));
+
+  const display = (displayRes.data as unknown as DecorDisplay | null) ?? {
+    user_id: user.id,
+    avatar_frame_id: null,
+    badge_ids: [],
+  };
+
+  return {
+    items,
+    display,
+    points: (gam.data as { points?: number } | null)?.points ?? 0,
+  };
 }

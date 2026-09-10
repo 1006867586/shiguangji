@@ -39,6 +39,8 @@ function describeNotification(
       return `${actorName} 报名了你的活动`;
     case "split":
       return `${actorName} 创建了账单分摊`;
+    case "message":
+      return `${actorName} 在聊天里提到了你`;
     case "group_invite":
       return `${actorName} 邀请你加入圈子`;
     case "report_resolved":
@@ -190,7 +192,12 @@ export function NotificationsList() {
               const description = describeNotification(n.type, actorName);
               const preview = extractPreview(n.data);
               const unread = !n.read_at;
-              const href = n.activity_id ? `/activity/${n.activity_id}` : null;
+              const href =
+                n.type === "message" && n.group_id
+                  ? `/g/${n.group_id}/chat`
+                  : n.activity_id
+                    ? `/activity/${n.activity_id}`
+                    : null;
 
               const content = (
                 <div className="flex items-start gap-3">

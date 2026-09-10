@@ -18,7 +18,7 @@ const MAX_NICKNAME_LENGTH = 30;
  * 解析 @昵称 的正则。
  * 匹配 @ 后到首个空白符或常见中英文标点为止的连续字符。
  */
-const MENTION_REGEX = /@([^\s@，。！？、,.!?<>]+)/g;
+export const MENTION_REGEX = /@([^\s@，。！？、,.!?<>]+)/g;
 
 /**
  * 从文本中解析所有 @提及的昵称。
