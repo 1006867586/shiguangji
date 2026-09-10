@@ -250,6 +250,17 @@
       opacity: 1;
     }
   }
+
+  /* 转盘抽中扇区落定动画：围绕自身中心轻量呼吸强调 */
+  @keyframes wheel-winner-pop {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.055);
+    }
+  }
   /* 交互元素：禁止长按选中文字、移除 tap highlight 高亮 */
   button,
   a,

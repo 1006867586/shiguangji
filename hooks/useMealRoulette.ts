@@ -136,8 +136,17 @@ export function useMealRoulette(
   };
 }
 
-/** 从候选数组里随机抽一个索引 */
-export function pickRandomIndex(length: number): number {
+/** 从候选数组里随机抽一个索引；可传 excludeIndex 避免连续抽中同一项 */
+export function pickRandomIndex(
+  length: number,
+  excludeIndex?: number
+): number {
   if (length <= 0) return -1;
-  return Math.floor(Math.random() * length);
+  if (length === 1) return 0;
+  let idx = Math.floor(Math.random() * length);
+  // 简单重抽样避开上一次（length>=2 时最多重试，命中概率随 length 增大趋近 0）
+  while (idx === excludeIndex) {
+    idx = Math.floor(Math.random() * length);
+  }
+  return idx;
 }
