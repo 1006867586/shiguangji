@@ -16,6 +16,7 @@ import { formatRelativeTime, cn } from "@/lib/utils";
 import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useGroupChat } from "@/hooks/useGroupChat";
 import { useUpload } from "@/hooks/useUpload";
+import { markChatRead } from "@/hooks/useChatUnread";
 import type { GroupMessage } from "@/types";
 
 interface GroupChatProps {
@@ -52,8 +53,15 @@ export function GroupChat({
     if (!loadingInitial && messages.length > 0 && latest !== latestIdRef.current) {
       latestIdRef.current = latest;
       bottomRef.current?.scrollIntoView({ block: "end" });
+      // 正在聊天页阅读 → 推进已读时间线（红点归零）
+      markChatRead(groupId).catch(() => {});
     }
-  }, [messages, loadingInitial]);
+  }, [messages, loadingInitial, groupId]);
+
+  // 打开聊天页立即标记已读
+  useEffect(() => {
+    markChatRead(groupId).catch(() => {});
+  }, [groupId]);
 
   const handleSend = async () => {
     const text = draft.trim();

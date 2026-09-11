@@ -9,7 +9,6 @@ import {
   Users as UsersIcon,
   LayoutDashboard,
   MapPin,
-  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +20,7 @@ import {
 import { GroupSelector } from "@/components/group/GroupSelector";
 import { FeedList } from "@/components/feed/FeedList";
 import { InviteCodeButton } from "@/components/group/InviteCodeButton";
+import { ChatUnreadBadge } from "@/components/chat/ChatUnreadBadge";
 import { createServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { getServerGroups } from "@/lib/server-data";
 import type { Group } from "@/types";
@@ -83,17 +83,7 @@ export default async function GroupFeedPage({ params }: Params) {
             <GroupSelector currentGroupId={groupId} />
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              asChild
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full hover:bg-primary/10 hover:text-primary"
-              aria-label="群聊"
-            >
-              <Link href={`/g/${groupId}/chat`}>
-                <MessageCircle className="h-5 w-5" strokeWidth={2.2} />
-              </Link>
-            </Button>
+            <ChatUnreadBadge groupId={groupId} currentUserId={user.id} />
             <InviteCodeButton code={group.invite_code} />
             <Button
               asChild
