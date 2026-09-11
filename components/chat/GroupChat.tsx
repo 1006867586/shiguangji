@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { MentionComposer } from "@/components/common/MentionComposer";
+import { RichText } from "@/components/common/RichText";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useGroupChat } from "@/hooks/useGroupChat";
@@ -223,7 +224,7 @@ function ChatBubble({ msg, isMine }: { msg: GroupMessage; isMine: boolean }) {
             />
           ) : (
             <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground">
-              {msg.content}
+              <RichText text={msg.content} mentionClassName="text-primary-foreground" />
             </div>
           )}
           <span className="text-[10px] text-muted-foreground">
@@ -250,7 +251,7 @@ function ChatBubble({ msg, isMine }: { msg: GroupMessage; isMine: boolean }) {
           />
         ) : (
           <div className={cn("whitespace-pre-wrap break-words rounded-2xl rounded-bl-md bg-muted px-3 py-2 text-sm")}>
-            {msg.content}
+            <RichText text={msg.content} />
           </div>
         )}
         <span className="mt-0.5 block text-[10px] text-muted-foreground">

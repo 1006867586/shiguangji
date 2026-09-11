@@ -8,6 +8,8 @@ import { MENTION_REGEX } from "@/lib/mention";
 interface RichTextProps {
   text: string | null | undefined;
   className?: string;
+  /** @昵称 高亮类，默认 text-primary；在特殊底色（如聊天气泡）内可覆盖 */
+  mentionClassName?: string;
 }
 
 /**
@@ -15,7 +17,11 @@ interface RichTextProps {
  *  - 保留换行与空白（whitespace-pre-wrap）
  *  - @昵称 用主题色高亮
  */
-export function RichText({ text, className = "" }: RichTextProps) {
+export function RichText({
+  text,
+  className = "",
+  mentionClassName = "text-primary",
+}: RichTextProps) {
   if (!text) return null;
 
   // String.split 配合带捕获组的全局正则：偶数下标为纯文本，奇数下标为 @ 捕获的昵称
@@ -25,7 +31,7 @@ export function RichText({ text, className = "" }: RichTextProps) {
     <span className={`whitespace-pre-wrap break-words ${className}`}>
       {parts.map((part, idx) =>
         idx % 2 === 1 ? (
-          <span key={idx} className="font-medium text-primary">
+          <span key={idx} className={`font-medium ${mentionClassName}`}>
             @{part}
           </span>
         ) : (
