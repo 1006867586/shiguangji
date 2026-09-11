@@ -11,6 +11,7 @@ import { attachDecorToProfiles } from "@/lib/server-decor";
 import type {
   ChatMessagesResponse,
   GroupMessage,
+  MessageReactionAggregate,
   SendMessageBody,
 } from "@/types";
 
@@ -64,6 +65,116 @@ async function attachSenders<R extends Pick<GroupMessage, "sender_id">>(
   }));
 }
 
+/**
+ * 为一批消息批量合并「表情回应聚合」与「引用回复信息」。
+ * - reactions：按 message_id 归并 emoji → {emoji, count, reactedByMe}
+ * - reply_*：解析被引用消息（reply_to_id）的发送者昵称与内容预览
+ */
+async function attachExtras<
+  R extends Pick<GroupMessage, "id" | "reply_to_id" | "type" | "content">
+>(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  rows: R[],
+  viewerId: string
+): Promise<
+  Array<
+    R & {
+      reply_sender: GroupMessage["reply_sender"];
+      reply_preview: GroupMessage["reply_preview"];
+      reactions: MessageReactionAggregate[];
+    }
+  >
+> {
+  if (rows.length === 0) return [];
+
+  // ---- 表情回应聚合（保序：先出现者在前） ----
+  const idList = rows.map((m) => m.id);
+  const { data: rawReactions } = await supabase
+    .from("message_reactions")
+    .select("message_id, user_id, emoji")
+    .in("message_id", idList);
+
+  const rawByMessage = new Map<string, Array<{ emoji: string; me: boolean }>>();
+  for (const r of rawReactions ?? []) {
+    const list = rawByMessage.get(r.message_id) ?? [];
+    list.push({ emoji: r.emoji, me: r.user_id === viewerId });
+    rawByMessage.set(r.message_id, list);
+  }
+
+  const aggregateReactions = (messageId: string): MessageReactionAggregate[] => {
+    const grouped = new Map<string, { count: number; me: boolean }>();
+    for (const { emoji, me } of rawByMessage.get(messageId) ?? []) {
+      const g = grouped.get(emoji) ?? { count: 0, me: false };
+      g.count += 1;
+      g.me = g.me || me;
+      grouped.set(emoji, g);
+    }
+    return Array.from(grouped.entries()).map(([emoji, g]) => ({
+      emoji,
+      count: g.count,
+      reactedByMe: g.me,
+    }));
+  };
+
+  // ---- 引用回复信息：批量取被引用消息 + 其发送者昵称 ----
+  const replyIds = Array.from(
+    new Set(rows.map((m) => m.reply_to_id).filter((v): v is string => !!v))
+  );
+  const replyRowMap = new Map<
+    string,
+    { type: GroupMessage["type"]; content: string | null; sender_id: string }
+  >();
+  const replyDataByMsg = new Map<
+    string,
+    { reply_sender: GroupMessage["reply_sender"]; reply_preview: string }
+  >();
+
+  if (replyIds.length > 0) {
+    const { data: replyRows } = await supabase
+      .from("group_messages")
+      .select("id, type, content, sender_id")
+      .in("id", replyIds);
+    const profileIds = Array.from(
+      new Set((replyRows ?? []).map((r) => r.sender_id))
+    );
+    const { data: replyProfiles } = await supabase
+      .from("profiles")
+      .select("id, nickname")
+      .in("id", profileIds);
+    const nameMap = new Map(
+      (replyProfiles ?? []).map((p) => [p.id, p.nickname])
+    );
+    for (const r of replyRows ?? []) {
+      replyRowMap.set(r.id, {
+        type: r.type,
+        content: r.content,
+        sender_id: r.sender_id,
+      });
+    }
+    for (const [id, replied] of replyRowMap) {
+      replyDataByMsg.set(id, {
+        reply_sender: replied.sender_id
+          ? { id: replied.sender_id, nickname: nameMap.get(replied.sender_id) ?? "用户" }
+          : null,
+        reply_preview:
+          replied.type === "image"
+            ? "[图片]"
+            : replied.content?.slice(0, 80) ?? "",
+      });
+    }
+  }
+
+  return rows.map((m) => {
+    const replied = m.reply_to_id ? replyDataByMsg.get(m.reply_to_id) : undefined;
+    return {
+      ...m,
+      reply_sender: replied?.reply_sender ?? null,
+      reply_preview: replied?.reply_preview ?? null,
+      reactions: aggregateReactions(m.id),
+    };
+  });
+}
+
 /** GET /api/groups/[id]/messages — 获取圈子聊天消息（时间正序，支持加载更早） */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
@@ -86,7 +197,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     // 取 limit+1 判断是否还有更早的消息
     let q = supabase
       .from("group_messages")
-      .select("id, group_id, sender_id, type, content, image_url, created_at")
+      .select("id, group_id, sender_id, type, content, image_url, reply_to_id, created_at")
       .eq("group_id", id)
       .limit(limit + 1);
 
@@ -108,6 +219,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       type: GroupMessage["type"];
       content: string | null;
       image_url: string | null;
+      reply_to_id: string | null;
       created_at: string;
     }>;
 
@@ -116,7 +228,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     // 正序（最早上 → 最新下），便于顶部加载更早、底部最新
     const ascending = windowRows.reverse();
 
-    const messages = await attachSenders(supabase, ascending);
+    const withSender = await attachSenders(supabase, ascending);
+    const messages = await attachExtras(supabase, withSender, user.id);
     const nextCursor = hasMore
       ? (ascending[0]?.created_at ?? null)
       : null;
@@ -156,6 +269,11 @@ export async function POST(request: NextRequest, { params }: Params) {
     const body = (await request.json()) as SendMessageBody;
     const content = body.content?.trim() ?? "";
     const imageUrl = body.imageUrl?.trim() ?? "";
+    const replyToId = body.replyToId?.trim() ?? "";
+
+    if (replyToId && !isUuid(replyToId)) {
+      return jsonResponse({ error: "参数错误" }, { status: 400 });
+    }
 
     if (imageUrl) {
       // 图片消息：image_url 必填
@@ -180,6 +298,19 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     const type = imageUrl ? ("image" as const) : ("text" as const);
+
+    // 校验被引用消息存在且属于当前圈子
+    if (replyToId) {
+      const { data: replied } = await supabase
+        .from("group_messages")
+        .select("id, group_id")
+        .eq("id", replyToId)
+        .maybeSingle();
+      if (!replied || replied.group_id !== id) {
+        return jsonResponse({ error: "引用的消息不存在" }, { status: 400 });
+      }
+    }
+
     const { data: message, error } = await supabase
       .from("group_messages")
       .insert({
@@ -188,8 +319,11 @@ export async function POST(request: NextRequest, { params }: Params) {
         type,
         content: content || null,
         image_url: imageUrl || null,
+        reply_to_id: replyToId || null,
       })
-      .select("id, group_id, sender_id, type, content, image_url, created_at")
+      .select(
+        "id, group_id, sender_id, type, content, image_url, reply_to_id, created_at"
+      )
       .single();
 
     if (error || !message) {
@@ -200,6 +334,10 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     const [withSender] = await attachSenders(supabase, [message]);
+    const [extended] = await attachExtras(supabase, [withSender], user.id);
+    message.reactions = extended.reactions;
+    message.reply_sender = extended.reply_sender;
+    message.reply_preview = extended.reply_preview;
 
     // @提及通知（best-effort）：提醒被提及的同圈子成员
     if (content) {
@@ -241,7 +379,17 @@ export async function POST(request: NextRequest, { params }: Params) {
       }
     }
 
-    return jsonResponse({ data: withSender }, { status: 201 });
+    return jsonResponse(
+      {
+        data: {
+          ...withSender,
+          reply_sender: extended.reply_sender,
+          reply_preview: extended.reply_preview,
+          reactions: extended.reactions,
+        },
+      },
+      { status: 201 }
+    );
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return jsonResponse({ error: err.message }, { status: 401 });

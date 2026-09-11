@@ -11,6 +11,7 @@ import type {
   ChatMessagesResponse,
   GroupMessage,
   GroupMember,
+  MessageReactionAggregate,
   SendMessageBody,
 } from "@/types";
 
@@ -23,6 +24,11 @@ interface UseGroupChat {
   loadOlder: () => Promise<void>;
   /** 发送文本 / 图片消息 */
   sendMessage: (body: SendMessageBody) => Promise<GroupMessage>;
+  /** 切换一条消息的表情回应（返回最新聚合） */
+  toggleReaction: (
+    messageId: string,
+    emoji: string
+  ) => Promise<MessageReactionAggregate[]>;
 }
 
 /** 前缀匹配去重：聊天可能同时由 POST 回包 + Realtime 投递，保证只出现一次 */
@@ -59,6 +65,16 @@ export function useGroupChat(
   const appendMessage = useCallback((msg: GroupMessage) => {
     setMessages((prev) => dedupe([...prev, msg], seen.current));
   }, []);
+
+  /** 更新某条消息的回应聚合 */
+  const patchReactions = useCallback(
+    (messageId: string, reactions: MessageReactionAggregate[]) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, reactions } : m))
+      );
+    },
+    []
+  );
 
   // 初始加载 + Realtime
   useEffect(() => {
@@ -109,6 +125,38 @@ export function useGroupChat(
     };
   }, [groupId, appendMessage, resolveSender]);
 
+  // Realtime：他人表情回应 → 拉取该消息最新聚合实时更新
+  useEffect(() => {
+    if (!groupId) return;
+    const supabase = createClient();
+    const suffix = Math.random().toString(36).slice(2, 8);
+    const channel = supabase
+      .channel(`chat-reactions-${groupId}-${suffix}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          const messageId = (payload.new as { message_id?: string })?.message_id;
+          if (!messageId) return;
+          fetchData<{ reactions: MessageReactionAggregate[] }>(
+            `/api/groups/${groupId}/messages/${messageId}/reactions`
+          )
+            .then((res) => patchReactions(messageId, res.reactions))
+            .catch(() => {
+              /* 静默：下次加载自然校正 */
+            });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupId, patchReactions]);
+
   /** 加载更早历史 */
   const loadOlder = useCallback(async () => {
     if (!groupId || !cursor.current) return;
@@ -144,6 +192,22 @@ export function useGroupChat(
     [groupId, appendMessage]
   );
 
+  /** 切换表情回应：POST 后立即用最新聚合更新本地，避免等待实时推流 */
+  const toggleReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      const res = await fetchData<{
+        reactions: MessageReactionAggregate[];
+        reacted: boolean;
+      }>(`/api/groups/${groupId}/messages/${messageId}/reactions`, {
+        method: "POST",
+        body: JSON.stringify({ emoji }),
+      });
+      patchReactions(messageId, res.reactions);
+      return res.reactions;
+    },
+    [groupId, patchReactions]
+  );
+
   return {
     messages,
     hasMore,
@@ -151,5 +215,6 @@ export function useGroupChat(
     loadingOlder,
     loadOlder,
     sendMessage,
+    toggleReaction,
   };
 }

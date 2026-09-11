@@ -738,6 +738,26 @@ export interface CircleCheckinPlace {
 
 export type GroupMessageType = "text" | "image";
 
+/** 消息 emoji 回应（一人每个 emoji 一条） */
+export interface MessageReaction {
+  id: UUID;
+  message_id: UUID;
+  user_id: UUID;
+  emoji: string;
+  created_at: string;
+}
+
+/**
+ * 某条消息的回应聚合视图：按 emoji 归并出「人数 + 本人是否已点」
+ */
+export interface MessageReactionAggregate {
+  emoji: string;
+  /** 点过该 emoji 的用户数 */
+  count: number;
+  /** 当前用户是否已点 */
+  reactedByMe: boolean;
+}
+
 /** 圈子聊天消息 */
 export interface GroupMessage {
   id: UUID;
@@ -746,17 +766,27 @@ export interface GroupMessage {
   type: GroupMessageType;
   content: string | null;
   image_url: string | null;
+  /** 引用回复：被引用消息的 ID（无则 null） */
+  reply_to_id: UUID | null;
   created_at: string;
   sender?: Pick<
     Profile,
     "id" | "nickname" | "avatar_url" | "frameColor" | "wornBadges"
   > | null;
+  /** 被引用消息的发送者（服务端 join 附带） */
+  reply_sender?: Pick<Profile, "id" | "nickname"> | null;
+  /** 被引用消息的内容预览（文本取 content，图片取固定文案） */
+  reply_preview?: string | null;
+  /** 该消息的 emoji 回应聚合（服务端附带） */
+  reactions?: MessageReactionAggregate[];
 }
 
 /** 发送聊天消息请求体 */
 export interface SendMessageBody {
   content?: string;
   imageUrl?: string;
+  /** 引用回复：被引用的消息 ID（可选） */
+  replyToId?: UUID;
 }
 
 /** 聊天消息列表响应 */
