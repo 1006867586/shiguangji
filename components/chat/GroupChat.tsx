@@ -6,9 +6,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ImagePlus, Loader2, SendHorizontal, X, SmilePlus } from "lucide-react";
+import { ChevronLeft, ImagePlus, Loader2, Search, SearchX, SendHorizontal, X, SmilePlus, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { MentionComposer } from "@/components/common/MentionComposer";
@@ -25,17 +26,21 @@ import type { GroupMessage, MentionUser } from "@/types";
 interface GroupChatProps {
   groupId: string;
   groupName: string;
+  announcement?: string | null;
   currentUserId: string;
 }
 
 export function GroupChat({
   groupId,
   groupName,
+  announcement,
   currentUserId,
 }: GroupChatProps) {
   const { members } = useGroupMembers(groupId);
   const mentionUserMap = useMemo(() => buildMentionUserMap(members), [members]);
   const [mentionUser, setMentionUser] = useState<MentionUser | null>(null);
+  /** 搜索关键词（非空即在「搜索模式」下拉取命中消息） */
+  const [searchQuery, setSearchQuery] = useState("");
   const {
     messages,
     hasMore,
@@ -44,7 +49,7 @@ export function GroupChat({
     loadOlder,
     sendMessage,
     toggleReaction,
-  } = useGroupChat(groupId, members);
+  } = useGroupChat(groupId, members, searchQuery);
 
   const { uploadFile, uploading } = useUpload();
   const [draft, setDraft] = useState("");
@@ -53,12 +58,19 @@ export function GroupChat({
   const [replyTarget, setReplyTarget] = useState<GroupMessage | null>(null);
   /** 正在弹出表情选择器的消息 ID */
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  /** 搜索框是否展开 */
+  const [searchOpen, setSearchOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const latestIdRef = useRef<string | null>(null);
 
-  // 自动滚到底：仅当「最新一条」变化时触发（加载历史不打断）
+  // 打开 / 退出搜索时，重置已读时间线推进逻辑（避免搜索切换触发滚动）
+  const isSearching = searchOpen && searchQuery.trim().length > 0;
+
+  // 自动滚到底：仅当「最新一条」变化且非搜索模式时触发（加载历史/搜索不打断）
   useEffect(() => {
+    if (isSearching) return;
     const latest = messages[messages.length - 1]?.id;
     if (!loadingInitial && messages.length > 0 && latest !== latestIdRef.current) {
       latestIdRef.current = latest;
@@ -66,7 +78,7 @@ export function GroupChat({
       // 正在聊天页阅读 → 推进已读时间线（红点归零）
       markChatRead(groupId).catch(() => {});
     }
-  }, [messages, loadingInitial, groupId]);
+  }, [messages, loadingInitial, groupId, isSearching]);
 
   // 打开聊天页立即标记已读
   useEffect(() => {
@@ -135,12 +147,63 @@ export function GroupChat({
           <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
             {members.length} 人
           </span>
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              aria-label="搜索聊天记录"
+              title="搜索聊天记录"
+              onClick={() => {
+                setSearchOpen((v) => !v);
+                if (!searchOpen) setSearchQuery("");
+              }}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
+        {/* 搜索框 */}
+        {searchOpen ? (
+          <div className="flex items-center gap-1 px-2 pb-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={inputRef}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索聊天消息…"
+                className="h-9 pl-8 pr-8"
+                autoFocus
+                aria-label="搜索聊天消息"
+              />
+              {searchQuery ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-9 w-9"
+                  aria-label="清除搜索"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </header>
+
+      {/* 公告横幅 */}
+      {!isSearching && announcement ? (
+        <div className="flex items-center gap-2 px-3 py-2.5 text-sm text-primary bg-primary/5 border-b border-primary/10">
+          <Megaphone className="h-4 w-4 shrink-0" />
+          <p className="min-w-0 flex-1 whitespace-pre-wrap break-words">{announcement}</p>
+        </div>
+      ) : null}
 
       {/* 消息区 */}
       <div className="flex-1 overflow-y-auto px-3 py-3">
-        {hasMore ? (
+        {!isSearching && hasMore ? (
           <div className="mb-2 flex justify-center">
             <Button
               variant="ghost"
@@ -168,9 +231,41 @@ export function GroupChat({
             ))}
           </div>
         ) : messages.length === 0 ? (
-          <p className="py-10 text-center text-xs text-muted-foreground">
-            还没有消息，说点什么吧
-          </p>
+          <div className="flex flex-col items-center gap-2 py-14 text-center">
+            {isSearching ? (
+              <>
+                <SearchX className="h-8 w-8 text-muted-foreground/60" />
+                <p className="text-xs text-muted-foreground">
+                  没有找到与「{searchQuery.trim()}」相关的消息
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                还没有消息，说点什么吧
+              </p>
+            )}
+          </div>
+        ) : isSearching ? (
+          <div className="space-y-2">
+            <p className="px-1 text-[11px] text-muted-foreground">
+              找到 {messages.length} 条相关消息（仅匹配文本内容）
+            </p>
+            {messages.map((msg) => (
+              <ChatBubble
+                key={msg.id}
+                msg={msg}
+                isMine={msg.sender_id === currentUserId}
+                mentionUserMap={mentionUserMap}
+                onMentionClick={setMentionUser}
+                onReply={() => setReplyTarget(msg)}
+                onReaction={handleToggleReaction}
+                pickerOpen={pickerFor === msg.id}
+                onTogglePicker={() =>
+                  setPickerFor((prev) => (prev === msg.id ? null : msg.id))
+                }
+              />
+            ))}
+          </div>
         ) : (
           <div className="space-y-2">
             {messages.map((msg) => (

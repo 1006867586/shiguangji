@@ -111,6 +111,8 @@ export interface Group {
   created_by: UUID;
   created_at: string;
   updated_at?: string;
+  /** 圈子公告（管理员/创建者可设置；无则未公告） */
+  announcement?: string | null;
   settings?: GroupSettings;
   /** 仅在列表接口中附带 */
   member_count?: number;
@@ -444,6 +446,8 @@ export interface UpdateGroupBody {
   name?: string;
   description?: string | null;
   avatarUrl?: string | null;
+  /** 圈子公告（仅管理员/创建者可设置；空字符串代表清除公告） */
+  announcement?: string | null;
   settings?: GroupSettings;
 }
 

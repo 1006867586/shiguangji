@@ -44,7 +44,8 @@ function dedupe<M extends { id: string }>(list: M[], seen: Set<string>): M[] {
 
 export function useGroupChat(
   groupId: string | null,
-  members: GroupMember[]
+  members: GroupMember[],
+  searchQuery?: string
 ): UseGroupChat {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -55,6 +56,8 @@ export function useGroupChat(
   const cursor = useRef<string | null>(null);
   const membersRef = useRef(members);
   membersRef.current = members;
+
+  const q = searchQuery?.trim() ?? "";
 
   const resolveSender = useCallback((senderId: string) => {
     const m = membersRef.current.find((x) => x.user_id === senderId);
@@ -82,11 +85,13 @@ export function useGroupChat(
     seen.current = new Set();
     setMessages([]);
     setLoadingInitial(true);
-
     let active = true;
     const supabase = createClient();
 
-    fetchData<ChatMessagesResponse>(`/api/groups/${groupId}/messages?limit=50`)
+    const queryStr = q
+      ? `q=${encodeURIComponent(q)}&limit=50`
+      : "limit=50";
+    fetchData<ChatMessagesResponse>(`/api/groups/${groupId}/messages?${queryStr}`)
       .then((res) => {
         if (!active) return;
         setMessages(dedupe(res.data, seen.current));
@@ -97,6 +102,9 @@ export function useGroupChat(
         /* 顶部用户可见错误由组件提示 */
       })
       .finally(() => active && setLoadingInitial(false));
+
+    // 搜索模式：实时订阅无意义（消息会乱序），直接跳过
+    if (q) return () => { active = false; };
 
     const suffix = Math.random().toString(36).slice(2, 8);
     const channel = supabase
@@ -123,11 +131,11 @@ export function useGroupChat(
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [groupId, appendMessage, resolveSender]);
+  }, [groupId, appendMessage, resolveSender, q]);
 
   // Realtime：他人表情回应 → 拉取该消息最新聚合实时更新
   useEffect(() => {
-    if (!groupId) return;
+    if (!groupId || q) return;
     const supabase = createClient();
     const suffix = Math.random().toString(36).slice(2, 8);
     const channel = supabase
@@ -155,9 +163,9 @@ export function useGroupChat(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [groupId, patchReactions]);
+  }, [groupId, patchReactions, q]);
 
-  /** 加载更早历史 */
+  /** 加载更早历史（搜索模式沿用同一接口，忽略分页游标） */
   const loadOlder = useCallback(async () => {
     if (!groupId || !cursor.current) return;
     setLoadingOlder(true);

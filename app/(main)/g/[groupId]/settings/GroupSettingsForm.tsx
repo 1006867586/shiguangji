@@ -60,6 +60,7 @@ export function GroupSettingsForm({ group }: GroupSettingsFormProps) {
 
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description ?? "");
+  const [announcement, setAnnouncement] = useState(group.announcement ?? "");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(group.avatar_url);
   const [inviteCode, setInviteCode] = useState(group.invite_code);
   const [settings, setSettings] = useState({
@@ -79,6 +80,7 @@ export function GroupSettingsForm({ group }: GroupSettingsFormProps) {
       await update({
         name: trimmedName,
         description: description.trim() || null,
+        announcement: announcement.trim() || null,
         avatarUrl,
         settings: {
           join_approval: settings.join_approval,
@@ -144,6 +146,24 @@ export function GroupSettingsForm({ group }: GroupSettingsFormProps) {
           />
           <p className="text-xs text-muted-foreground">
             {description.length}/500
+          </p>
+        </div>
+      </section>
+
+      {/* 圈子公告 */}
+      <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="group-announcement">圈子公告</Label>
+          <Textarea
+            id="group-announcement"
+            value={announcement}
+            onChange={(e) => setAnnouncement(e.target.value)}
+            maxLength={500}
+            placeholder="发布公告，成员进入聊天页即可查看（选填）"
+            rows={3}
+          />
+          <p className="text-xs text-muted-foreground">
+            {announcement.length}/500
           </p>
         </div>
       </section>

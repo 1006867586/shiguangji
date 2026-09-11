@@ -192,6 +192,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     const { searchParams } = new URL(request.url);
     const before = searchParams.get("before");
+    const qParam = searchParams.get("q")?.trim() ?? "";
     const limit = safeParseInt(searchParams.get("limit"), DEFAULT_LIMIT, MAX_LIMIT);
 
     // 取 limit+1 判断是否还有更早的消息
@@ -201,7 +202,15 @@ export async function GET(request: NextRequest, { params }: Params) {
       .eq("group_id", id)
       .limit(limit + 1);
 
-    if (before) q = q.lt("created_at", before);
+    if (qParam) {
+      // 搜索模式：仅匹配文本消息内容，忽略分页游标（群聊搜索通常直接看最新命中）
+      q = q
+        .eq("type", "text")
+        .not("content", "is", null)
+        .ilike("content", `%${qParam}%`);
+    } else if (before) {
+      q = q.lt("created_at", before);
+    }
     q = q.order("created_at", { ascending: false });
 
     const { data, error } = await q;

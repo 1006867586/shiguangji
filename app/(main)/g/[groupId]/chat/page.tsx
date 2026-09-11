@@ -28,7 +28,7 @@ export default async function GroupChatPage({ params }: Params) {
   const supabase = await createServerClient();
   const { data: membership } = await supabase
     .from("group_members")
-    .select("group:groups!inner(id, name)")
+    .select("group:groups!inner(id, name, announcement)")
     .eq("group_id", groupId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -37,7 +37,18 @@ export default async function GroupChatPage({ params }: Params) {
     notFound();
   }
 
-  const group = membership.group as unknown as { id: string; name: string };
+  const group = membership.group as unknown as {
+    id: string;
+    name: string;
+    announcement: string | null;
+  };
 
-  return <GroupChat groupId={groupId} groupName={group.name} currentUserId={user.id} />;
+  return (
+    <GroupChat
+      groupId={groupId}
+      groupName={group.name}
+      announcement={group.announcement}
+      currentUserId={user.id}
+    />
+  );
 }

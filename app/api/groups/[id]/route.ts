@@ -127,7 +127,32 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       patch.settings = cleaned;
     }
 
-    if (Object.keys(patch).length === 0) {
+    // announcement：走 security definer RPC（管理员/创建者校验在函数内部）
+    const hasAnnouncement = body.announcement !== undefined;
+    if (hasAnnouncement) {
+      const ann = typeof body.announcement === "string" ? body.announcement.trim() : null;
+      if (typeof body.announcement === "string") {
+        const trimmed = body.announcement.trim();
+        if (trimmed.length > 500) {
+          return jsonResponse(
+            { error: "公告内容不能超过 500 个字符" },
+            { status: 400 }
+          );
+        }
+      }
+      const { error: rpcErr } = await supabase.rpc("set_group_announcement", {
+        p_group_id: id,
+        p_announcement: ann ?? "",
+      });
+      if (rpcErr) {
+        return jsonResponse(
+          { error: safeErrorMessage(rpcErr, "设置公告失败") },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (Object.keys(patch).length === 0 && !hasAnnouncement) {
       return jsonResponse({ error: "没有可更新的字段" }, { status: 400 });
     }
 
