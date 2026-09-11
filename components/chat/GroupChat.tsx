@@ -60,8 +60,12 @@ export function GroupChat({
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   /** 搜索框是否展开 */
   const [searchOpen, setSearchOpen] = useState(false);
+  /** emoji 快捷选择面板是否展开 */
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const emojiPanelRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const latestIdRef = useRef<string | null>(null);
 
@@ -84,6 +88,34 @@ export function GroupChat({
   useEffect(() => {
     markChatRead(groupId).catch(() => {});
   }, [groupId]);
+
+  // emoji 面板：点击外部关闭
+  useEffect(() => {
+    if (!emojiOpen) return;
+    const onDocDown = (e: MouseEvent) => {
+      if (
+        emojiPanelRef.current &&
+        !emojiPanelRef.current.contains(e.target as Node)
+      ) {
+        setEmojiOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocDown);
+    return () => document.removeEventListener("mousedown", onDocDown);
+  }, [emojiOpen]);
+
+  /** 在光标处插入 emoji 并保持焦点 */
+  const insertEmoji = (emoji: string) => {
+    const ta = taRef.current;
+    const caret = ta?.selectionStart ?? draft.length;
+    const next = draft.slice(0, caret) + emoji + draft.slice(caret);
+    setDraft(next);
+    requestAnimationFrame(() => {
+      ta?.focus();
+      const pos = caret + emoji.length;
+      ta?.setSelectionRange(pos, pos);
+    });
+  };
 
   const handleSend = async () => {
     const text = draft.trim();
@@ -337,6 +369,37 @@ export function GroupChat({
               <ImagePlus className="h-5 w-5" />
             )}
           </Button>
+          {/* emoji 快捷选择 */}
+          <div ref={emojiPanelRef} className="relative shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-9 w-9", emojiOpen && "bg-accent")}
+              onClick={() => setEmojiOpen((v) => !v)}
+              disabled={sending}
+              aria-label="选择表情"
+              aria-expanded={emojiOpen}
+            >
+              <SmilePlus className="h-5 w-5" />
+            </Button>
+            {emojiOpen ? (
+              <div className="absolute bottom-full left-0 z-30 mb-1 w-64 overflow-hidden rounded-xl border border-border bg-popover p-2 shadow-lg">
+                <div className="grid max-h-40 grid-cols-8 overflow-y-auto">
+                  {QUICK_EMOJI_PANEL.map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-lg transition-transform hover:scale-125 hover:bg-accent"
+                      onClick={() => insertEmoji(e)}
+                      aria-label={`插入 ${e}`}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
           <MentionComposer
             value={draft}
             onChange={setDraft}
@@ -348,6 +411,7 @@ export function GroupChat({
             disabled={sending || uploading}
             className="min-w-0 flex-1"
             ariaLabel="聊天输入"
+            taRef={taRef}
           />
           <Button
             size="icon"
@@ -373,6 +437,26 @@ export function GroupChat({
 
 /* 常用表情快速选择 */
 const QUICK_EMOJIS = ["👍", "😂", "❤️", "🎉", "🔥", "😮"];
+
+/* 输入框 emoji 快捷选择面板 */
+const QUICK_EMOJI_PANEL = [
+  "😀", "😄", "😁", "😆", "😂", "🤣", "😊", "😍",
+  "😘", "😜", "🤪", "😎", "🤩", "🥳", "😢", "😭",
+  "😡", "🥺", "😳", "🤔", "🤗", "🤫", "😴", "🤤",
+  "👍", "👎", "👌", "✌️", "🤞", "🤟", "👏", "🙌",
+  "🤝", "🙏", "💪", "✊", "👊", "🫶", "👋", "🤙",
+  "❤️", "🧡", "💛", "💚", "💙", "💜", "💔", "💕",
+  "💞", "💓", "💗", "💖", "💘", "💝", "💯", "✨",
+  "🎉", "🎊", "🎂", "🎁", "🥳", "🔥", "⭐", "🌟",
+  "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼",
+  "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🙈",
+  "🍎", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🍑",
+  "🍕", "🍔", "🍟", "🌭", "🍿", "🧀", "🍗", "🍖",
+  "⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🎱", "🏓",
+  "🎮", "🎲", "🧩", "🎨", "🎭", "🎤", "🎧", "🎬",
+  "✅", "❌", "❓", "❗", "💡", "📌", "📍", "🗑️",
+  "🔒", "🔓", "🔑", "🚀", "✈️", "⏰", "📱", "💻",
+];
 
 function ReplyPreview({ msg }: { msg: GroupMessage }) {
   if (!msg.reply_to_id || !msg.reply_preview) return null;

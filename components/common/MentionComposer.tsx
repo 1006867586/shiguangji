@@ -26,6 +26,8 @@ interface MentionComposerProps {
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
+  /** 内部 textarea 的 ref（供外部聚焦 / 插入文本后定位光标） */
+  taRef?: React.Ref<HTMLTextAreaElement>;
 }
 
 export function MentionComposer({
@@ -39,8 +41,11 @@ export function MentionComposer({
   disabled = false,
   className = "",
   ariaLabel,
+  taRef,
 }: MentionComposerProps) {
-  const taRef = useRef<HTMLTextAreaElement>(null);
+  const taRefInternal = useRef<HTMLTextAreaElement | null>(
+    null
+  ) as React.MutableRefObject<HTMLTextAreaElement | null>;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -85,7 +90,7 @@ export function MentionComposer({
   const choose = (member: GroupMember) => {
     const nick = member.profile?.nickname;
     if (!nick) return;
-    const ta = taRef.current;
+    const ta = taRefInternal.current;
     const caret = ta?.selectionStart ?? value.length;
     const before = value.slice(0, caret);
     const idx = before.lastIndexOf(TRIGGER);
@@ -132,7 +137,12 @@ export function MentionComposer({
   return (
     <div className={`relative ${className}`}>
       <textarea
-        ref={taRef}
+        ref={(el) => {
+          taRefInternal.current = el;
+          if (typeof taRef === "function") taRef(el);
+          else if (taRef)
+            (taRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+        }}
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}

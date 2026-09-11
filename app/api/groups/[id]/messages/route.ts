@@ -343,7 +343,11 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     const [withSender] = await attachSenders(supabase, [message]);
-    const [extended] = await attachExtras(supabase, [withSender], user.id);
+    const [extended] = await attachExtras<typeof withSender>(
+      supabase,
+      [withSender],
+      user.id
+    );
     message.reactions = extended.reactions;
     message.reply_sender = extended.reply_sender;
     message.reply_preview = extended.reply_preview;
