@@ -42,6 +42,8 @@ export interface Profile {
 /** 佩戴在昵称旁的装扮徽章（精简字段） */
 export interface WornDecorBadge {
   id: UUID;
+  /** decor_items.key，前端据此匹配内联 SVG 图形 */
+  key: string;
   icon: string | null;
   color: string | null;
   name: string;

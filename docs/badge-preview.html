@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>霓虹光晕徽章 · 落地效果</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#12141a;color:#e8eaf0;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;padding:32px 28px 64px;line-height:1.6}
+h1{font-size:20px;font-weight:500;margin-bottom:6px}
+.lead{font-size:13px;color:#8b90a0;margin-bottom:28px}
+:root{--background:38 36% 97%;--foreground:24 18% 12%}
+.dark{--background:20 10% 7%;--foreground:36 18% 94%}
+
+.badge-glow{
+ position:relative;display:inline-flex;flex:none;align-items:center;justify-content:center;
+ border-radius:9999px;
+ background-color:color-mix(in srgb,var(--badge-c) 16%,transparent);
+ border:1.5px solid color-mix(in srgb,var(--badge-c) 45%,transparent);
+ box-shadow:0 0 0 3px color-mix(in srgb,var(--badge-c) 8%,transparent),
+            0 0 14px -2px color-mix(in srgb,var(--badge-c) 50%,transparent);
+ color:color-mix(in srgb,var(--badge-c) 70%,hsl(var(--foreground)));
+ backdrop-filter:blur(4px);
+ transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s ease}
+.badge-glow:hover{transform:translateY(-1px) scale(1.08);
+ box-shadow:0 0 0 4px color-mix(in srgb,var(--badge-c) 12%,transparent),
+            0 0 20px -1px color-mix(in srgb,var(--badge-c) 65%,transparent)}
+.badge-glow svg{width:58%;height:58%}
+
+.scene{border-radius:16px;padding:24px;margin-bottom:26px;border:1px solid rgba(128,128,128,.18)}
+.scene.dark{background:hsl(var(--background));color:hsl(var(--foreground))}
+.scene-title{font-size:14px;font-weight:500;margin-bottom:3px}
+.scene-desc{font-size:12px;opacity:.6;margin-bottom:20px}
+.cap{font-size:11.5px;opacity:.5;margin-bottom:9px;margin-top:16px}
+.cap:first-of-type{margin-top:0}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.row.nick{gap:6px;display:inline-flex;padding:8px 12px;border-radius:10px;background:color-mix(in srgb,currentColor 5%,transparent)}
+.avatar{width:26px;height:26px;border-radius:50%;background:#5b6bd6;color:#fff;display:grid;place-items:center;font-size:11px;flex:none}
+.nickname{font-size:14px;margin-right:2px}
+.plus{font-size:11px;opacity:.6;border-radius:9px;padding:2px 6px;background:color-mix(in srgb,currentColor 10%,transparent)}
+.sm{width:20px;height:20px}
+.md{width:40px;height:40px}
+.lg{width:64px;height:64px}
+.old{width:20px;height:20px;border-radius:9999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 0 0 1px rgba(0,0,0,.05)}
+.cmp{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.cmp>div{min-width:220px}
+</style>
+</head>
+<body>
+<h1>霓虹光晕徽章 · 落地效果</h1>
+<p class="lead">内联 SVG 图标 + 半透明主题色底 + 外发光。图形颜色会与前景色二次混合，浅色模式自动加深、暗色模式自动提亮。鼠标悬停可看上浮效果。</p>
+<div id="app"></div>
+
+<script>
+const ICONS={
+badge_meals_week_5:'<path d="M7 3v6a2 2 0 0 0 4 0V3"/><path d="M9 9.6V21"/><path d="M17 3v18"/><path d="M17 4.5c1.5 2 2.4 4.3 2.4 6.5 0 1.7-.9 2.9-2.4 3.4"/>',
+badge_meals_week_10:'<path d="M12 2.8c3.4 4.3 5.8 6.3 5.8 9.7a5.8 5.8 0 0 1-11.6 0c0-2.9 1.9-4.6 3.9-6.7-.5 2.1.3 3.7 1.6 4.5-.3-3.2-.2-5.4.3-7.5Z" fill="currentColor" stroke="none"/>',
+badge_total_meals_20:'<circle cx="12" cy="8.8" r="5.4"/><circle cx="12" cy="8.8" r="2.1"/><path d="M9 13.9 6.8 21"/><path d="M15 13.9 17.2 21"/>',
+badge_streak_3:'<path d="M13.2 2.5 5.5 13.8h5.2L9.4 21.5 18.5 9.8h-5.4l.1-7.3Z" fill="currentColor" stroke="none"/>',
+badge_streak_7:'<rect x="3.6" y="5.2" width="16.8" height="15.2" rx="3"/><path d="M3.6 10h16.8"/><path d="M8.2 3v4.2M15.8 3v4.2"/><circle cx="9" cy="14.6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="14.6" r="1.3" fill="currentColor" stroke="none"/>',
+badge_circles_3:'<circle cx="9.2" cy="8" r="3.2" fill="currentColor" stroke="none"/><path d="M3 20.2c0-3.4 2.8-6.2 6.2-6.2s6.2 2.8 6.2 6.2Z" fill="currentColor" stroke="none"/><circle cx="17.4" cy="9.4" r="2.3" fill="currentColor" stroke="none" opacity="0.6"/><path d="M15.4 20.2c0-2.7 1.6-4.9 4-4.9 1.1 0 2.1.4 2.9 1.2" opacity="0.6"/>',
+badge_activities_1:'<path d="M4.8 19.4 13.8 6.6l4.6 3.4L9.6 19.4H4.8Z"/><path d="M17.6 3.6v3.6M19.4 5.4h-3.6"/><path d="M7 8.6 8.5 10.2M20.4 12.2 18.8 10.6"/><circle cx="12" cy="13.4" r="1.1" fill="currentColor" stroke="none"/>',
+badge_star:'<path d="m12 3.2 2.7 5.7 6.2.8-4.6 4.3 1.2 6.2L12 17.2l-5.5 3 1.2-6.2-4.6-4.3 6.2-.8L12 3.2Z" fill="currentColor" stroke="none"/>',
+badge_cup:'<path d="M8 4.2h8v4.6a4 4 0 0 1-8 0V4.2Z"/><path d="M8 5.4H5.6v1.6a3.4 3.4 0 0 0 3.2 3.4"/><path d="M16 5.4h2.4v1.6a3.4 3.4 0 0 1-3.2 3.4"/><path d="M12 12.8v4.4"/><path d="M8.6 20.4h6.8"/><path d="M9.4 20.4c0-1.4 1.1-2.4 2.6-2.4s2.6 1 2.6 2.4"/>',
+badge_hotpot:'<path d="M3.6 11.4h16.8v1.8a5.6 5.6 0 0 1-5.6 5.6H9.2a5.6 5.6 0 0 1-5.6-5.6v-1.8Z"/><path d="M8.2 8.4c0-1.1 1-1.6 1-2.6s-1-1.5-1-2.6"/><path d="M12 8.4c0-1.1 1-1.6 1-2.6s-1-1.5-1-2.6"/><path d="M15.8 8.4c0-1.1 1-1.6 1-2.6s-1-1.5-1-2.6"/>',
+badge_crown:'<path d="M3.2 8.2 7 11.4 12 4.6l5 6.8 3.8-3.2-1.9 11.6H5.1L3.2 8.2Z"/><circle cx="12" cy="14.6" r="1.3" fill="currentColor" stroke="none"/><circle cx="6.2" cy="16.8" r="1" fill="currentColor" stroke="none"/><circle cx="17.8" cy="16.8" r="1" fill="currentColor" stroke="none"/>'
+};
+const BADGES=[
+ {n:'本周吃了5顿',k:'badge_meals_week_5',e:'\u{1F37D}\u{FE0F}',c:'#f59e0b'},
+ {n:'本周吃了10顿',k:'badge_meals_week_10',e:'\u{1F525}',c:'#ef4444'},
+ {n:'美食家',k:'badge_total_meals_20',e:'\u{1F3C5}',c:'#f59e0b'},
+ {n:'连续打卡3天',k:'badge_streak_3',e:'\u{26A1}',c:'#8b5cf6'},
+ {n:'一周不缺席',k:'badge_streak_7',e:'\u{1F4C5}',c:'#38bdf8'},
+ {n:'社交达人',k:'badge_circles_3',e:'\u{1F465}',c:'#10b981'},
+ {n:'发起人',k:'badge_activities_1',e:'\u{1F389}',c:'#ec4899'},
+ {n:'闪耀之星',k:'badge_star',e:'\u{2B50}',c:'#fde047'},
+ {n:'干饭冠军',k:'badge_cup',e:'\u{1F3C6}',c:'#f59e0b'},
+ {n:'火锅信徒',k:'badge_hotpot',e:'\u{1F372}',c:'#ef4444'},
+ {n:'饕餮之王',k:'badge_crown',e:'\u{1F451}',c:'#a16207'}
+];
+function b(badge,size){
+ return '<span class="badge-glow '+size+'" style="--badge-c:'+badge.c+'" title="'+badge.n+'">'
+  +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+  +ICONS[badge.k]+'</svg></span>';
+}
+function scene(dark){
+ let h='<div class="scene'+(dark?' dark':'')+'">';
+ h+='<p class="scene-title">'+(dark?'暗色模式':'浅色模式')+'</p>';
+ h+='<p class="scene-desc">'+(dark?'霓虹光晕在暗色下最出彩，外发光与背景形成对比':'图形色与前景色混合后自动加深，保证白底上的可读性')+'</p>';
+ h+='<p class="cap">昵称旁 · 20px</p><div class="row nick"><div class="avatar">林</div><span class="nickname">小林</span>';
+ BADGES.slice(0,4).forEach(function(x){h+=b(x,'sm')});
+ h+='<span class="plus">+2</span></div>';
+ h+='<p class="cap">装扮面板 · 40px</p><div class="row">';
+ BADGES.slice(0,8).forEach(function(x){h+=b(x,'md')});
+ h+='</div>';
+ h+='<p class="cap">大尺寸 · 64px</p><div class="row">';
+ BADGES.forEach(function(x){h+=b(x,'lg')});
+ h+='</div></div>';
+ return h;
+}
+let html=scene(true)+scene(false);
+html+='<div class="cmp"><div><p class="cap">改造前（emoji 实心圆点）</p><div class="row nick" style="background:rgba(128,128,128,.12);padding:8px 12px;border-radius:10px"><div class="avatar">林</div><span class="nickname">小林</span>';
+BADGES.slice(0,4).forEach(function(x){html+='<span class="old" style="background:'+x.c+'" title="'+x.n+'">'+x.e+'</span>'});
+html+='</div></div><div><p class="cap">改造后（霓虹光晕 + SVG）</p><div class="row nick" style="background:rgba(128,128,128,.12);padding:8px 12px;border-radius:10px"><div class="avatar">林</div><span class="nickname">小林</span>';
+BADGES.slice(0,4).forEach(function(x){html+=b(x,'sm')});
+html+='</div></div></div>';
+document.getElementById('app').innerHTML=html;
+</script>
+</body>
+</html>

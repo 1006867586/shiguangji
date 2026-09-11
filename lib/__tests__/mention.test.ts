@@ -153,7 +153,15 @@ describe("buildMentionUserMap", () => {
         nickname: "张三",
         avatar_url: "https://img/a.png",
         frameColor: "#ff0000",
-        wornBadges: [{ id: "b1", icon: "🏅", color: "#ff0", name: "美食家" }],
+        wornBadges: [
+          {
+            id: "b1",
+            key: "badge_total_meals_20",
+            icon: "🏅",
+            color: "#ff0",
+            name: "美食家",
+          },
+        ],
         achievements: [{ id: "a1", key: "meals", name: "干饭王", description: "", icon: "🍚", rule_type: "total_meals", threshold: 10, sort_order: 1, unlocked: true }],
       },
     },
