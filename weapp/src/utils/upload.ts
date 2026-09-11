@@ -35,12 +35,12 @@ function toReadablePath(filePath: string): Promise<string> {
   if (!/^https?:\/\/\S+/.test(filePath)) return Promise.resolve(filePath);
 
   return new Promise((resolve, reject) => {
-    const fs = Taro.getFileSystemManager();
     // 落盘到用户目录下的稳定路径，避免临时目录被回收
     const dest = `${Taro.env.USER_DATA_PATH}/r2_upload_${Date.now()}_${Math.random()
       .toString(36)
       .slice(2, 8)}${filePath.split("?")[0].split(".").pop() ? "." + filePath.split("?")[0].split(".").pop() : ""}`;
-    fs.downloadFile({
+    // 注意：downloadFile 是 Taro 顶层 API，FileSystemManager 上没有该方法
+    Taro.downloadFile({
       url: filePath,
       filePath: dest,
       success: () => resolve(dest),

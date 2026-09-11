@@ -3,9 +3,37 @@ import { defineConfig, type UserConfigExport } from "@tarojs/cli";
 import devConfig from "./dev";
 import prodConfig from "./prod";
 import path from "node:path";
+import fs from "node:fs";
+
+// 加载项目根 .env，将 TARO_APP_* 写入 process.env。
+// Taro 4 命令行构建不一定自动 load .env，这里显式 load，保证 API_BASE 等编译期可注入。
+function loadDotEnv(): void {
+  try {
+    const p = path.resolve(__dirname, "..", ".env");
+    const txt = fs.readFileSync(p, "utf8");
+    for (const line of txt.split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) {
+        process.env[m[1]] = m[2].trim().replace(/^['"]|['"]$/g, "");
+      }
+    }
+  } catch {
+    // .env 不存在则跳过，使用 config.ts 内的兜底
+  }
+}
+loadDotEnv();
 
 // https://taro-docs.jd.com/docs/next/config#defineconfig-asterisk
 export default defineConfig(async (merge) => {
+  // 编译期常量注入：让 src/utils/config.ts 里的 process.env.TARO_APP_API_BASE
+  // 在构建时被替换成 .env 的实际值（小程序运行时没有 process.env，必须编译期替换）
+  const defineConstants: Record<string, string> = {};
+  if (process.env.TARO_APP_API_BASE) {
+    defineConstants["process.env.TARO_APP_API_BASE"] = JSON.stringify(
+      process.env.TARO_APP_API_BASE
+    );
+  }
+
   const baseConfig: UserConfigExport = {
     projectName: "xiangke-weapp",
     date: "2026-8-15",
@@ -21,6 +49,7 @@ export default defineConfig(async (merge) => {
     plugins: [],
     framework: "react",
     compiler: "webpack5",
+    defineConstants,
     copy: {
       patterns: [
         { from: "assets/tab-icons", to: "dist/assets/tab-icons" },

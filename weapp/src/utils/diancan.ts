@@ -156,11 +156,14 @@ export function fetchMenu(merchantUserId: string): Promise<{
   dishes: Dish[];
 }> {
   const q = `merchantUserId=${encodeURIComponent(merchantUserId)}`;
-  return request(`/api/diancan/categories?${q}`).then((categories) =>
-    request(`/api/diancan/dishes?${q}`).then(
-      (dishes) => ({ categories: categories as DishCategory[], dishes: dishes as Dish[] })
-    )
-  );
+  return Promise.all([
+    request<unknown>(`/api/diancan/categories?${q}`),
+    request<unknown>(`/api/diancan/dishes?${q}`),
+  ]).then(([catRaw, dishRaw]) => ({
+    // 兼容两种返回形态：直接数组（{ data: [...] }）或嵌套对象（{ data: { categories } }）
+    categories: (Array.isArray(catRaw) ? catRaw : (catRaw as { categories?: DishCategory[] }).categories) ?? [],
+    dishes: (Array.isArray(dishRaw) ? dishRaw : (dishRaw as { dishes?: Dish[] }).dishes) ?? [],
+  }));
 }
 
 export function fetchShopConfig(merchantUserId: string): Promise<ShopConfig> {
@@ -262,9 +265,18 @@ export interface MyShopConfig {
   updatedAt: string;
 }
 
+/** shop_banners 行 */
+export interface ShopBanner {
+  id: string;
+  merchant_user_id: string;
+  image_url: string;
+  sort: number;
+  created_at: string;
+}
+
 export function fetchMyShop(merchantUserId: string): Promise<{
   config: MyShopConfig;
-  banners: unknown[];
+  banners: ShopBanner[];
 }> {
   return request(`/api/diancan/shop?merchantUserId=${encodeURIComponent(merchantUserId)}`, {
     silent: true,
@@ -279,6 +291,20 @@ export function updateShopConfig(patch: {
   logoUrl?: string | null;
 }): Promise<{ config: MyShopConfig }> {
   return request("/api/diancan/shop", { method: "PUT", data: patch });
+}
+
+// ---- 轮播图（商家）----
+
+export function createBanner(imageUrl: string): Promise<{ banner: ShopBanner }> {
+  return request("/api/diancan/shop/banner", { method: "POST", data: { imageUrl } });
+}
+
+export function deleteBanner(id: string): Promise<void> {
+  return request(`/api/diancan/shop/banner/${id}`, { method: "DELETE" });
+}
+
+export function reorderBanners(bannerIds: string[]): Promise<unknown> {
+  return request("/api/diancan/shop/banner", { method: "PUT", data: { bannerIds } });
 }
 
 // ---- 菜单管理（商家）----

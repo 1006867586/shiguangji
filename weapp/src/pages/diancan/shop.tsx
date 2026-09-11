@@ -206,6 +206,13 @@ export default function DiancanShop() {
 
       {/* 功能入口 */}
       <View className="dc-manage-cards">
+        <View className="dc-manage-card" onClick={() => Taro.switchTab({ url: "/pages/diancan/index" })}>
+          <Text className="dc-manage-card-icon">🛍️</Text>
+          <View>
+            <Text className="dc-manage-card-title">预览门店</Text>
+            <Text className="dc-manage-card-sub">以顾客视角看店铺</Text>
+          </View>
+        </View>
         <View className="dc-manage-card" onClick={() => Taro.navigateTo({ url: "/pages/diancan/manage" })}>
           <Text className="dc-manage-card-icon">📋</Text>
           <View>
@@ -218,6 +225,17 @@ export default function DiancanShop() {
           <View>
             <Text className="dc-manage-card-title">接单</Text>
             <Text className="dc-manage-card-sub">查看顾客订单</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* 装修单独一行 */}
+      <View style={{ marginTop: 0 }}>
+        <View className="dc-manage-card" onClick={() => Taro.navigateTo({ url: "/pages/diancan/decor" })}>
+          <Text className="dc-manage-card-icon">🎨</Text>
+          <View>
+            <Text className="dc-manage-card-title">装修</Text>
+            <Text className="dc-manage-card-sub">店名/主题色/轮播图</Text>
           </View>
         </View>
       </View>
