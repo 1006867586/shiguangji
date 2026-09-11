@@ -11,6 +11,7 @@ import { attachDecorToProfiles } from "@/lib/server-decor";
 import type {
   ChatMessagesResponse,
   GroupMessage,
+  GroupPoll,
   MessageReactionAggregate,
   SendMessageBody,
 } from "@/types";
@@ -175,6 +176,112 @@ async function attachExtras<
   });
 }
 
+/** 为一批消息批量合并投票/接龙卡片负载 */
+async function attachPolls<
+  R extends Pick<GroupMessage, "id" | "group_id">
+>(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  rows: R[],
+  viewerId: string
+): Promise<Array<R & { poll: GroupPoll | null }>> {
+  const withPoll = rows as Array<R & { poll: GroupPoll | null }>;
+  const pollIds = Array.from(
+    new Set(
+      withPoll
+        .map((m) => (m as R & { poll_id?: string | null }).poll_id)
+        .filter((v): v is string => !!v)
+    )
+  );
+  if (pollIds.length === 0) return withPoll;
+
+  const { data: polls } = await supabase
+    .from("group_polls")
+    .select("*")
+    .in("id", pollIds);
+  const pollMap = new Map((polls ?? []).map((p) => [p.id, p]));
+
+  const { data: opts } = await supabase
+    .from("group_poll_options")
+    .select("*")
+    .in("poll_id", pollIds)
+    .order("sort_order", { ascending: true });
+  const optByPoll = new Map<string, GroupPoll["options"]>();
+  for (const o of opts ?? []) {
+    const list = optByPoll.get(o.poll_id) ?? [];
+    list.push(o);
+    optByPoll.set(o.poll_id, list);
+  }
+
+  const { data: entries } = await supabase
+    .from("group_poll_entries")
+    .select("id, poll_id, user_id, option_id, content, created_at")
+    .in("poll_id", pollIds);
+  const entryByPoll = new Map<string, typeof entries>();
+  for (const e of entries ?? []) {
+    const list = entryByPoll.get(e.poll_id) ?? [];
+    list.push(e);
+    entryByPoll.set(e.poll_id, list);
+  }
+  const entryList = (entries ?? []) as Array<{
+    id: string;
+    poll_id: string;
+    user_id: string;
+    option_id: string | null;
+    content: string | null;
+    created_at: string;
+  }>;
+
+  for (const m of withPoll) {
+    const pid = (m as R & { poll_id?: string | null }).poll_id;
+    const raw = pid ? pollMap.get(pid) : null;
+    if (!raw || !pid) {
+      m.poll = raw ?? null;
+      continue;
+    }
+
+    const optionList = optByPoll.get(pid) ?? [];
+    const pollEntries = entryList.filter((e) => e.poll_id === pid);
+    const countByOption = new Map<string, number>();
+    const votedUsers = new Set<string>();
+    for (const e of pollEntries) {
+      votedUsers.add(e.user_id);
+      if (e.option_id)
+        countByOption.set(e.option_id, (countByOption.get(e.option_id) ?? 0) + 1);
+    }
+    const myOptionIds = new Set(
+      pollEntries.filter((e) => e.user_id === viewerId && e.option_id).map((e) => e.option_id)
+    );
+
+    const options: GroupPoll["options"] = optionList.map((o) => ({
+      id: o.id,
+      poll_id: o.poll_id,
+      label: o.label,
+      sort_order: o.sort_order,
+      count: countByOption.get(o.id) ?? 0,
+      votedByMe: myOptionIds.has(o.id) ?? false,
+    }));
+
+    m.poll = {
+      id: raw.id,
+      group_id: raw.group_id,
+      created_by: raw.created_by,
+      kind: raw.kind,
+      title: raw.title,
+      multiple: raw.multiple,
+      status: raw.status,
+      created_at: raw.created_at,
+      closed_at: raw.closed_at,
+      options,
+      i_participated: raw.kind === "poll"
+        ? pollEntries.some((e) => e.user_id === viewerId)
+        : false,
+      participant_count:
+        raw.kind === "poll" ? votedUsers.size : pollEntries.length,
+    };
+  }
+  return withPoll;
+}
+
 /** GET /api/groups/[id]/messages — 获取圈子聊天消息（时间正序，支持加载更早） */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
@@ -198,7 +305,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     // 取 limit+1 判断是否还有更早的消息
     let q = supabase
       .from("group_messages")
-      .select("id, group_id, sender_id, type, content, image_url, reply_to_id, created_at")
+      .select("id, group_id, sender_id, type, content, image_url, reply_to_id, created_at, poll_id")
       .eq("group_id", id)
       .limit(limit + 1);
 
@@ -230,6 +337,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       image_url: string | null;
       reply_to_id: string | null;
       created_at: string;
+      poll_id?: string | null;
     }>;
 
     const hasMore = raw.length > limit;
@@ -238,7 +346,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     const ascending = windowRows.reverse();
 
     const withSender = await attachSenders(supabase, ascending);
-    const messages = await attachExtras(supabase, withSender, user.id);
+    const withExtras = await attachExtras(supabase, withSender, user.id);
+    const messages = await attachPolls(supabase, withExtras, user.id);
     const nextCursor = hasMore
       ? (ascending[0]?.created_at ?? null)
       : null;
@@ -331,7 +440,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         reply_to_id: replyToId || null,
       })
       .select(
-        "id, group_id, sender_id, type, content, image_url, reply_to_id, created_at"
+        "id, group_id, sender_id, type, content, image_url, reply_to_id, created_at, poll_id"
       )
       .single();
 
@@ -348,9 +457,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       [withSender],
       user.id
     );
-    message.reactions = extended.reactions;
-    message.reply_sender = extended.reply_sender;
-    message.reply_preview = extended.reply_preview;
+    const [withPoll] = await attachPolls(supabase, [extended], user.id);
 
     // @提及通知（best-effort）：提醒被提及的同圈子成员
     if (content) {
@@ -399,6 +506,7 @@ export async function POST(request: NextRequest, { params }: Params) {
           reply_sender: extended.reply_sender,
           reply_preview: extended.reply_preview,
           reactions: extended.reactions,
+          poll: withPoll.poll,
         },
       },
       { status: 201 }

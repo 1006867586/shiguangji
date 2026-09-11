@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ImagePlus, Loader2, Search, SearchX, SendHorizontal, X, SmilePlus, Megaphone } from "lucide-react";
+import { ChevronLeft, ImagePlus, Loader2, Search, SearchX, SendHorizontal, X, SmilePlus, Megaphone, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,13 +15,15 @@ import { UserAvatar } from "@/components/common/UserAvatar";
 import { MentionComposer } from "@/components/common/MentionComposer";
 import { RichText } from "@/components/common/RichText";
 import { UserProfileCard } from "@/components/common/UserProfileCard";
+import { PollCard } from "@/components/chat/PollCard";
+import { PollComposer } from "@/components/chat/PollComposer";
 import { buildMentionUserMap } from "@/lib/mention";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useGroupChat } from "@/hooks/useGroupChat";
 import { useUpload } from "@/hooks/useUpload";
 import { markChatRead } from "@/hooks/useChatUnread";
-import type { GroupMessage, MentionUser } from "@/types";
+import type { GroupMessage, GroupPoll, MentionUser } from "@/types";
 
 interface GroupChatProps {
   groupId: string;
@@ -49,6 +51,8 @@ export function GroupChat({
     loadOlder,
     sendMessage,
     toggleReaction,
+    patchPoll,
+    reload,
   } = useGroupChat(groupId, members, searchQuery);
 
   const { uploadFile, uploading } = useUpload();
@@ -62,10 +66,13 @@ export function GroupChat({
   const [searchOpen, setSearchOpen] = useState(false);
   /** emoji 快捷选择面板是否展开 */
   const [emojiOpen, setEmojiOpen] = useState(false);
+  /** 投票/接龙创建面板是否展开 */
+  const [pollComposerOpen, setPollComposerOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const emojiPanelRef = useRef<HTMLDivElement>(null);
+  const pollComposerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const latestIdRef = useRef<string | null>(null);
 
@@ -287,10 +294,13 @@ export function GroupChat({
                 key={msg.id}
                 msg={msg}
                 isMine={msg.sender_id === currentUserId}
+                groupId={groupId}
+                currentUserId={currentUserId}
                 mentionUserMap={mentionUserMap}
                 onMentionClick={setMentionUser}
                 onReply={() => setReplyTarget(msg)}
                 onReaction={handleToggleReaction}
+                onPollUpdated={patchPoll}
                 pickerOpen={pickerFor === msg.id}
                 onTogglePicker={() =>
                   setPickerFor((prev) => (prev === msg.id ? null : msg.id))
@@ -305,10 +315,13 @@ export function GroupChat({
                 key={msg.id}
                 msg={msg}
                 isMine={msg.sender_id === currentUserId}
+                groupId={groupId}
+                currentUserId={currentUserId}
                 mentionUserMap={mentionUserMap}
                 onMentionClick={setMentionUser}
                 onReply={() => setReplyTarget(msg)}
                 onReaction={handleToggleReaction}
+                onPollUpdated={patchPoll}
                 pickerOpen={pickerFor === msg.id}
                 onTogglePicker={() =>
                   setPickerFor((prev) => (prev === msg.id ? null : msg.id))
@@ -369,6 +382,35 @@ export function GroupChat({
               <ImagePlus className="h-5 w-5" />
             )}
           </Button>
+          {/* 发起投票 / 接龙 */}
+          <div ref={pollComposerRef} className="relative shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-9 w-9", pollComposerOpen && "bg-accent")}
+              onClick={() => {
+                setPollComposerOpen((v) => !v);
+                setEmojiOpen(false);
+              }}
+              disabled={sending}
+              aria-label="发起投票/接龙"
+              aria-expanded={pollComposerOpen}
+            >
+              <ListChecks className="h-5 w-5" />
+            </Button>
+            {pollComposerOpen ? (
+              <div className="absolute bottom-full left-0 z-30 mb-1 w-72">
+                <PollComposer
+                  groupId={groupId}
+                  onCreate={(poll) => {
+                    // 创建后由 Realtime/回包把承载消息插入列表；这里保持面板关闭即可
+                    setPollComposerOpen(false);
+                  }}
+                  onClose={() => setPollComposerOpen(false)}
+                />
+              </div>
+            ) : null}
+          </div>
           {/* emoji 快捷选择 */}
           <div ref={emojiPanelRef} className="relative shrink-0">
             <Button
@@ -508,19 +550,25 @@ function ReactionBar({
 function ChatBubble({
   msg,
   isMine,
+  groupId,
+  currentUserId,
   mentionUserMap,
   onMentionClick,
   onReply,
   onReaction,
+  onPollUpdated,
   pickerOpen,
   onTogglePicker,
 }: {
   msg: GroupMessage;
   isMine: boolean;
+  groupId: string;
+  currentUserId: string;
   mentionUserMap: Record<string, MentionUser>;
   onMentionClick: (user: MentionUser) => void;
   onReply: () => void;
   onReaction: (messageId: string, emoji: string) => void;
+  onPollUpdated: (messageId: string, poll: GroupPoll) => void;
   pickerOpen: boolean;
   onTogglePicker: () => void;
 }) {
@@ -590,7 +638,14 @@ function ChatBubble({
         <div className="flex justify-end">
           <div className="flex max-w-[78%] flex-col items-end gap-0.5">
             <ReplyPreview msg={msg} />
-            {msg.type === "image" && msg.image_url ? (
+            {msg.poll ? (
+              <PollCard
+                groupId={groupId}
+                poll={msg.poll}
+                currentUserId={currentUserId}
+                onUpdated={(poll) => onPollUpdated(msg.id, poll)}
+              />
+            ) : msg.type === "image" && msg.image_url ? (
               <img
                 src={msg.image_url}
                 alt="聊天图片"
@@ -621,7 +676,14 @@ function ChatBubble({
               {msg.sender?.nickname ?? "用户"}
             </p>
             <ReplyPreview msg={msg} />
-            {msg.type === "image" && msg.image_url ? (
+            {msg.poll ? (
+              <PollCard
+                groupId={groupId}
+                poll={msg.poll}
+                currentUserId={currentUserId}
+                onUpdated={(poll) => onPollUpdated(msg.id, poll)}
+              />
+            ) : msg.type === "image" && msg.image_url ? (
               <img
                 src={msg.image_url}
                 alt="聊天图片"

@@ -11,6 +11,7 @@ import type {
   ChatMessagesResponse,
   GroupMessage,
   GroupMember,
+  GroupPoll,
   MessageReactionAggregate,
   SendMessageBody,
 } from "@/types";
@@ -29,6 +30,10 @@ interface UseGroupChat {
     messageId: string,
     emoji: string
   ) => Promise<MessageReactionAggregate[]>;
+  /** 就地更新某条消息承载的投票/接龙卡片 */
+  patchPoll: (messageId: string, poll: GroupPoll) => void;
+  /** 手动重新拉取最新消息（发布投票/接龙卡片后刷新，确保附带 poll 负载） */
+  reload: () => void;
 }
 
 /** 前缀匹配去重：聊天可能同时由 POST 回包 + Realtime 投递，保证只出现一次 */
@@ -78,6 +83,24 @@ export function useGroupChat(
     },
     []
   );
+
+  /** 就地更新某条消息承载的投票/接龙卡片 */
+  const patchPoll = useCallback((messageId: string, poll: GroupPoll) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, poll } : m))
+    );
+  }, []);
+
+  /** 手动重新拉取最新消息（创建投票卡片后用于确保附带 poll 负载） */
+  const reload = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // 内存中最新消息快照：供 Realtime 订阅回调按 poll_id 定位承载卡片的消息
+  const messagesRef = useRef<GroupMessage[]>([]);
+  messagesRef.current = messages;
 
   // 初始加载 + Realtime
   useEffect(() => {
@@ -131,7 +154,7 @@ export function useGroupChat(
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [groupId, appendMessage, resolveSender, q]);
+  }, [groupId, appendMessage, resolveSender, q, refreshKey]);
 
   // Realtime：他人表情回应 → 拉取该消息最新聚合实时更新
   useEffect(() => {
@@ -164,6 +187,40 @@ export function useGroupChat(
       supabase.removeChannel(channel);
     };
   }, [groupId, patchReactions, q]);
+
+  // Realtime：他人投票 / 参与接龙 → 重新拉取承载该投票的消息卡片并就地更新
+  useEffect(() => {
+    if (!groupId || q) return;
+    const supabase = createClient();
+    const suffix = Math.random().toString(36).slice(2, 8);
+    const channel = supabase
+      .channel(`chat-polls-${groupId}-${suffix}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "group_poll_entries",
+        },
+        (payload) => {
+          const pollId =
+            (payload.new as { poll_id?: string })?.poll_id ??
+            (payload.old as { poll_id?: string })?.poll_id;
+          if (!pollId) return;
+          const targets = messagesRef.current.filter((m) => m.poll?.id === pollId);
+          if (targets.length === 0) return;
+          fetchData<{ poll: GroupPoll }>(`/api/groups/${groupId}/polls/${pollId}`)
+            .then((res) => targets.forEach((m) => patchPoll(m.id, res.poll)))
+            .catch(() => {
+              /* 静默：下次加载自然校正 */
+            });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupId, patchPoll, q]);
 
   /** 加载更早历史（搜索模式沿用同一接口，忽略分页游标） */
   const loadOlder = useCallback(async () => {
@@ -224,5 +281,7 @@ export function useGroupChat(
     loadOlder,
     sendMessage,
     toggleReaction,
+    patchPoll,
+    reload,
   };
 }

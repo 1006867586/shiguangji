@@ -783,6 +783,8 @@ export interface GroupMessage {
   reply_preview?: string | null;
   /** 该消息的 emoji 回应聚合（服务端附带） */
   reactions?: MessageReactionAggregate[];
+  /** 该消息承载的投票/接龙卡片（服务端附带） */
+  poll?: GroupPoll | null;
 }
 
 /** 发送聊天消息请求体 */
@@ -800,6 +802,72 @@ export interface ChatMessagesResponse {
   has_more: boolean;
   /** 加载更早消息用的游标（最早一条消息的 created_at，null 表示没有更多） */
   next_cursor: string | null;
+}
+
+// ============================================================
+// 群投票 / 接龙（group_polls）
+// ============================================================
+
+export type GroupPollKind = "poll" | "rollcall";
+export type GroupPollStatus = "open" | "closed";
+
+/** 投票/接龙选项 */
+export interface GroupPollOption {
+  id: UUID;
+  poll_id: UUID;
+  label: string;
+  sort_order: number;
+  /** 该选项得票数（聚合结果附带） */
+  count?: number;
+  /** 当前用户是否已选（聚合结果附带） */
+  votedByMe?: boolean;
+}
+
+/** 投票/接龙参与记录（接龙逐人可查） */
+export interface GroupPollEntry {
+  id: UUID;
+  poll_id: UUID;
+  user_id: UUID;
+  option_id: UUID | null;
+  content: string | null;
+  created_at: string;
+  participant?: Pick<Profile, "id" | "nickname" | "avatar_url"> | null;
+}
+
+/** 投票/接龙卡片（内嵌于聊天消息，服务端附带轮询明细） */
+export interface GroupPoll {
+  id: UUID;
+  group_id: UUID;
+  created_by: UUID;
+  kind: GroupPollKind;
+  title: string;
+  multiple: boolean;
+  status: GroupPollStatus;
+  created_at: string;
+  closed_at: string | null;
+  options: GroupPollOption[];
+  /** 当前用户是否参与（rollcall：是否有记录；poll：是否有该 poll 的记录） */
+  i_participated: boolean;
+  /** 参与人数（poll：投过票的人数；rollcall：接龙条数） */
+  participant_count: number;
+  rollcall_entries?: GroupPollEntry[];
+}
+
+/** 创建投票/接龙请求体 */
+export interface CreateGroupPollBody {
+  kind: GroupPollKind;
+  title: string;
+  multiple?: boolean;
+  options?: string[];
+}
+
+/** 投票/参与请求体 */
+export interface VoteGroupPollBody {
+  optionId?: UUID;
+  /** 单选项切换：真=选中，假=取消；多选取上次值 */
+  selected?: boolean;
+  /** rollcall 接龙内容（可空） */
+  content?: string;
 }
 
 // ============================================================
