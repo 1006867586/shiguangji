@@ -5,6 +5,7 @@ import { GroupSelector } from "@/components/group/GroupSelector";
 import { GroupFeedLoader } from "@/components/feed/GroupFeedLoader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { HomeChatEntry } from "@/components/chat/HomeChatEntry";
 import { getServerGroups } from "@/lib/server-data";
 import { APP_NAME } from "@/lib/constants";
 
@@ -47,6 +48,7 @@ export default async function HomePage() {
               </Link>
             </Button>
             <NotificationBell />
+            <HomeChatEntry userId={userId ?? undefined} />
             <Button
               asChild
               variant="ghost"
