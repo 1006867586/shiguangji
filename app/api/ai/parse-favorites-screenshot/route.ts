@@ -19,6 +19,7 @@ const VALID_PLATFORMS: FavoritePlatform[] = [
   "dianping",
   "xiaohongshu",
   "douyin",
+  "amap",
   "unknown",
 ];
 
@@ -125,13 +126,12 @@ function buildPrompt(platformHint?: FavoritePlatform): string {
     : "";
 
   return [
-    "请识别这张\"收藏夹\"截图（通常来自美团、大众点评、小红书等平台的\"我的收藏\"页面），其中包含多家餐厅/店铺的列表。",
+    "请识别这张\"收藏夹\"截图（通常来自美团、大众点评、高德地图、小红书等平台的\"我的收藏\"页面），其中包含多家餐厅/店铺的列表。",
     "请提取截图中所有可见的店铺信息。",
     hintLine,
     "请严格按以下 JSON 格式返回，不要包含任何额外文本或 markdown 代码块：",
     "{",
-    '  "platform": "meituan | dianping | xiaohongshu | douyin | unknown",',
-    '  "places": [',
+    '  "platform": "meituan | dianping | xiaohongshu | douyin | amap | unknown",',
     "    {",
     '      "title": "店名（必填，识别不到则填\"未知店铺\"）",',
     '      "address": "地址，没有则为 null",',
@@ -145,7 +145,7 @@ function buildPrompt(platformHint?: FavoritePlatform): string {
     "  ]",
     "}",
     "注意：",
-    "- platform 取值只能是 meituan、dianping、xiaohongshu、douyin、unknown 之一；美团=meituan，大众点评=dianping，小红书=xiaohongshu，抖音=douyin，无法判断=unknown",
+    "- platform 取值只能是 meituan、dianping、xiaohongshu、douyin、amap、unknown 之一；美团=meituan，大众点评=dianping，高德地图=amap，小红书=xiaohongshu，抖音=douyin，无法判断=unknown",
     "- places 数组必须包含截图中所有可见的店铺，按从上到下的顺序排列",
     "- 如果截图不是收藏夹列表（例如是单店详情页），places 仍应返回包含那一家店的数组",
     "- signatureDishes 没有识别到时返回空数组 []",

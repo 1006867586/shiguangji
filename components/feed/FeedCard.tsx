@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -40,6 +40,10 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import { RichText } from "@/components/common/RichText";
+import { UserProfileCard } from "@/components/common/UserProfileCard";
+import { useGroupMembers } from "@/hooks/useGroupMembers";
+import { buildMentionUserMap } from "@/lib/mention";
 import { NameBadges } from "@/components/profile/NameBadges";
 import { PhotoGrid } from "@/components/activity/PhotoGrid";
 import {
@@ -63,7 +67,7 @@ import { togglePin } from "@/hooks/usePin";
 import { fetcher } from "@/lib/fetcher";
 import { randomFoodTrivia, type FoodTrivia } from "@/lib/food-trivia";
 import { formatRelativeTime, cn } from "@/lib/utils";
-import type { Activity, ReactionEmoji, ReportReason, RsvpStatus } from "@/types";
+import type { Activity, ReactionEmoji, ReportReason, RsvpStatus, MentionUser } from "@/types";
 
 /** 点赞朱砂粒子：8 个方向飞出，距离略有变化更自然 */
 const HEART_PARTICLES = Array.from({ length: 8 }, (_, i) => {
@@ -122,6 +126,12 @@ export function FeedCard({
   const [pinning, setPinning] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
+  // 圈子成员（评论 @ 联想用）；SWR 按 key 去重，同圈多卡片共享一次请求
+  const { members } = useGroupMembers(groupId ?? null);
+  // @昵称 → 用户信息映射（RichText 可点击提及 + 用户卡片）
+  const mentionUserMap = useMemo(() => buildMentionUserMap(members), [members]);
+  const [mentionUser, setMentionUser] = useState<MentionUser | null>(null);
 
   // ---- 紧凑 RSVP（列表页）：optimistic 更新，不经过详情页 ----
   // 从 feed 已携带的 rsvp/rsvp_summary 初始化，本地维护，操作后直接调 API
@@ -306,7 +316,7 @@ export function FeedCard({
       {/* 头部 */}
       <div className="flex items-start gap-3">
         <Link href={`/profile`} className="shrink-0">
-          <UserAvatar profile={activity.author} size={44} />
+          <UserAvatar profile={activity.author} size={44} frameColor={activity.author?.frameColor} />
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -409,7 +419,11 @@ export function FeedCard({
           </div>
           {activity.repost_of.content ? (
             <p className="mt-1 line-clamp-3 text-sm text-foreground/90">
-              {activity.repost_of.content}
+              <RichText
+                text={activity.repost_of.content}
+                userMap={mentionUserMap}
+                onMentionClick={setMentionUser}
+              />
             </p>
           ) : null}
           {activity.repost_of.external_link ? (
@@ -428,12 +442,20 @@ export function FeedCard({
             className="mt-2.5 block rounded-lg text-foreground transition-colors hover:bg-muted/40"
           >
             <p className="whitespace-pre-wrap break-words px-1 py-0.5 text-[15px] leading-[1.7]">
-              {activity.content}
+              <RichText
+                text={activity.content}
+                userMap={mentionUserMap}
+                onMentionClick={setMentionUser}
+              />
             </p>
           </Link>
         ) : (
           <p className="mt-2.5 whitespace-pre-wrap break-words text-[15px] leading-[1.7] text-foreground">
-            {activity.content}
+            <RichText
+              text={activity.content}
+              userMap={mentionUserMap}
+              onMentionClick={setMentionUser}
+            />
           </p>
         )
       ) : null}
@@ -687,6 +709,7 @@ export function FeedCard({
             activityId={activity.id}
             comments={comments}
             currentUserId={currentUserId}
+            members={members}
             onAdd={async (content, parentId) => {
               await addComment({ content, parentId });
             }}
@@ -727,6 +750,9 @@ export function FeedCard({
         activityId={activity.id}
         groupId={activity.group_id}
       />
+
+      {/* 点击 @昵称 弹出的用户资料卡片 */}
+      <UserProfileCard user={mentionUser} onClose={() => setMentionUser(null)} />
     </article>
   );
 }

@@ -59,6 +59,8 @@ export function MealRouletteClient({
   const [winner, setWinner] = useState<MealRouletteItem | null>(null);
   const acc = useAccumulatedRotation();
   const spinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 上一次抽中的索引：本次抽取排除它，避免连续抽中同一家 */
+  const lastIndexRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
@@ -68,8 +70,9 @@ export function MealRouletteClient({
 
   const handleSpin = () => {
     if (spinning || items.length < 2) return;
-    const idx = pickRandomIndex(items.length);
+    const idx = pickRandomIndex(items.length, lastIndexRef.current ?? undefined);
     if (idx < 0) return;
+    lastIndexRef.current = idx;
     setWinnerIndex(null);
     setWinner(null);
     setSpinning(true);
@@ -250,6 +253,10 @@ export function MealRouletteClient({
       </div>
 
       {/* 选择结果（同小程序：珊瑚边框卡 + 标题「今天就吃 XX」） */}
+      {/* 读屏播报区：常驻 sr-only，随 winner 更新播报抽中结果 */}
+      <p aria-live="polite" className="sr-only">
+        {winner ? `今天就吃${winner.title}` : "转盘待开始"}
+      </p>
       {winner ? (
         <div className="rounded-2xl border-2 border-primary/60 bg-primary/5 p-4 shadow-sm">
           <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-primary">

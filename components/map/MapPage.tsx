@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- 高德地图实例无官方 TS 类型 */
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import {
@@ -11,6 +11,9 @@ import {
   ChevronDown,
   Footprints,
   Filter,
+  Plus,
+  Minus,
+  Crosshair,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -18,6 +21,7 @@ import { CheckinMapView, type PlaceClickPayload } from "@/components/map/Checkin
 import { PlaceMapOverlay } from "@/components/map/PlaceMapOverlay";
 import { PlaceSearchBox } from "@/components/map/PlaceSearchBox";
 import { CheckinSheet } from "@/components/map/CheckinSheet";
+import { wgs84ToGcj02 } from "@/lib/poi/coords";
 import { fetcher, fetchData } from "@/lib/fetcher";
 import type { MapPlace } from "@/types";
 import type { PoiCandidate } from "@/lib/poi/types";
@@ -38,7 +42,7 @@ const CITIES = [
 ];
 
 /** 地图页客户端主体：城市切换 + 搜索定位 + 打卡点地图 + 打卡/撤销 */
-export function MapPage() {
+export function MapPage({ initialFocusId }: { initialFocusId?: string | null }) {
   const [city, setCity] = useState("武汉市");
   const [selected, setSelected] = useState<MapPlace | null>(null);
   const [selectedScreenPos, setSelectedScreenPos] = useState<{ x: number; y: number } | null>(null);
@@ -59,6 +63,8 @@ export function MapPage() {
   const [onlyUnchecked, setOnlyUnchecked] = useState(false);
   /** 附近查询结果（临时 marker，独立于当前城市 places） */
   const [nearby, setNearby] = useState<MapPlace[]>([]);
+  /** 分享链接 ?focus=<id> 定位的打卡点 */
+  const [focusedPlace, setFocusedPlace] = useState<MapPlace | null>(null);
 
   const { data, isLoading, mutate } = useSWR<{ data: MapPlace[] }>(
     `/api/map/places?city=${encodeURIComponent(city)}${
@@ -72,13 +78,21 @@ export function MapPage() {
   const places = onlyUnchecked
     ? rawPlaces.filter((p) => !p.i_checked)
     : rawPlaces;
-  // 地图展示 = 当前城市 + 附近查询结果（去重）
+  // 地图展示 = 当前城市 + 附近查询结果 + 分享定位点（去重）
   const displayPlaces = useMemo(() => {
-    if (nearby.length === 0) return places;
     const ids = new Set(places.map((p) => p.id));
-    const extra = nearby.filter((p) => !ids.has(p.id));
+    const extra: MapPlace[] = [];
+    for (const p of [...nearby, ...(focusedPlace ? [focusedPlace] : [])]) {
+      if (!ids.has(p.id)) {
+        ids.add(p.id);
+        extra.push(p);
+      }
+    }
     return [...places, ...extra];
-  }, [places, nearby]);
+  }, [places, nearby, focusedPlace]);
+
+  // 附近结果 id 集合：传给定 marker 画独立视觉（虚线呼吸框 + "附近"角标）
+  const nearbyPlaceIds = useMemo(() => new Set(nearby.map((p) => p.id)), [nearby]);
 
   // 当前城市所有品类（从已加载数据去重，前端动态枚举）
   const availableCategories = useMemo(() => {
@@ -109,6 +123,40 @@ export function MapPage() {
   const handleMapReady = useCallback((map: any) => {
     setMapInstance(map);
   }, []);
+
+  // 分享链接 ?focus=<id>：拉取该打卡点 → 同步城市、置中、打开浮层
+  const handledFocusRef = useRef(false);
+  useEffect(() => {
+    if (!initialFocusId || handledFocusRef.current) return;
+    handledFocusRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const place = await fetchData<MapPlace>(
+          `/api/map/places/${encodeURIComponent(initialFocusId)}`
+        );
+        if (cancelled) return;
+        setFocusedPlace(place);
+        // 同步城市选择器（仅当该城市在可选项内，避免 select value 不匹配）
+        if (place.city && CITIES.includes(place.city)) setCity(place.city);
+        setFocus({ lng: place.lng, lat: place.lat });
+      } catch {
+        // 地点不存在或已下架：静默忽略，回到默认地图
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialFocusId]);
+
+  // 地图就绪 + 分享点加载完成 → 计算屏幕坐标并打开浮层
+  useEffect(() => {
+    if (!mapInstance || !focusedPlace) return;
+    const px = mapInstance.lngLatToContainer?.([focusedPlace.lng, focusedPlace.lat]);
+    if (!px || px.x == null || px.y == null) return;
+    setSelected(focusedPlace);
+    setSelectedScreenPos({ x: px.x, y: px.y });
+  }, [mapInstance, focusedPlace]);
 
   // 地图空白点击：关闭浮层（不响应 marker 点击）
   const handleMapClick = useCallback(() => {
@@ -165,11 +213,12 @@ export function MapPage() {
     }
   };
 
-  // 附近查询：以当前选中 place 为中心，加载 500m 内的打卡点作为临时 marker
+  // 附近查询：以当前选中 place 为中心，加载 500m 内的打卡点作为临时 marker。
+  // city 用选中店所属城市（而非全局 select 城市），避免城市不一致时查不到店。
   const handleSearchNearby = async (center: MapPlace) => {
     try {
       const res = await fetchData<(MapPlace & { distance_m: number })[]>(
-        `/api/map/places/nearby?lng=${center.lng}&lat=${center.lat}&radius=500&exclude_checked=true&city=${encodeURIComponent(city)}`
+        `/api/map/places/nearby?lng=${center.lng}&lat=${center.lat}&radius=500&exclude_checked=true&city=${encodeURIComponent(center.city ?? city)}`
       );
       setNearby(res);
       toast.success(`附近 500m 找到 ${res.length} 家未打卡的店`);
@@ -182,56 +231,80 @@ export function MapPage() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col pb-4">
-      {/* 顶部：城市切换 + 搜索 + 足迹入口 */}
-      <div className="space-y-2 border-b border-border/60 px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
+    <div className="relative h-[calc(100dvh-4rem)] w-full overflow-hidden bg-muted/30">
+      {/* 全屏地图（沉浸式，铺满可视区） */}
+      <CheckinMapView
+        places={displayPlaces}
+        center={center}
+        zoom={11}
+        focusPoint={focus}
+        nearbyPlaceIds={nearbyPlaceIds}
+        onPlaceClick={handlePlaceClick}
+        onMapReady={handleMapReady}
+        onMapClick={handleMapClick}
+        className="h-full w-full"
+      />
+
+      {/* 顶部悬浮控制（pointer-events 仅在控件上，空隙透传给地图拖动） */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-2 p-3">
+        <div className="pointer-events-auto flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-xl border border-border/70 bg-card/85 px-3 py-2 shadow-sm backdrop-blur-md">
             <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
-            <h1 className="text-base font-semibold tracking-tight">
+            <h1 className="whitespace-nowrap text-sm font-semibold tracking-tight">
               美食打卡地图
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
-              <Link href="/me/footprints">
-                <Footprints className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                我的足迹
-              </Link>
-            </Button>
-            <div className="relative">
-              <select
-                value={city}
-                onChange={(e) => {
-                  setCity(e.target.value);
-                  // 切换城市时关闭浮层
-                  closeOverlay();
-                }}
-                className="h-8 appearance-none rounded-lg border border-border bg-card pl-2.5 pr-7 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="切换城市"
-              >
-                {CITIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-            </div>
+          <div className="relative">
+            <select
+              value={city}
+              onChange={(e) => {
+                const next = e.target.value;
+                setCity(next);
+                // 切换城市时关闭浮层，并清空仅属于旧城市的附近查询结果，
+                // 避免旧城市标记残留到新城市地图上
+                closeOverlay();
+                setNearby([]);
+                setFocusedPlace(null);
+              }}
+              className="h-9 appearance-none rounded-xl border border-border/70 bg-card/85 pl-2.5 pr-7 text-xs font-medium shadow-sm outline-none backdrop-blur-md focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="切换城市"
+            >
+              {CITIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
           </div>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="h-9 border border-border/70 bg-card/85 px-2.5 text-xs shadow-sm backdrop-blur-md"
+          >
+            <Link href="/me/footprints">
+              <Footprints className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+              我的足迹
+            </Link>
+          </Button>
         </div>
-        <PlaceSearchBox city={city} onPick={handlePick} />
-        {/* 筛选：品类 + 只看未打卡 */}
+
+        <div className="pointer-events-auto">
+          <PlaceSearchBox city={city} onPick={handlePick} />
+        </div>
+
+        {/* 筛选：品类 + 只看未打卡 + 图例 */}
         {(availableCategories.length > 0 || rawPlaces.length > 0) && (
-          <div className="mt-2 flex items-center gap-2 text-xs">
+          <div className="pointer-events-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-border/70 bg-card/85 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur-md">
             <Filter className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="h-7 rounded-md border border-border bg-card pl-2 pr-6 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-7 rounded-md border border-border bg-card pl-2 pr-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="品类筛选"
             >
               <option value="">全部品类</option>
@@ -250,54 +323,48 @@ export function MapPage() {
               />
               只看未打卡
             </label>
+            <span className="ml-auto inline-flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-[hsl(var(--chart-2))]" />
+                未打卡
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-[hsl(var(--chart-1))]" />
+                已打卡
+              </span>
+              <span>
+                {onlyUnchecked
+                  ? `未打卡 ${places.length}/${rawPlaces.length}`
+                  : `共 ${rawPlaces.length} 个`}
+              </span>
+            </span>
           </div>
         )}
       </div>
 
-      {/* 地图（relative 包裹以容纳浮层） */}
-      <div className="relative mx-3 mt-3 h-[80dvh] overflow-hidden rounded-xl border border-border">
-        <CheckinMapView
-          places={displayPlaces}
-          center={center}
-          zoom={11}
-          focusPoint={focus}
-          onPlaceClick={handlePlaceClick}
-          onMapReady={handleMapReady}
-          onMapClick={handleMapClick}
-          showControls
-        />
-        {mapInstance && selected && selectedScreenPos ? (
-          <PlaceMapOverlay
-            place={selected}
-            screenPos={selectedScreenPos}
-            mapInstance={mapInstance}
-            onClose={closeOverlay}
-            onCheckin={handleCheckin}
-            onRemoveCheckin={handleRemove}
-            onSearchNearby={handleSearchNearby}
-            removing={removingId === selected.id}
-          />
-        ) : null}
-        {isLoading ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/50 text-sm text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            加载打卡点…
-          </div>
-        ) : null}
-      </div>
+      {/* 右下角：缩放 + GPS 定位 */}
+      {mapInstance ? <MapFloatingControls map={mapInstance} /> : null}
 
-      {/* 图例 */}
-      <div className="mx-3 mt-2 flex items-center gap-4 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#378ADD]" />
-          未打卡
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#E24B4A]" />
-          已打卡
-        </span>
-        <span className="ml-auto">共 {places.length} 个打卡点</span>
-      </div>
+      {isLoading ? (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/50 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+          加载打卡点…
+        </div>
+      ) : null}
+
+      {/* 地点浮层 */}
+      {mapInstance && selected && selectedScreenPos ? (
+        <PlaceMapOverlay
+          place={selected}
+          screenPos={selectedScreenPos}
+          mapInstance={mapInstance}
+          onClose={closeOverlay}
+          onCheckin={handleCheckin}
+          onRemoveCheckin={handleRemove}
+          onSearchNearby={handleSearchNearby}
+          removing={removingId === selected.id}
+        />
+      ) : null}
 
       {/* 打卡表单 */}
       <CheckinSheet
@@ -310,6 +377,65 @@ export function MapPage() {
           closeOverlay();
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * 地图右下角浮动控件：缩放 与 GPS 定位。
+ * 沉浸式布局下不再使用 AmapMap 内置的右上角控件，改为悬浮于右下角，
+ * 避免与顶部搜索/筛选占位冲突。
+ */
+function MapFloatingControls({ map }: { map: any }) {
+  const handleZoomIn = () => map?.zoomIn();
+  const handleZoomOut = () => map?.zoomOut();
+  const handleLocate = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast.error("当前环境不支持定位");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        // 浏览器定位返回 WGS84，高德地图渲染 GCJ-02；需先转坐标，否则偏差可达数百米
+        const gcj = wgs84ToGcj02(pos.coords.longitude, pos.coords.latitude);
+        map?.setCenter([gcj.lng, gcj.lat]);
+        map?.setZoom(14);
+      },
+      (err) => {
+        toast.error(`定位失败：${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+  return (
+    <div className="pointer-events-auto absolute bottom-3 right-3 z-10 flex flex-col gap-0.5 overflow-hidden rounded-xl border border-border/70 bg-card/90 p-1 shadow-md backdrop-blur-md">
+      <button
+        type="button"
+        onClick={handleZoomIn}
+        aria-label="放大"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-foreground hover:bg-muted"
+      >
+        <Plus className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <div className="mx-1 h-px bg-border" />
+      <button
+        type="button"
+        onClick={handleZoomOut}
+        aria-label="缩小"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-foreground hover:bg-muted"
+      >
+        <Minus className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <div className="mx-1 h-px bg-border" />
+      <button
+        type="button"
+        onClick={handleLocate}
+        aria-label="定位"
+        title="定位到当前位置"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-foreground hover:bg-muted"
+      >
+        <Crosshair className="h-4 w-4" aria-hidden="true" />
+      </button>
     </div>
   );
 }

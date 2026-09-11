@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { fetchData, fetcher } from "@/lib/fetcher";
+import { createClient } from "@/lib/supabase/client";
 import type { AppNotification } from "@/types";
 
 interface NotificationsResponse {
@@ -78,7 +80,7 @@ export function useNotifications(opts?: { unreadOnly?: boolean }) {
   };
 }
 
-/** 获取未读通知数（SWR） */
+/** 获取未读通知数（SWR 权威计数 + Realtime 实时 +1） */
 export function useUnreadCount() {
   const { data, mutate } = useSWR<{ count: number }>(
     "/api/notifications/unread-count",
@@ -86,12 +88,63 @@ export function useUnreadCount() {
     { revalidateOnFocus: false }
   );
 
+  // Realtime 期间的新通知增量：服务端计数 + 本地增量 = 实时未读
+  // （与 useChatUnread 同模式；本人标记已读后 reload 会清零增量避免重复计）
+  const [delta, setDelta] = useState(0);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+    const supabase = createClient();
+
+    // 先取会话拿到 user_id 才能订阅过滤；未登录则退化为仅轮询
+    supabase.auth
+      .getUser()
+      .then(({ data: { user } }) => {
+        if (disposed || !user) return;
+        const channel = supabase
+          .channel(`notifications-unread-${Math.random().toString(36).slice(2, 8)}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "notifications",
+              filter: `user_id=eq.${user.id}`,
+            },
+            () => {
+              // 到达即 +1（未读数 = 服务端 count + 本地增量）
+              setDelta((d) => d + 1);
+            }
+          )
+          .subscribe();
+        if (disposed) {
+          supabase.removeChannel(channel);
+          return;
+        }
+        channelRef.current = channel;
+      })
+      .catch(() => {
+        /* 静默：拿不到会话则退化为仅轮询 */
+      });
+
+    return () => {
+      disposed = true;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, []);
+
   const reload = useCallback(async () => {
+    // 重置增量后再拉权威计数，避免 Realtime 已计入的通知被重复计数
+    setDelta(0);
     await mutate();
   }, [mutate]);
 
   return {
-    count: data?.count ?? 0,
+    count: (data?.count ?? 0) + delta,
     reload,
   };
 }

@@ -25,6 +25,8 @@ interface CheckinMapViewProps {
   zoom?: number;
   /** 外部触发地图定位（如搜索结果），变化时 setCenter */
   focusPoint?: { lng: number; lat: number } | null;
+  /** 附近查询结果的 place id 集合：这些 marker 用独立视觉（虚线呼吸框 + "附近"角标） */
+  nearbyPlaceIds?: Set<string>;
   /** 是否渲染右上角控件（缩放 +/- 与 GPS 定位） */
   showControls?: boolean;
   className?: string;
@@ -32,25 +34,52 @@ interface CheckinMapViewProps {
 
 const MARKER_SIZE = 22;
 
-/** 构建单 marker 的 DOM 内容（div）。已打卡加白边光晕以增强可见度。 */
-function buildMarkerContent(checked: boolean): HTMLDivElement {
+/**
+ * 构建单个 marker 圆点（div）。颜色接入设计系统暖色调：
+ * - 未打卡 = 旧金 `--chart-2`；已打卡 = 朱砂 `--chart-1`（与页面基调统一）
+ * - 已打卡额外在中心加一个白"打孔"圆点（盖章感），保证不依赖颜色也能区分，避免红绿色盲问题
+ */
+function buildMarkerDot(checked: boolean): HTMLDivElement {
   const div = document.createElement("div");
+  const bg = checked
+    ? "radial-gradient(circle at center, #fff 20%, rgba(255,255,255,0) 21%), hsl(var(--chart-1))"
+    : "hsl(var(--chart-2))";
   const ring = checked
-    ? "0 0 0 3px rgba(255,255,255,0.95), 0 0 0 5px rgba(226,75,74,0.35), 0 2px 6px rgba(0,0,0,0.45)"
+    ? "0 0 0 3px rgba(255,255,255,0.95), 0 0 0 5px hsl(var(--primary) / 0.35), 0 2px 6px rgba(0,0,0,0.45)"
     : "0 0 0 2.5px rgba(255,255,255,0.95), 0 2px 4px rgba(0,0,0,0.35)";
-  div.style.cssText = `width:${MARKER_SIZE}px;height:${MARKER_SIZE}px;border-radius:50%;background:${
-    checked ? "#E24B4A" : "#378ADD"
-  };box-shadow:${ring};box-sizing:border-box;cursor:pointer`;
+  div.style.cssText = `width:${MARKER_SIZE}px;height:${MARKER_SIZE}px;border-radius:50%;background:${bg};box-shadow:${ring};box-sizing:border-box;cursor:pointer`;
   return div;
 }
 
-/** 构建聚合气泡的 DOM 内容 */
+/**
+ * 构建单 marker 的 DOM 内容（div）。
+ * - 附近查询结果（nearby=true）：外层套一个更大的容器，加虚线呼吸框 + "附近"角标，
+ *   与固定的城市打卡点形成独立视觉层级，一眼可辨哪些是临时检索出来的店。
+ */
+function buildMarkerContent(checked: boolean, nearby: boolean): HTMLDivElement {
+  const dot = buildMarkerDot(checked);
+  if (!nearby) return dot;
+
+  const wrap = document.createElement("div");
+  wrap.style.cssText = `position:relative;width:${MARKER_SIZE + 10}px;height:${MARKER_SIZE + 10}px;display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+  const ring = document.createElement("div");
+  ring.style.cssText = `position:absolute;inset:0;border:1.5px dashed rgba(255,255,255,0.9);border-radius:50%;box-sizing:border-box;animation:map-nearby-pulse 1.8s ease-in-out infinite;`;
+  const badge = document.createElement("div");
+  badge.textContent = "附近";
+  badge.style.cssText = `position:absolute;top:-9px;right:-13px;background:hsl(var(--chart-1));color:#fff;font-size:9px;line-height:1;font-weight:600;padding:2px 4px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,0.35);pointer-events:none;`;
+  wrap.appendChild(ring);
+  wrap.appendChild(dot);
+  wrap.appendChild(badge);
+  return wrap;
+}
+
+/** 构建聚合气泡的 DOM 内容（颜色同单 marker，接入设计系统暖色） */
 function buildClusterContent(count: number, hasChecked: boolean): HTMLDivElement {
   const div = document.createElement("div");
-  const bg = hasChecked ? "#E24B4A" : "#378ADD";
+  const bg = hasChecked ? "hsl(var(--chart-1))" : "hsl(var(--chart-2))";
   // 已打卡加更显眼的环（"打孔"标记）
   const ring = hasChecked
-    ? "0 0 0 3px rgba(255,255,255,0.95), 0 0 0 6px rgba(226,75,74,0.5), 0 2px 6px rgba(0,0,0,0.45)"
+    ? "0 0 0 3px rgba(255,255,255,0.95), 0 0 0 6px hsl(var(--primary) / 0.5), 0 2px 6px rgba(0,0,0,0.45)"
     : "0 0 0 2.5px rgba(255,255,255,0.95), 0 1px 4px rgba(0,0,0,0.35)";
   div.style.cssText = `min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:${bg};color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:${ring};box-sizing:border-box;cursor:pointer`;
   div.textContent = String(count);
@@ -111,6 +140,7 @@ export function CheckinMapView({
   center = [114.3054, 30.5931],
   zoom = 12,
   focusPoint,
+  nearbyPlaceIds,
   showControls = false,
   className,
 }: CheckinMapViewProps) {
@@ -165,16 +195,21 @@ export function CheckinMapView({
       const markers: any[] = [];
       for (const place of places) {
         const checked = Boolean(place.i_checked);
+        const isNearby = nearbyPlaceIds?.has(place.id) ?? false;
         const marker = new AMap.Marker({
           position: new AMap.LngLat(place.lng, place.lat),
-          content: buildMarkerContent(checked),
-          offset: new AMap.Pixel(-MARKER_SIZE / 2, -MARKER_SIZE / 2),
+          content: buildMarkerContent(checked, isNearby),
+          // 附近结果外层容器更大（MARKER_SIZE+10），据此计算居中偏移
+          offset: new AMap.Pixel(-(MARKER_SIZE + (isNearby ? 10 : 0)) / 2, -(MARKER_SIZE + (isNearby ? 10 : 0)) / 2),
           title: place.name,
           zIndex: checked ? 200 : 100,
         });
         (marker as any).__placeId = place.id;
         markerByPlaceIdRef.current.set(place.id, marker);
-        marker.on("click", () => {
+        // 高德：点击自定义 content marker 时，事件会冒泡到底层 map 的 click，
+        // 若不 stopPropagation，地图侧"点击空白关闭浮层"会立刻把刚打开的浮层关掉。
+        marker.on("click", (e: any) => {
+          e?.stopPropagation?.();
           const px = map.lngLatToContainer(marker.getPosition());
           onPlaceClickRef.current?.({
             place,
@@ -188,8 +223,6 @@ export function CheckinMapView({
     } else {
       // 聚合模式：按 grid 分桶，每个桶一个聚合气泡
       const clusters = clusterByGrid(places, map, GRID_SIZE);
-      // eslint-disable-next-line no-console
-      console.debug("[CheckinMapView] aggregate clusters:", clusters.length, "from", places.length, "places; first cluster hasChecked =", clusters[0]?.hasChecked);
       const markers: any[] = [];
       for (const cluster of clusters) {
         const div = buildClusterContent(cluster.count, cluster.hasChecked);
@@ -202,7 +235,8 @@ export function CheckinMapView({
         // 挂 place 引用便于单点解包
         (marker as any).__clusterPlaces = cluster.places;
         (marker as any).__clusterCount = cluster.count;
-        marker.on("click", () => {
+        marker.on("click", (e: any) => {
+          e?.stopPropagation?.();
           if (cluster.count === 1) {
             const only = cluster.places[0];
             const px = map.lngLatToContainer(marker.getPosition());
@@ -212,8 +246,8 @@ export function CheckinMapView({
             });
             return;
           }
-          // 多 marker：放大到能看见
-          map.setZoomAndCenter(currentZoom + 2, cluster.center);
+          // 多 marker：放大到能看见（用实时 zoom，避免闭包里过期的 currentZoom）
+          map.setZoomAndCenter(map.getZoom() + 2, cluster.center);
         });
         markers.push(marker);
       }
@@ -240,7 +274,13 @@ export function CheckinMapView({
   // 点击地图空白处（不响应 marker 点击；高德 SDK 自身区分）
   useEffect(() => {
     if (!map) return;
-    const handler = () => onMapClickRef.current?.();
+    const handler = (e: any) => {
+      // 防御：高德外部一般点击 marker 会先 stopPropagation，这里再兜底判断
+      // 命中点击是否落在 marker 的 DOM 上，命中则忽略，避免误关浮层。
+      const target = e?.originalEvent?.target as HTMLElement | undefined;
+      if (target?.closest?.(".amap-marker")) return;
+      onMapClickRef.current?.();
+    };
     map.on("click", handler);
     return () => {
       map.off("click", handler);

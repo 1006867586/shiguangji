@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +23,9 @@ import { GroupSelector } from "@/components/group/GroupSelector";
 import { ExternalLinkCard } from "@/components/activity/ExternalLinkCard";
 import { FavoritePlacePicker } from "@/components/activity/FavoritePlacePicker";
 import { ActivityPlaceSearch } from "@/components/activity/ActivityPlaceSearch";
+import { MentionComposer } from "@/components/common/MentionComposer";
 import { createActivity } from "@/hooks/useActivity";
+import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useAiParseScreenshot, useAiCopywrite } from "@/hooks/useAi";
 import { useUpload } from "@/hooks/useUpload";
 import { useAiEnabled } from "@/hooks/useAiEnabled";
@@ -58,6 +59,8 @@ export function ActivityForm({
 }: ActivityFormProps) {
   const router = useRouter();
   const [groupId, setGroupId] = useState(defaultGroupId ?? groups[0]?.id ?? "");
+  // @提及联想需要所选圈子的成员
+  const { members } = useGroupMembers(groupId || null);
   const [content, setContent] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [externalLink, setExternalLink] = useState<ExternalLink | null>(null);
@@ -376,11 +379,10 @@ export function ActivityForm({
             </div>
           ) : null}
         </div>
-        <Textarea
-          id="content"
-          name="content"
+        <MentionComposer
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={setContent}
+          members={members}
           placeholder={
             repostOfId
               ? "添加分享附言…"
@@ -388,7 +390,7 @@ export function ActivityForm({
           }
           rows={4}
           maxLength={1000}
-          autoComplete="off"
+          ariaLabel={repostOfId ? "分享附言" : "动态内容"}
         />
         <div className="text-right text-xs text-muted-foreground">
           {content.length}/1000

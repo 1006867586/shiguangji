@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { wgs84ToGcj02 } from "@/lib/poi/coords";
 
 declare global {
   interface Window {
@@ -155,10 +156,9 @@ function MapControls({ map }: { map: any }) {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        // 浏览器定位是 WGS84；高德地图渲染 GCJ-02；直接给 lng/lat 会被高德当作 GCJ-02 渲染，偏差约 100~500m
-        // PC 端演示精度足够；移动端生产环境建议走 AMap.Geolocation plugin（GCJ-02 原生）
-        const { longitude, latitude } = pos.coords;
-        map.setCenter([longitude, latitude]);
+        // 浏览器定位返回 WGS84，高德地图渲染 GCJ-02；需先转坐标，否则偏差可达数百米
+        const gcj = wgs84ToGcj02(pos.coords.longitude, pos.coords.latitude);
+        map.setCenter([gcj.lng, gcj.lat]);
         map.setZoom(14);
       },
       (err) => {

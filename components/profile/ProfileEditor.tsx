@@ -10,15 +10,22 @@ import { Label } from "@/components/ui/label";
 import { AvatarUploader } from "@/components/common/AvatarUploader";
 import { useAuthContext } from "@/lib/auth-context";
 import { fetchData } from "@/lib/fetcher";
-import type { Achievement, Profile } from "@/types";
+import type { Achievement, DecorItem, Profile } from "@/types";
 import { NameBadges } from "@/components/profile/NameBadges";
+import { WornBadges } from "@/components/profile/WornBadges";
 
 export function ProfileEditor({
   profile,
   achievements = [],
+  wornBadges = [],
+  frameColor = null,
 }: {
   profile: Profile;
   achievements?: Achievement[];
+  /** 已佩戴的装扮徽章 */
+  wornBadges?: DecorItem[];
+  /** 头像框环色（hex） */
+  frameColor?: string | null;
 }) {
   const router = useRouter();
   const { signOut: signOutAuth } = useAuthContext();
@@ -79,9 +86,19 @@ export function ProfileEditor({
             size={80}
             className="relative"
           />
+          {frameColor ? (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 rounded-full"
+              style={{
+                boxShadow: `inset 0 0 0 4px ${frameColor}, 0 0 0 1px rgba(0,0,0,0.06)`,
+              }}
+            />
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
           <p className="font-display text-lg font-semibold tracking-tight">{nickname}</p>
+          {wornBadges.length > 0 ? <WornBadges badges={wornBadges} /> : null}
           <NameBadges achievements={achievements} />
         </div>
         <p className="text-xs text-muted-foreground">点击头像上传新图片</p>

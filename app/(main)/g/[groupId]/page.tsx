@@ -20,6 +20,7 @@ import {
 import { GroupSelector } from "@/components/group/GroupSelector";
 import { FeedList } from "@/components/feed/FeedList";
 import { InviteCodeButton } from "@/components/group/InviteCodeButton";
+import { ChatUnreadBadge } from "@/components/chat/ChatUnreadBadge";
 import { createServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { getServerGroups } from "@/lib/server-data";
 import type { Group } from "@/types";
@@ -82,6 +83,7 @@ export default async function GroupFeedPage({ params }: Params) {
             <GroupSelector currentGroupId={groupId} />
           </div>
           <div className="flex items-center gap-1">
+            <ChatUnreadBadge groupId={groupId} currentUserId={user.id} />
             <InviteCodeButton code={group.invite_code} />
             <Button
               asChild

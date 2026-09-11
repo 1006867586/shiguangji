@@ -33,6 +33,31 @@ export interface Profile {
   created_at: string;
   /** 已解锁成就（成员列表 / 动态流作者名旁徽章使用，可选） */
   achievements?: Achievement[];
+  /** 头像框环色（hex），装扮系统佩戴展示（可选） */
+  frameColor?: string | null;
+  /** 已佩戴装扮徽章（可选） */
+  wornBadges?: WornDecorBadge[];
+}
+
+/** 佩戴在昵称旁的装扮徽章（精简字段） */
+export interface WornDecorBadge {
+  id: UUID;
+  icon: string | null;
+  color: string | null;
+  name: string;
+}
+
+/** @提及可点击所需的用户信息（由圈子成员资料构建，供 RichText / 用户卡片使用） */
+export interface MentionUser {
+  id: UUID;
+  nickname: string;
+  avatar_url: string | null;
+  /** 头像框环色（hex） */
+  frameColor?: string | null;
+  /** 已佩戴装扮徽章 */
+  wornBadges?: WornDecorBadge[];
+  /** 已解锁成就 */
+  achievements?: Achievement[];
 }
 
 /** 积分 / 连续打卡 / 成就汇总 */
@@ -86,6 +111,8 @@ export interface Group {
   created_by: UUID;
   created_at: string;
   updated_at?: string;
+  /** 圈子公告（管理员/创建者可设置；无则未公告） */
+  announcement?: string | null;
   settings?: GroupSettings;
   /** 仅在列表接口中附带 */
   member_count?: number;
@@ -139,7 +166,10 @@ export interface Comment {
   content: string;
   parent_id: UUID | null;
   created_at: string;
-  author?: Pick<Profile, "id" | "nickname" | "avatar_url">;
+  author?: Pick<
+    Profile,
+    "id" | "nickname" | "avatar_url" | "frameColor" | "wornBadges"
+  >;
   replies?: Comment[];
 }
 
@@ -150,7 +180,10 @@ export interface RepostOf {
   content: string | null;
   external_link: ExternalLink | null;
   created_at: string;
-  author: Pick<Profile, "id" | "nickname" | "avatar_url" | "achievements">;
+  author: Pick<
+    Profile,
+    "id" | "nickname" | "avatar_url" | "achievements" | "frameColor" | "wornBadges"
+  >;
 }
 
 /** Feed 卡片 / 活动聚合视图 */
@@ -160,7 +193,10 @@ export interface Activity {
   content: string | null;
   external_link: ExternalLink | null;
   created_at: string;
-  author: Pick<Profile, "id" | "nickname" | "avatar_url" | "achievements">;
+  author: Pick<
+    Profile,
+    "id" | "nickname" | "avatar_url" | "achievements" | "frameColor" | "wornBadges"
+  >;
   photos: ActivityPhoto[];
   photo_count: number;
   comment_count: number;
@@ -253,6 +289,7 @@ export type NotificationType =
   | "split"
   | "group_invite"
   | "report_resolved"
+  | "message"
   | "system";
 
 export interface AppNotification {
@@ -409,6 +446,8 @@ export interface UpdateGroupBody {
   name?: string;
   description?: string | null;
   avatarUrl?: string | null;
+  /** 圈子公告（仅管理员/创建者可设置；空字符串代表清除公告） */
+  announcement?: string | null;
   settings?: GroupSettings;
 }
 
@@ -480,6 +519,7 @@ export type FavoritePlatform =
   | "dianping"
   | "xiaohongshu"
   | "douyin"
+  | "amap"
   | "unknown";
 
 /** 收藏夹截图识别结果（一张图含多家店） */
@@ -694,5 +734,198 @@ export interface CircleCheckinPlace {
   lat: number;
   checkin_count: number;
   last_checked_at: string | null;
+}
+
+// ============================================================
+// 群组聊天（group_messages）
+// ============================================================
+
+export type GroupMessageType = "text" | "image";
+
+/** 消息 emoji 回应（一人每个 emoji 一条） */
+export interface MessageReaction {
+  id: UUID;
+  message_id: UUID;
+  user_id: UUID;
+  emoji: string;
+  created_at: string;
+}
+
+/**
+ * 某条消息的回应聚合视图：按 emoji 归并出「人数 + 本人是否已点」
+ */
+export interface MessageReactionAggregate {
+  emoji: string;
+  /** 点过该 emoji 的用户数 */
+  count: number;
+  /** 当前用户是否已点 */
+  reactedByMe: boolean;
+}
+
+/** 圈子聊天消息 */
+export interface GroupMessage {
+  id: UUID;
+  group_id: UUID;
+  sender_id: UUID;
+  type: GroupMessageType;
+  content: string | null;
+  image_url: string | null;
+  /** 引用回复：被引用消息的 ID（无则 null） */
+  reply_to_id: UUID | null;
+  created_at: string;
+  sender?: Pick<
+    Profile,
+    "id" | "nickname" | "avatar_url" | "frameColor" | "wornBadges"
+  > | null;
+  /** 被引用消息的发送者（服务端 join 附带） */
+  reply_sender?: Pick<Profile, "id" | "nickname"> | null;
+  /** 被引用消息的内容预览（文本取 content，图片取固定文案） */
+  reply_preview?: string | null;
+  /** 该消息的 emoji 回应聚合（服务端附带） */
+  reactions?: MessageReactionAggregate[];
+  /** 该消息承载的投票/接龙卡片（服务端附带） */
+  poll?: GroupPoll | null;
+}
+
+/** 发送聊天消息请求体 */
+export interface SendMessageBody {
+  content?: string;
+  imageUrl?: string;
+  /** 引用回复：被引用的消息 ID（可选） */
+  replyToId?: UUID;
+}
+
+/** 聊天消息列表响应 */
+export interface ChatMessagesResponse {
+  data: GroupMessage[];
+  /** 是否还有更早的消息可加载 */
+  has_more: boolean;
+  /** 加载更早消息用的游标（最早一条消息的 created_at，null 表示没有更多） */
+  next_cursor: string | null;
+}
+
+// ============================================================
+// 群投票 / 接龙（group_polls）
+// ============================================================
+
+export type GroupPollKind = "poll" | "rollcall";
+export type GroupPollStatus = "open" | "closed";
+
+/** 投票/接龙选项 */
+export interface GroupPollOption {
+  id: UUID;
+  poll_id: UUID;
+  label: string;
+  sort_order: number;
+  /** 该选项得票数（聚合结果附带） */
+  count?: number;
+  /** 当前用户是否已选（聚合结果附带） */
+  votedByMe?: boolean;
+}
+
+/** 投票/接龙参与记录（接龙逐人可查） */
+export interface GroupPollEntry {
+  id: UUID;
+  poll_id: UUID;
+  user_id: UUID;
+  option_id: UUID | null;
+  content: string | null;
+  created_at: string;
+  participant?: Pick<Profile, "id" | "nickname" | "avatar_url"> | null;
+}
+
+/** 投票/接龙卡片（内嵌于聊天消息，服务端附带轮询明细） */
+export interface GroupPoll {
+  id: UUID;
+  group_id: UUID;
+  created_by: UUID;
+  kind: GroupPollKind;
+  title: string;
+  multiple: boolean;
+  status: GroupPollStatus;
+  created_at: string;
+  closed_at: string | null;
+  options: GroupPollOption[];
+  /** 当前用户是否参与（rollcall：是否有记录；poll：是否有该 poll 的记录） */
+  i_participated: boolean;
+  /** 参与人数（poll：投过票的人数；rollcall：接龙条数） */
+  participant_count: number;
+  rollcall_entries?: GroupPollEntry[];
+}
+
+/** 创建投票/接龙请求体 */
+export interface CreateGroupPollBody {
+  kind: GroupPollKind;
+  title: string;
+  multiple?: boolean;
+  options?: string[];
+}
+
+/** 投票/参与请求体 */
+export interface VoteGroupPollBody {
+  optionId?: UUID;
+  /** 单选项切换：真=选中，假=取消；多选取上次值 */
+  selected?: boolean;
+  /** rollcall 接龙内容（可空） */
+  content?: string;
+}
+
+// ============================================================
+// 装饰装扮系统（decor）
+// ============================================================
+
+export type DecorKind = "badge" | "avatar_frame";
+export type DecorUnlockType = "shop" | "achievement" | "system";
+
+/** 装饰目录条目 */
+export interface DecorItem {
+  id: UUID;
+  kind: DecorKind;
+  key: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  /** 样式色（徽章底色 / 头像框环色，hex） */
+  color: string | null;
+  frame_style: string;
+  price: number;
+  unlock_type: DecorUnlockType;
+  achievement_key: string | null;
+  sort_order: number;
+  /** 当前用户是否已拥有（目录接口附带） */
+  owned?: boolean;
+}
+
+/** 当前用户佩戴配置 */
+export interface DecorDisplay {
+  user_id: UUID;
+  avatar_frame_id: UUID | null;
+  badge_ids: UUID[];
+}
+
+/** 装饰数据响应（我的装扮页） */
+export interface DecorResponse {
+  items: DecorItem[];
+  display: DecorDisplay | null;
+  points: number;
+}
+
+/** 更新佩戴配置请求体 */
+export interface SetDecorDisplayBody {
+  avatarFrameId?: UUID | null;
+  badgeIds?: UUID[];
+}
+
+/** 多个用户的佩戴配置（成员列表展示他人徽章用） */
+export interface UserDecorDisplayRow {
+  user_id: UUID;
+  avatar_frame_id: UUID | null;
+  badge_ids: UUID[];
+}
+
+/** 购买装饰响应 */
+export interface PurchaseDecorResult {
+  points: number;
+  item_id: UUID;
 }
 

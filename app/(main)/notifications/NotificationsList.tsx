@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import { RichText } from "@/components/common/RichText";
 import {
   useNotifications,
   useUnreadCount,
@@ -39,6 +40,8 @@ function describeNotification(
       return `${actorName} 报名了你的活动`;
     case "split":
       return `${actorName} 创建了账单分摊`;
+    case "message":
+      return `${actorName} 在聊天里提到了你`;
     case "group_invite":
       return `${actorName} 邀请你加入圈子`;
     case "report_resolved":
@@ -190,7 +193,12 @@ export function NotificationsList() {
               const description = describeNotification(n.type, actorName);
               const preview = extractPreview(n.data);
               const unread = !n.read_at;
-              const href = n.activity_id ? `/activity/${n.activity_id}` : null;
+              const href =
+                n.type === "message" && n.group_id
+                  ? `/g/${n.group_id}/chat`
+                  : n.activity_id
+                    ? `/activity/${n.activity_id}`
+                    : null;
 
               const content = (
                 <div className="flex items-start gap-3">
@@ -209,7 +217,8 @@ export function NotificationsList() {
                     </p>
                     {preview ? (
                       <p className="mt-1 line-clamp-2 break-words text-sm text-muted-foreground">
-                        {preview}
+                        {/* 提及内容中的 @昵称 高亮（同正文渲染） */}
+                        <RichText text={preview} />
                       </p>
                     ) : null}
                     <p className="mt-1 text-xs text-muted-foreground">

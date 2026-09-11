@@ -1,10 +1,16 @@
 import Link from "next/link";
-import { ChevronLeft, Users, MapPin, Footprints } from "lucide-react";
+import { ChevronLeft, Users, MapPin, Footprints, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
 import { FavoritePlacesSection } from "@/components/profile/FavoritePlacesSection";
 import { AchievementsPanel } from "@/components/profile/AchievementsPanel";
-import { getServerProfile, getServerGroups, getServerGamification } from "@/lib/server-data";
+import {
+  getServerProfile,
+  getServerGroups,
+  getServerGamification,
+  getServerDecor,
+} from "@/lib/server-data";
+import { resolveDecorDisplay } from "@/lib/decor";
 import type { Group } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -12,11 +18,17 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "个人资料" };
 
 export default async function ProfilePage() {
-  const [profile, { groups }, gamification] = await Promise.all([
+  const [profile, { groups }, gamification, decor] = await Promise.all([
     getServerProfile(),
     getServerGroups(),
     getServerGamification(),
+    getServerDecor(),
   ]);
+
+  const { frame, wornBadges } = resolveDecorDisplay(
+    decor?.items ?? [],
+    decor?.display ?? null
+  );
 
   return (
     <div className="min-h-dvh pb-20">
@@ -35,8 +47,31 @@ export default async function ProfilePage() {
         <ProfileEditor
           profile={profile}
           achievements={gamification.achievements}
+          wornBadges={wornBadges}
+          frameColor={frame?.color}
         />
       ) : null}
+
+      {/* 我的装扮入口 */}
+      <div className="mt-2 border-t border-border/60 px-4">
+        <Link
+          href="/profile/decor"
+          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3 py-3 shadow-xs transition-all hover:-translate-y-0.5 hover:border-border hover:shadow-md motion-reduce:transform-none"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500">
+            <Sparkles className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">我的装扮</span>
+            <span className="block truncate text-[11px] text-muted-foreground">
+              {wornBadges.length + (frame ? 1 : 0) > 0
+                ? `已佩戴 ${wornBadges.length} 枚徽章${frame ? " · 头像框" : ""}`
+                : "徽章 · 头像框 · 积分兑换"}
+            </span>
+          </span>
+          <span className="text-muted-foreground">›</span>
+        </Link>
+      </div>
 
       {/* 美食打卡地图入口 */}
       <div className="mt-2 border-t border-border/60 p-4">

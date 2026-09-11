@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { parseMentions, extractMentionedUserIds, type MentionMember } from "@/lib/mention";
+import {
+  parseMentions,
+  extractMentionedUserIds,
+  buildMentionUserMap,
+  type MentionMember,
+} from "@/lib/mention";
 
 // ============================================================
 // lib/mention.ts @提及解析测试
@@ -137,5 +142,63 @@ describe("extractMentionedUserIds", () => {
     // 重复 @同一人，结果应去重
     const result = extractMentionedUserIds("@张三 @张三", members);
     expect(result).toEqual(["u1"]);
+  });
+});
+
+describe("buildMentionUserMap", () => {
+  const members = [
+    {
+      user_id: "u1",
+      profile: {
+        nickname: "张三",
+        avatar_url: "https://img/a.png",
+        frameColor: "#ff0000",
+        wornBadges: [{ id: "b1", icon: "🏅", color: "#ff0", name: "美食家" }],
+        achievements: [{ id: "a1", key: "meals", name: "干饭王", description: "", icon: "🍚", rule_type: "total_meals", threshold: 10, sort_order: 1, unlocked: true }],
+      },
+    },
+    { user_id: "u2", profile: { nickname: "Alice", avatar_url: null } },
+    { user_id: "u3", profile: null },
+    { user_id: "u4", profile: { nickname: "" } },
+  ];
+
+  it("按小写昵称建索引（大小写不敏感命中）", () => {
+    const map = buildMentionUserMap(members);
+    expect(map["张三"].id).toBe("u1");
+    expect(map["alice"].id).toBe("u2");
+    expect(map["ALICE"]).toBeUndefined(); // 键统一小写
+  });
+
+  it("保留展示所需字段", () => {
+    const user = buildMentionUserMap(members)["张三"];
+    expect(user).toMatchObject({
+      id: "u1",
+      nickname: "张三",
+      avatar_url: "https://img/a.png",
+      frameColor: "#ff0000",
+    });
+    expect(user.wornBadges).toHaveLength(1);
+    expect(user.achievements).toHaveLength(1);
+  });
+
+  it("缺失字段兜底为空", () => {
+    const user = buildMentionUserMap(members)["alice"];
+    expect(user.avatar_url).toBeNull();
+    expect(user.frameColor).toBeNull();
+    expect(user.wornBadges).toEqual([]);
+    expect(user.achievements).toEqual([]);
+  });
+
+  it("跳过 profile 为 null / 空昵称的成员", () => {
+    const map = buildMentionUserMap(members);
+    expect(map["u3"]).toBeUndefined();
+    expect(map["u4"]).toBeUndefined();
+    expect(Object.keys(map)).toHaveLength(2);
+  });
+
+  it("空/undefined 成员列表返回空映射", () => {
+    expect(buildMentionUserMap([])).toEqual({});
+    expect(buildMentionUserMap(null)).toEqual({});
+    expect(buildMentionUserMap(undefined)).toEqual({});
   });
 });

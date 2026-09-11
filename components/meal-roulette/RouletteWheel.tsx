@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface RouletteWheelProps {
@@ -66,10 +66,7 @@ export function RouletteWheel({
   const n = labels.length;
   const slice = n > 0 ? 360 / n : 360;
 
-  const [displayRotation, setDisplayRotation] = useState(rotation);
-  useEffect(() => {
-    setDisplayRotation(rotation);
-  }, [rotation]);
+  const wheelTitleId = useId();
 
   const size = 280;
   const r = size / 2 - 8;
@@ -154,17 +151,22 @@ export function RouletteWheel({
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
+        role="group"
+        aria-labelledby={wheelTitleId}
         className={cn(
           "transition-transform",
           spinning ? "duration-[4000ms] ease-out" : "duration-0"
         )}
         style={{
-          transform: `rotate(${displayRotation}deg)`,
+          transform: `rotate(${rotation}deg)`,
           transitionTimingFunction: spinning
             ? "cubic-bezier(0.17, 0.67, 0.12, 0.99)"
             : undefined,
         }}
       >
+        <title id={wheelTitleId}>
+          今天吃什么转盘{spinning ? "，转动中" : "，点击中心开始"}
+        </title>
         <defs>
           {/* 扇区同色系渐变：中心亮 → 边缘基础色（同小程序 lighten 0.4） */}
           {slices.map((s) => (
@@ -195,43 +197,66 @@ export function RouletteWheel({
           </linearGradient>
         </defs>
 
-        {slices.map((s, i) => (
-          <g key={i}>
-            <path
-              d={s.d}
-              fill={`url(#${s.gradId})`}
-              stroke="white"
-              strokeWidth={2}
-              opacity={
-                winnerIndex !== null && !spinning
-                  ? i === winnerIndex
-                    ? 1
-                    : 0.45
-                  : 1
-              }
-            />
-            <text
-              x={s.tx}
-              y={s.ty}
-              fill="white"
-              fontSize={n > 8 ? 11 : n > 5 ? 13 : 15}
-              fontWeight={700}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              transform={`rotate(${s.midDeg} ${s.tx} ${s.ty})`}
-              style={{
-                textShadow: "0 1px 2px rgba(0,0,0,0.35)",
-                pointerEvents: "none",
-              }}
-            >
-              {s.text.length > 6 ? `${s.text.slice(0, 6)}…` : s.text}
-            </text>
-          </g>
-        ))}
+        {slices.map((s, i) => {
+          const isWinner = winnerIndex === i && !spinning;
+          return (
+            <g key={i}>
+              <path
+                d={s.d}
+                fill={`url(#${s.gradId})`}
+                stroke="white"
+                strokeWidth={2}
+                opacity={winnerIndex !== null && !spinning ? (i === winnerIndex ? 1 : 0.45) : 1}
+                style={
+                  isWinner
+                    ? {
+                        transformBox: "fill-box",
+                        transformOrigin: "center",
+                        filter: "drop-shadow(0 0 8px rgba(255,255,255,0.85))",
+                        animation: "wheel-winner-pop 0.9s ease-in-out infinite",
+                      }
+                    : undefined
+                }
+              />
+              <text
+                x={s.tx}
+                y={s.ty}
+                fill="white"
+                fontSize={n > 8 ? 11 : n > 5 ? 13 : 15}
+                fontWeight={700}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                transform={`rotate(${s.midDeg} ${s.tx} ${s.ty})`}
+                style={{
+                  opacity: winnerIndex !== null && !spinning ? (i === winnerIndex ? 1 : 0.45) : 1,
+                  textShadow: "0 1px 2px rgba(0,0,0,0.35)",
+                  pointerEvents: "none",
+                }}
+              >
+                {s.text.length > 6 ? `${s.text.slice(0, 6)}…` : s.text}
+              </text>
+            </g>
+          );
+        })}
 
-        {/* 中心 GO（同小程序：珊瑚渐变圆 + 白字，点击触发旋转） */}
+        {/* 中心 GO（同小程序：珊瑚渐变圆 + 白字；可聚焦，支持 Enter/Space 触发） */}
         <g
+          role="button"
+          tabIndex={onGoClick ? 0 : -1}
+          aria-label={spinning ? "转动中" : "开始转"}
+          aria-disabled={spinning || !onGoClick}
           onClick={onGoClick}
+          onKeyDown={
+            onGoClick
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onGoClick();
+                  }
+                }
+              : undefined
+          }
+          className={onGoClick ? "outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full" : undefined}
           style={{
             cursor: onGoClick ? "pointer" : "default",
           }}

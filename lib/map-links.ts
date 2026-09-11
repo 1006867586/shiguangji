@@ -185,9 +185,19 @@ const ANDROID_PACKAGES: Record<Exclude<MapProvider, "apple">, string> = {
 };
 
 /**
+ * 打开网页版（新标签页）。被弹窗拦截（如微信 XWeb 屏蔽 window.open）时
+ * 退化为当前页跳转，避免「提示已打开但实际没反应」的虚假成功。
+ */
+function openWeb(url: string): void {
+  if (!window.open(url, "_blank", "noopener")) {
+    window.location.href = url;
+  }
+}
+
+/**
  * 尝试打开 target（scheme / intent URL）；超时后页面仍可见说明 App 未唤起，
  * 跳转 fallback（网页版）兜底。App 成功唤起时页面失焦（visibilitychange /
- * pagehide），取消兜底。
+ * pagehide / blur），取消兜底。
  */
 function openUrlWithFallback(target: string, fallback: string, timeoutMs = 1800): void {
   let settled = false;
@@ -197,6 +207,7 @@ function openUrlWithFallback(target: string, fallback: string, timeoutMs = 1800)
     window.clearTimeout(timer);
     document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("pagehide", onHide);
+    window.removeEventListener("blur", onHide);
   };
   const onHide = () => {
     settled = true;
@@ -208,6 +219,8 @@ function openUrlWithFallback(target: string, fallback: string, timeoutMs = 1800)
 
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("pagehide", onHide);
+  // App 被唤起时应用进入前台、页面失焦：blur 是比 pagehide 更可靠的移动端信号
+  window.addEventListener("blur", onHide);
 
   timer = window.setTimeout(() => {
     if (settled || document.hidden) return;
@@ -241,7 +254,7 @@ export function openMapApp(
 
   // Apple 地图：https 链接在 iOS 上由系统 Universal Link 直接唤起
   if (provider === "apple") {
-    window.open(links.apple, "_blank", "noopener");
+    openWeb(links.apple);
     return "app";
   }
 
@@ -250,7 +263,7 @@ export function openMapApp(
   // 微信/企业微信内置浏览器屏蔽一切外部 scheme：直接进网页版，
   // 由调用方提示「用浏览器打开本页后可唤起 App」
   if (/MicroMessenger|WeChat/i.test(ua)) {
-    window.open(webUrl, "_blank", "noopener");
+    openWeb(webUrl);
     return "wechat";
   }
 
@@ -278,6 +291,6 @@ export function openMapApp(
   }
 
   // 鸿蒙 NEXT / 桌面 / scheme 无法构造：网页版（自带「打开App」引导）
-  window.open(webUrl, "_blank", "noopener");
+  openWeb(webUrl);
   return "web";
 }
