@@ -13,6 +13,7 @@ export interface DecoratableProfile {
 interface DecorItemRow {
   id: string;
   kind: string;
+  key: string;
   name: string;
   icon: string | null;
   color: string | null;
@@ -44,7 +45,7 @@ export async function attachDecorToProfiles(
 
   const [displayRes, itemsRes] = await Promise.all([
     supabase.rpc("get_users_decor_display", { p_user_ids: ids }),
-    supabase.from("decor_items").select("id, kind, name, icon, color"),
+    supabase.from("decor_items").select("id, kind, key, name, icon, color"),
   ]);
 
   const itemMap = new Map<string, DecorItemRow>();
@@ -68,6 +69,12 @@ export async function attachDecorToProfiles(
     p.wornBadges = badgeIds
       .map((id) => itemMap.get(id))
       .filter((it): it is DecorItemRow => Boolean(it))
-      .map((it) => ({ id: it.id, icon: it.icon, color: it.color, name: it.name }));
+      .map((it) => ({
+        id: it.id,
+        key: it.key,
+        icon: it.icon,
+        color: it.color,
+        name: it.name,
+      }));
   }
 }

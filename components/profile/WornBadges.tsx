@@ -1,3 +1,4 @@
+import { BadgeGlow } from "@/components/decor/BadgeIcon";
 import type { WornDecorBadge } from "@/types";
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
  * 挂在昵称旁的一排「已佩戴」装扮徽章。
  * - 来自 user_decor_display.badge_ids 对应的 decor_items。
  * - 纯展示，用原生 title 做悬浮提示，可在服务端/客户端任意复用。
+ * - 有对应内联 SVG 图形的走矢量渲染，没有的自动回退 emoji。
  */
 export function WornBadges({ badges, max = 5 }: Props) {
   if (!badges || badges.length === 0) return null;
@@ -19,17 +21,16 @@ export function WornBadges({ badges, max = 5 }: Props) {
   const rest = badges.length - shown.length;
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-1 align-middle">
+    <span className="inline-flex flex-wrap items-center gap-1.5 align-middle">
       {shown.map((b) => (
-        <span
+        <BadgeGlow
           key={b.id}
-          title={b.name}
-          aria-label={b.name}
-          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] leading-none shadow-xs ring-1 ring-black/5 transition-transform hover:scale-110 motion-reduce:transform-none"
-          style={{ backgroundColor: b.color ?? "#e2e8f0" }}
-        >
-          <span aria-hidden="true">{b.icon}</span>
-        </span>
+          badgeKey={b.key}
+          color={b.color}
+          icon={b.icon}
+          name={b.name}
+          className="h-5 w-5 text-[11px]"
+        />
       ))}
       {rest > 0 ? (
         <span

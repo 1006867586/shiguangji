@@ -115,12 +115,14 @@ export async function GET(_request: NextRequest, { params }: Params) {
     ]);
     const decorItemMap = new Map<string, {
       id: string;
+      key: string;
       icon: string | null;
       color: string | null;
       name: string;
     }>();
     for (const item of (decorItemsRes.data ?? []) as Array<{
       id: string;
+      key: string;
       icon: string | null;
       color: string | null;
       name: string;
@@ -140,8 +142,13 @@ export async function GET(_request: NextRequest, { params }: Params) {
       profile.wornBadges = (row.badge_ids ?? [])
         .map((id) => decorItemMap.get(id))
         .filter(
-          (it): it is { id: string; icon: string | null; color: string | null; name: string } =>
-            !!it
+          (it): it is {
+            id: string;
+            key: string;
+            icon: string | null;
+            color: string | null;
+            name: string;
+          } => !!it
         );
     }
 
