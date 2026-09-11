@@ -1,4 +1,5 @@
 import { createServerClient } from "./supabase/server";
+import { attachDecorToProfiles } from "./server-decor";
 import type {
   Achievement,
   Activity,
@@ -194,6 +195,12 @@ export async function fetchFeed(opts: {
       ? activities[activities.length - 1].created_at
       : null;
 
+  // 批量补充头像框 / 佩戴徽章（装饰系统：活动流他人视角展示）
+  await attachDecorToProfiles(
+    supabase,
+    activities.flatMap((a) => [a.author, a.repost_of?.author])
+  );
+
   return { data: activities, next_cursor };
 }
 
@@ -353,6 +360,13 @@ export async function fetchActivityDetail(opts: {
   for (const c of topComments) {
     c.replies = commentList.filter((r) => r.parent_id === c.id);
   }
+
+  // 批量补充头像框 / 佩戴徽章（装饰系统：详情页他人视角展示）
+  await attachDecorToProfiles(supabase, [
+    authorObj,
+    repostOf?.author,
+    ...commentList.map((c) => c.author),
+  ]);
 
   return {
     id: a.id as string,

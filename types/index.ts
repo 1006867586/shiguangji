@@ -151,7 +151,10 @@ export interface Comment {
   content: string;
   parent_id: UUID | null;
   created_at: string;
-  author?: Pick<Profile, "id" | "nickname" | "avatar_url">;
+  author?: Pick<
+    Profile,
+    "id" | "nickname" | "avatar_url" | "frameColor" | "wornBadges"
+  >;
   replies?: Comment[];
 }
 
@@ -162,7 +165,10 @@ export interface RepostOf {
   content: string | null;
   external_link: ExternalLink | null;
   created_at: string;
-  author: Pick<Profile, "id" | "nickname" | "avatar_url" | "achievements">;
+  author: Pick<
+    Profile,
+    "id" | "nickname" | "avatar_url" | "achievements" | "frameColor" | "wornBadges"
+  >;
 }
 
 /** Feed 卡片 / 活动聚合视图 */
@@ -172,7 +178,10 @@ export interface Activity {
   content: string | null;
   external_link: ExternalLink | null;
   created_at: string;
-  author: Pick<Profile, "id" | "nickname" | "avatar_url" | "achievements">;
+  author: Pick<
+    Profile,
+    "id" | "nickname" | "avatar_url" | "achievements" | "frameColor" | "wornBadges"
+  >;
   photos: ActivityPhoto[];
   photo_count: number;
   comment_count: number;
@@ -725,7 +734,10 @@ export interface GroupMessage {
   content: string | null;
   image_url: string | null;
   created_at: string;
-  sender?: Pick<Profile, "id" | "nickname" | "avatar_url"> | null;
+  sender?: Pick<
+    Profile,
+    "id" | "nickname" | "avatar_url" | "frameColor" | "wornBadges"
+  > | null;
 }
 
 /** 发送聊天消息请求体 */

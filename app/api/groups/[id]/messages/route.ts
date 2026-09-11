@@ -7,6 +7,7 @@ import {
 import { jsonResponse, isUuid, safeParseInt, safeErrorMessage } from "@/lib/utils";
 import { containsSensitiveWord } from "@/lib/sensitive-words";
 import { extractMentionedUserIds } from "@/lib/mention";
+import { attachDecorToProfiles } from "@/lib/server-decor";
 import type {
   ChatMessagesResponse,
   GroupMessage,
@@ -46,13 +47,16 @@ async function attachSenders<R extends Pick<GroupMessage, "sender_id">>(
     .from("profiles")
     .select("id, nickname, avatar_url")
     .in("id", senderIds);
-  const profMap = new Map<string, { id: string; nickname: string; avatar_url: string | null }>();
-  for (const p of (profiles ?? []) as Array<{
+  const profList = (profiles ?? []) as Array<{
     id: string;
     nickname: string;
     avatar_url: string | null;
-  }>) {
-    profMap.set(p.id, { id: p.id, nickname: p.nickname, avatar_url: p.avatar_url });
+  }>;
+  // 批量补充头像框 / 佩戴徽章（装饰系统：聊天他人视角展示）
+  await attachDecorToProfiles(supabase, profList);
+  const profMap = new Map<string, (typeof profList)[number]>();
+  for (const p of profList) {
+    profMap.set(p.id, p);
   }
   return rows.map((m) => ({
     ...m,

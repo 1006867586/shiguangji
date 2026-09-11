@@ -311,7 +311,7 @@ export function FeedCard({
       {/* 头部 */}
       <div className="flex items-start gap-3">
         <Link href={`/profile`} className="shrink-0">
-          <UserAvatar profile={activity.author} size={44} />
+          <UserAvatar profile={activity.author} size={44} frameColor={activity.author?.frameColor} />
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

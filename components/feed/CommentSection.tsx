@@ -178,6 +178,7 @@ function CommentItem({
         profile={comment.author}
         size={isReply ? 24 : 28}
         className="mt-0.5"
+        frameColor={comment.author?.frameColor}
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">

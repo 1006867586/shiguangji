@@ -237,7 +237,7 @@ function ChatBubble({ msg, isMine }: { msg: GroupMessage; isMine: boolean }) {
 
   return (
     <div className="flex items-start gap-2">
-      <UserAvatar profile={msg.sender ?? null} size={32} className="mt-0.5 shrink-0" />
+      <UserAvatar profile={msg.sender ?? null} size={32} className="mt-0.5 shrink-0" frameColor={msg.sender?.frameColor} />
       <div className="max-w-[78%]">
         <p className="mb-0.5 text-[11px] text-muted-foreground">
           {msg.sender?.nickname ?? "用户"}
