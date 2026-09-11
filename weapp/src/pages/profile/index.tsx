@@ -9,6 +9,7 @@ import {
   type ProfileLite,
 } from "@/utils/api";
 import { uploadToR2 } from "@/utils/upload";
+import { POINTING_APP } from "@/config/external";
 import LoginGuide from "@/components/LoginGuide";
 import "./index.scss";
 
@@ -42,7 +43,7 @@ export default function ProfilePage() {
   }, []);
 
   useDidShow(() => {
-    setSelectedTab(3);
+    setSelectedTab(2);
     setLogged(isLoggedIn());
     void loadProfile();
   });
@@ -68,16 +69,12 @@ export default function ProfilePage() {
     Taro.showLoading({ title: "上传中…", mask: true });
     try {
       const url = await uploadToR2(path);
+      // 仅更新编辑面板中的头像预览，待用户点"保存"后才统一提交落库
       setEditAvatarUrl(url);
-      // 即时落库：头像选择/上传即 PATCH，避免用户上传后未点"保存"导致丢失
-      try {
-        const updated = await updateMyProfile({ avatarUrl: url });
-        setProfile(updated);
-      } catch {
-        // PATCH 失败由 request 层 toast，用户可点"保存"重试
-      }
-    } catch {
-      // upload 层已提示
+    } catch (e) {
+      // 诊断插桩：之前静默吞掉错误，无法定位"上传中但头像不显示"的根因
+      console.error("[profile] uploadToR2 失败，avatarUrl:", path, e);
+      Taro.showToast({ title: `头像上传失败：${e instanceof Error ? e.message : e}`, icon: "none", duration: 3000 });
     } finally {
       Taro.hideLoading();
       setUploading(false);
@@ -110,6 +107,24 @@ export default function ProfilePage() {
   const goLogin = () => Taro.navigateTo({ url: "/pages/login/index" });
   const goFavorites = () =>
     Taro.switchTab({ url: "/pages/index/index" });
+
+  /** 跳转到专有点餐小程序 */
+  const goPointing = () => {
+    if (!POINTING_APP.appId) {
+      Taro.showToast({ title: "去点餐功能暂未开启", icon: "none" });
+      return;
+    }
+    Taro.navigateToMiniProgram({
+      appId: POINTING_APP.appId,
+      path: POINTING_APP.path,
+      success: () => {
+        /* 已跳转 */
+      },
+      fail: () => {
+        Taro.showToast({ title: "跳转失败，请重试", icon: "none" });
+      },
+    });
+  };
 
   if (!logged) {
     return <LoginGuide subtitle="登录后同步你的收藏" />;
@@ -188,6 +203,12 @@ export default function ProfilePage() {
       {/* 菜单卡片 */}
       <View className="menu-section">
         <View className="menu-card">
+          {/* 去点餐（跳转外部专有点餐小程序） */}
+          <View className="menu-item" onClick={goPointing}>
+            <Text className="menu-icon">🍽️</Text>
+            <Text className="menu-label">去点餐</Text>
+            <Text className="menu-arrow">›</Text>
+          </View>
           <View className="menu-item" onClick={openEdit}>
             <Text className="menu-icon">✏️</Text>
             <Text className="menu-label">编辑资料</Text>
