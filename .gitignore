@@ -42,3 +42,9 @@ next-env.d.ts
 
 # trae IDE 本地辅助产物，不入库
 .trae-html-share-packages
+
+# Tencent Cloud EdgeOne
+.env
+.edgeone/*
+.tef_dist/*
+  
