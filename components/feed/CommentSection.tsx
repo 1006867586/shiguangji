@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MessageSquare, Trash2, CornerDownRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { MentionComposer } from "@/components/common/MentionComposer";
 import { RichText } from "@/components/common/RichText";
+import { UserProfileCard } from "@/components/common/UserProfileCard";
+import { buildMentionUserMap } from "@/lib/mention";
 import { formatRelativeTime } from "@/lib/utils";
-import type { Comment, GroupMember } from "@/types";
+import type { Comment, GroupMember, MentionUser } from "@/types";
 
 interface CommentSectionProps {
   activityId: string;
@@ -39,6 +41,9 @@ export function CommentSection({
   const [content, setContent] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // @昵称 → 用户信息映射（评论正文可点击提及）+ 用户卡片状态
+  const mentionUserMap = useMemo(() => buildMentionUserMap(members), [members]);
+  const [mentionUser, setMentionUser] = useState<MentionUser | null>(null);
 
   const submit = async () => {
     const text = content.trim();
@@ -79,6 +84,8 @@ export function CommentSection({
             <CommentItem
               comment={c}
               currentUserId={currentUserId}
+              mentionUserMap={mentionUserMap}
+              onMentionClick={setMentionUser}
               onReply={() => {
                 setReplyTo(c);
                 setShowInput(true);
@@ -93,6 +100,8 @@ export function CommentSection({
                     comment={r}
                     isReply
                     currentUserId={currentUserId}
+                    mentionUserMap={mentionUserMap}
+                    onMentionClick={setMentionUser}
                     onReply={() => {
                       setReplyTo(c);
                       setShowInput(true);
@@ -154,6 +163,9 @@ export function CommentSection({
           </p>
         </div>
       ) : null}
+
+      {/* 点击评论中 @昵称 弹出的用户资料卡片 */}
+      <UserProfileCard user={mentionUser} onClose={() => setMentionUser(null)} />
     </div>
   );
 }
@@ -162,12 +174,16 @@ function CommentItem({
   comment,
   currentUserId,
   isReply = false,
+  mentionUserMap,
+  onMentionClick,
   onReply,
   onDelete,
 }: {
   comment: Comment;
   currentUserId?: string;
   isReply?: boolean;
+  mentionUserMap: Record<string, MentionUser>;
+  onMentionClick: (user: MentionUser) => void;
   onReply: () => void;
   onDelete: () => void;
 }) {
@@ -190,7 +206,11 @@ function CommentItem({
           </span>
         </div>
         <p className="mt-0.5 text-sm text-foreground whitespace-pre-wrap break-words">
-          <RichText text={comment.content} />
+          <RichText
+            text={comment.content}
+            userMap={mentionUserMap}
+            onMentionClick={onMentionClick}
+          />
         </p>
         <div className="mt-1 flex items-center gap-3">
           <button

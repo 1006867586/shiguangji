@@ -4,7 +4,7 @@
 // GroupChat — 圈子聊天界面：消息列表 + 实时收发 + 图片 + @提及
 // ============================================================
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ImagePlus, Loader2, SendHorizontal } from "lucide-react";
 import { toast } from "sonner";
@@ -13,12 +13,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { MentionComposer } from "@/components/common/MentionComposer";
 import { RichText } from "@/components/common/RichText";
+import { UserProfileCard } from "@/components/common/UserProfileCard";
+import { buildMentionUserMap } from "@/lib/mention";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useGroupChat } from "@/hooks/useGroupChat";
 import { useUpload } from "@/hooks/useUpload";
 import { markChatRead } from "@/hooks/useChatUnread";
-import type { GroupMessage } from "@/types";
+import type { GroupMessage, MentionUser } from "@/types";
 
 interface GroupChatProps {
   groupId: string;
@@ -32,6 +34,8 @@ export function GroupChat({
   currentUserId,
 }: GroupChatProps) {
   const { members } = useGroupMembers(groupId);
+  const mentionUserMap = useMemo(() => buildMentionUserMap(members), [members]);
+  const [mentionUser, setMentionUser] = useState<MentionUser | null>(null);
   const {
     messages,
     hasMore,
@@ -146,7 +150,13 @@ export function GroupChat({
         ) : (
           <div className="space-y-2">
             {messages.map((msg) => (
-              <ChatBubble key={msg.id} msg={msg} isMine={msg.sender_id === currentUserId} />
+              <ChatBubble
+                key={msg.id}
+                msg={msg}
+                isMine={msg.sender_id === currentUserId}
+                mentionUserMap={mentionUserMap}
+                onMentionClick={setMentionUser}
+              />
             ))}
           </div>
         )}
@@ -206,11 +216,24 @@ export function GroupChat({
           </Button>
         </div>
       </div>
+
+      {/* 点击消息中 @昵称 弹出的用户资料卡片 */}
+      <UserProfileCard user={mentionUser} onClose={() => setMentionUser(null)} />
     </div>
   );
 }
 
-function ChatBubble({ msg, isMine }: { msg: GroupMessage; isMine: boolean }) {
+function ChatBubble({
+  msg,
+  isMine,
+  mentionUserMap,
+  onMentionClick,
+}: {
+  msg: GroupMessage;
+  isMine: boolean;
+  mentionUserMap: Record<string, MentionUser>;
+  onMentionClick: (user: MentionUser) => void;
+}) {
   if (isMine) {
     return (
       <div className="flex justify-end">
@@ -224,7 +247,12 @@ function ChatBubble({ msg, isMine }: { msg: GroupMessage; isMine: boolean }) {
             />
           ) : (
             <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground">
-              <RichText text={msg.content} mentionClassName="text-primary-foreground" />
+              <RichText
+                text={msg.content}
+                mentionClassName="text-primary-foreground"
+                userMap={mentionUserMap}
+                onMentionClick={onMentionClick}
+              />
             </div>
           )}
           <span className="text-[10px] text-muted-foreground">
@@ -251,7 +279,11 @@ function ChatBubble({ msg, isMine }: { msg: GroupMessage; isMine: boolean }) {
           />
         ) : (
           <div className={cn("whitespace-pre-wrap break-words rounded-2xl rounded-bl-md bg-muted px-3 py-2 text-sm")}>
-            <RichText text={msg.content} />
+            <RichText
+              text={msg.content}
+              userMap={mentionUserMap}
+              onMentionClick={onMentionClick}
+            />
           </div>
         )}
         <span className="mt-0.5 block text-[10px] text-muted-foreground">

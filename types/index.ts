@@ -47,6 +47,19 @@ export interface WornDecorBadge {
   name: string;
 }
 
+/** @提及可点击所需的用户信息（由圈子成员资料构建，供 RichText / 用户卡片使用） */
+export interface MentionUser {
+  id: UUID;
+  nickname: string;
+  avatar_url: string | null;
+  /** 头像框环色（hex） */
+  frameColor?: string | null;
+  /** 已佩戴装扮徽章 */
+  wornBadges?: WornDecorBadge[];
+  /** 已解锁成就 */
+  achievements?: Achievement[];
+}
+
 /** 积分 / 连续打卡 / 成就汇总 */
 export interface UserGamification {
   user_id: UUID;

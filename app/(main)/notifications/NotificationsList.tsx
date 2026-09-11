@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import { RichText } from "@/components/common/RichText";
 import {
   useNotifications,
   useUnreadCount,
@@ -216,7 +217,8 @@ export function NotificationsList() {
                     </p>
                     {preview ? (
                       <p className="mt-1 line-clamp-2 break-words text-sm text-muted-foreground">
-                        {preview}
+                        {/* 提及内容中的 @昵称 高亮（同正文渲染） */}
+                        <RichText text={preview} />
                       </p>
                     ) : null}
                     <p className="mt-1 text-xs text-muted-foreground">

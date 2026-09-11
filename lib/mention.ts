@@ -3,6 +3,8 @@
 // 用于活动 / 评论正文中识别 @昵称 并触发通知。
 // ============================================================
 
+import type { Achievement, MentionUser, WornDecorBadge } from "@/types";
+
 /** 圈子成员的最小结构，用于昵称匹配 */
 export interface MentionMember {
   user_id: string;
@@ -75,4 +77,41 @@ export function extractMentionedUserIds(
   }
 
   return Array.from(ids);
+}
+
+/** 构建用户映射可接收的成员结构（宽松，兼容 GroupMember / 通知等） */
+type MapMemberInput = {
+  user_id: string;
+  profile?: {
+    nickname: string;
+    avatar_url?: string | null;
+    frameColor?: string | null;
+    wornBadges?: WornDecorBadge[];
+    achievements?: Achievement[];
+  } | null;
+};
+
+/**
+ * 由圈子成员列表构建「小写昵称 → 用户信息」映射。
+ * 供 RichText 渲染可点击 @昵称 使用：命中即变为可点击按钮。
+ * 同昵称多用户时后者覆盖前者（与 @提及通知按昵称命中的语义一致）。
+ */
+export function buildMentionUserMap(
+  members: MapMemberInput[] | null | undefined
+): Record<string, MentionUser> {
+  const map: Record<string, MentionUser> = {};
+  if (!members || members.length === 0) return map;
+  for (const m of members) {
+    const nickname = m.profile?.nickname;
+    if (!nickname || !m.user_id) continue;
+    map[nickname.toLowerCase()] = {
+      id: m.user_id,
+      nickname,
+      avatar_url: m.profile?.avatar_url ?? null,
+      frameColor: m.profile?.frameColor ?? null,
+      wornBadges: m.profile?.wornBadges ?? [],
+      achievements: m.profile?.achievements ?? [],
+    };
+  }
+  return map;
 }
