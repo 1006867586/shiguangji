@@ -45,14 +45,19 @@ export default function BadgePreviewPage() {
             4 个尺寸下渲染表现。
           </p>
           <div className="flex flex-wrap items-end gap-6 rounded-xl border border-border/60 bg-card p-6">
-            {[20, 40, 64, 128].map((size) => (
+            {[
+              { size: 20, cls: "h-5 w-5" },
+              { size: 40, cls: "h-10 w-10" },
+              { size: 64, cls: "h-16 w-16" },
+              { size: 128, cls: "h-32 w-32" },
+            ].map(({ size, cls }) => (
               <div key={size} className="flex flex-col items-center gap-2">
                 <BadgeSticker
                   badgeKey="badge_hotpot"
                   rarity="common"
                   name="火锅信徒"
                   color="#ef4444"
-                  className={`h-${size === 20 ? "5" : size === 40 ? "10" : size === 64 ? "16" : "32"} w-${size === 20 ? "5" : size === 40 ? "10" : size === 64 ? "16" : "32"}`}
+                  className={cls}
                 />
                 <span className="text-[10px] tabular-nums text-muted-foreground">
                   {size}px

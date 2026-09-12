@@ -6,6 +6,7 @@ import { Coins, Loader2, Save, Shield, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BadgeGlow } from "@/components/decor/BadgeIcon";
+import { BadgeSticker, hasBadgeSticker } from "@/components/decor/BadgeSticker";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { WornBadges } from "@/components/profile/WornBadges";
 import { fetchData } from "@/lib/fetcher";
@@ -182,14 +183,25 @@ export function DecorPanel({ initialData, profile }: DecorPanelProps) {
                     : "border-border/70 bg-card"
                 )}
               >
-                <BadgeGlow
-                  badgeKey={item.key}
-                  color={item.color}
-                  icon={item.icon}
-                  name={item.name}
-                  decorative
-                  className="mx-auto h-11 w-11 text-xl"
-                />
+                {hasBadgeSticker(item.key) ? (
+                  <BadgeSticker
+                    badgeKey={item.key}
+                    rarity="common"
+                    color={item.color}
+                    name={item.name}
+                    decorative
+                    className="mx-auto h-11 w-11"
+                  />
+                ) : (
+                  <BadgeGlow
+                    badgeKey={item.key}
+                    color={item.color}
+                    icon={item.icon}
+                    name={item.name}
+                    decorative
+                    className="mx-auto h-11 w-11 text-xl"
+                  />
+                )}
                 <p className="mt-2 truncate text-center text-xs font-semibold">
                   {item.name}
                 </p>

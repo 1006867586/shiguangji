@@ -39,6 +39,33 @@ function resourceUrl(badgeKey: string, rarity: BadgeRarity): string {
 }
 
 /**
+ * v3 资源白名单：仅这些 key 会去取 PNG，其他走旧 BadgeGlow。
+ * 新增徽章时把 key 加进来即可启用新视觉，无需改任何调用方。
+ *
+ * 现状（2026-09 落地）：复刻全部 11 枚存量徽章。
+ * 后续新徽章上线时，先把 PNG 放到 public/badges/v3/{rarity}/，
+ * 再把 key 加到这个集合里。
+ */
+const V3_KEYS = new Set<string>([
+  "badge_activities_1",
+  "badge_circles_3",
+  "badge_crown",
+  "badge_cup",
+  "badge_hotpot",
+  "badge_meals_week_10",
+  "badge_meals_week_5",
+  "badge_star",
+  "badge_streak_3",
+  "badge_streak_7",
+  "badge_total_meals_20",
+]);
+
+/** 该 key 是否存在 v3 资源；调用方据此决定走哪个组件。 */
+export function hasBadgeSticker(badgeKey?: string | null): boolean {
+  return typeof badgeKey === "string" && V3_KEYS.has(badgeKey);
+}
+
+/**
  * 单枚贴纸徽章（img + 稀有度样式 + 兜底）。
  * 与 BadgeGlow 互不替代；本组件专供 v3 复古贴纸视觉。
  */
