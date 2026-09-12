@@ -15,8 +15,18 @@ const inter = Inter({
 const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-display",
+  // 中文 UI 下中文字符走系统字体栈（globals.css 的 fallback），
+  // Fraunces 仅作为拉丁字符 / 数字 / 品牌标题装饰字体使用。
+  // 之前配置 axes: ["SOFT", "WONK", "opsz"] + weight: "variable" +
+  // style: ["normal","italic"] 会让 Next.js 生成多个 woff2 切片
+  // preload，浏览器发现未在 load 事件后及时命中，console 报：
+  //   "preloaded but not used within a few seconds"
+  // 精简：去掉装饰轴 SOFT/WONK（中文 UI 无处引用），保留 opsz
+  // （标题光学尺寸，对 display: large 标题有用）；weight 保持
+  // variable（一个 woff2 覆盖全字重），style 保留 normal + italic
+  // 因为 LoginClient.tsx 用了 italic 装饰。
   display: "swap",
-  axes: ["SOFT", "WONK", "opsz"],
+  axes: ["opsz"],
   weight: "variable",
   style: ["normal", "italic"],
 });
