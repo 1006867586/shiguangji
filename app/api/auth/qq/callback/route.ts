@@ -295,7 +295,7 @@ export async function GET(request: NextRequest) {
       const { error: createErr } = await admin.auth.admin.createUser({
         email: virtualEmail,
         email_confirm: true,
-        user_metadata: { nickname, avatar_url, qq_openid: openid },
+        user_metadata: { nickname, avatar_url: avatar, qq_openid: openid },
       });
       // 已存在（历史遗留账号、半途失败残留等）不算错误，继续 generateLink 即可
       if (createErr) {
