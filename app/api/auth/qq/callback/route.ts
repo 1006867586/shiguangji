@@ -285,8 +285,26 @@ export async function GET(request: NextRequest) {
       userId = boundProfile.id;
       hashedToken = sessionLink.properties.hashed_token;
     } else {
-      // 首次 QQ 登录：用虚拟邮箱 + generateLink 建新用户
+      // 首次 QQ 登录：用虚拟邮箱 + generateLink 建新用户。
+      // 注意：GoTrue 的 admin.generateLink(type: "magiclink") 要求该邮箱的用户
+      // 在 Supabase 中已存在，否则报 "User not found"（映射到 qq_link_failed，
+      // 表现为「服务端生成登录链接失败」）。所以必须先 createUser 建号
+      // （email_confirm=true 免邮件验证），再由 auth.users 上的 AFTER INSERT 触发器
+      // 自动创建 profiles 并同步 bound_qq_openid，最后 generateLink 拿 hashed_token。
       const virtualEmail = `qq_${openid}@qq.local`;
+      const { error: createErr } = await admin.auth.admin.createUser({
+        email: virtualEmail,
+        email_confirm: true,
+        user_metadata: { nickname, avatar_url, qq_openid: openid },
+      });
+      // 已存在（历史遗留账号、半途失败残留等）不算错误，继续 generateLink 即可
+      if (createErr) {
+        console.warn(
+          "[qq/callback] createUser 虚拟号返回（多半是账号已存在）:",
+          createErr.message
+        );
+      }
+
       const { data: linkData, error: linkErr } =
         await admin.auth.admin.generateLink({
           type: "magiclink",
