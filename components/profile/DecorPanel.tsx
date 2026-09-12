@@ -67,15 +67,30 @@ export function DecorPanel({ initialData, profile }: DecorPanelProps) {
       );
       toast.success(`已兑换 ${item.name}`);
     } catch (e) {
-      // ApiCallError 上挂载了服务端业务错误码（如 INSUFFICIENT_POINTS），
-      // 这里把 code 也带到 toast 里方便用户/客服定位。
-      const message =
-        e instanceof Error ? e.message : "兑换失败";
-      const code =
-        e && typeof e === "object" && "code" in e
-          ? (e as { code?: string }).code
-          : undefined;
-      toast.error(code ? `${message} (${code})` : message);
+      const err = e as {
+        message?: string;
+        code?: string;
+        debugMessage?: string;
+        details?: unknown;
+        hint?: string;
+      };
+      const message = err.message ?? "兑换失败";
+      const code = err.code;
+      // toast 优先显示友好 message + 业务码；
+      // 如果 message 是「购买失败」这种兜底（即 code 未识别），
+      // 把 RPC debugMessage 拼在后面，让用户/客服能看到真实错误。
+      const tail =
+        message === "购买失败" && err.debugMessage
+          ? ` · ${err.debugMessage}`
+          : "";
+      toast.error(code ? `${message} (${code})${tail}` : `${message}${tail}`);
+      console.error("[decor/purchase]", {
+        code,
+        message,
+        debugMessage: err.debugMessage,
+        details: err.details,
+        hint: err.hint,
+      });
     } finally {
       setPurchasing(null);
     }

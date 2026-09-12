@@ -6,12 +6,30 @@ export class ApiCallError extends Error {
   code?: string;
   /** HTTP 状态码 */
   status?: number;
+  /** 服务端返回的 debug_message（生产环境透传 RPC 原始 message） */
+  debugMessage?: string;
+  /** 服务端返回的 details（Postgres details 字段） */
+  details?: unknown;
+  /** 服务端返回的 hint（Postgres hint 字段） */
+  hint?: string;
 
-  constructor(message: string, opts?: { code?: string; status?: number }) {
+  constructor(
+    message: string,
+    opts?: {
+      code?: string;
+      status?: number;
+      debugMessage?: string;
+      details?: unknown;
+      hint?: string;
+    }
+  ) {
     super(message);
     this.name = "ApiCallError";
     this.code = opts?.code;
     this.status = opts?.status;
+    this.debugMessage = opts?.debugMessage;
+    this.details = opts?.details;
+    this.hint = opts?.hint;
   }
 }
 
@@ -45,6 +63,10 @@ export async function fetcher<T>(
     throw new ApiCallError(message, {
       code: payload?.code,
       status: res.status,
+      debugMessage: (payload as { debug_message?: string } | null)
+        ?.debug_message,
+      details: (payload as { details?: unknown } | null)?.details,
+      hint: (payload as { hint?: string } | null)?.hint,
     });
   }
 

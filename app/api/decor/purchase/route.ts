@@ -33,16 +33,38 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       const code = (error as { code?: string }).code;
-      // 业务错误码：直接返回 RPC 抛出的字符串（DECOR_NOT_FOUND 等），
-      // 并映射成用户可读文案。生产环境保留 code 不脱敏，
-      // 因为前端用它决定 toast 内容（lib/utils.ts safeErrorMessage 会脱敏 message）。
+      const rawMessage = (error as { message?: string }).message ?? null;
+      const details = (error as { details?: unknown }).details ?? null;
+      const hint = (error as { hint?: string }).hint ?? null;
+      // 把 RPC error 全字段打到服务端日志，方便排查。
+      console.error("[purchase_decor_item] rpc error", {
+        code,
+        message: rawMessage,
+        details,
+        hint,
+        body_itemId: body.itemId,
+        user_id: user.id,
+      });
+
+      // 业务错误码：直接返回 RPC 抛出的字符串（DECOR_NOT_FOUND 等）。
+      // 注意：此处不走 safeErrorMessage，因为我们要：
+      //   1) 始终携带 code 字段（生产也透传，业务码不是敏感信息）
+      //   2) 把 rawMessage 作为 debug_message 返回（生产也透传，
+      //      RPC 错误通常只是 'duplicate key value violates unique constraint'
+      //      这类用户可读的诊断信息，不会泄露表结构/token）
       const businessCode =
         code && code in PURCHASE_ERROR_TEXT ? code : undefined;
-      const message =
-        (businessCode && PURCHASE_ERROR_TEXT[businessCode]) ||
-        safeErrorMessage(error, "购买失败");
+      const friendlyMessage = businessCode
+        ? PURCHASE_ERROR_TEXT[businessCode]
+        : rawMessage ?? "购买失败";
       return jsonResponse(
-        { error: message, code: businessCode },
+        {
+          error: friendlyMessage,
+          code: businessCode ?? code ?? "UNKNOWN",
+          debug_message: rawMessage,
+          details,
+          hint,
+        },
         { status: 400 }
       );
     }
