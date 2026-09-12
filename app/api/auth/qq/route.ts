@@ -26,10 +26,13 @@ export async function GET(request: NextRequest) {
   qqUrl.searchParams.set("scope", scope);
 
   const response = NextResponse.redirect(qqUrl.toString());
+  // QQ OAuth 回调是 graph.qq.com → 本站的跨站跳转，
+  // 必须用 SameSite=None + Secure 才能让浏览器把 state cookie 带回来。
+  // 否则 callback 里 cookieState 是 undefined → qq_state_invalid。
   response.cookies.set("qq_oauth_state", state, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+    secure: true,
     path: "/",
     maxAge: 600,
   });
