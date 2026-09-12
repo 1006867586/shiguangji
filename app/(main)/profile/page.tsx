@@ -30,6 +30,8 @@ export default async function ProfilePage() {
     decor?.display ?? null
   );
 
+  const qqEnabled = Boolean(process.env.QQ_APP_ID && process.env.QQ_APP_KEY);
+
   return (
     <div className="min-h-dvh pb-20">
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65 pt-safe-t">
@@ -49,6 +51,7 @@ export default async function ProfilePage() {
           achievements={gamification.achievements}
           wornBadges={wornBadges}
           frameColor={frame?.color}
+          qqEnabled={qqEnabled}
         />
       ) : null}
 

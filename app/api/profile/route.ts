@@ -12,7 +12,7 @@ export async function GET() {
 
     const { data: profile, error } = await supabase
       .from("profiles")
-      .select("id, nickname, avatar_url, created_at")
+      .select("id, nickname, avatar_url, created_at, bound_qq_openid")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -23,7 +23,13 @@ export async function GET() {
       );
     }
     return jsonResponse({
-      data: profile ?? { id: user.id, nickname: user.email ?? "用户", avatar_url: null, created_at: null },
+      data: profile ?? {
+        id: user.id,
+        nickname: user.email ?? "用户",
+        avatar_url: null,
+        created_at: null,
+        bound_qq_openid: null,
+      },
     });
   } catch (err) {
     if (err instanceof UnauthorizedError) {

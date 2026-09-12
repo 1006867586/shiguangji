@@ -35,6 +35,8 @@ export interface Profile {
   achievements?: Achievement[];
   /** 头像框环色（hex），装扮系统佩戴展示（可选） */
   frameColor?: string | null;
+  /** 已绑定的 QQ 互联 openid（用于个人中心展示「已绑定/未绑定」） */
+  bound_qq_openid?: string | null;
   /** 已佩戴装扮徽章（可选） */
   wornBadges?: WornDecorBadge[];
 }
