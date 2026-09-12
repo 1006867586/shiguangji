@@ -35,8 +35,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   qq_callback_error: "QQ 登录过程中出现异常，请稍后重试",
 };
 
-function formatError(code: string): string {
-  return ERROR_MESSAGES[code] ?? code;
+function formatError(code: string, debugMessage?: string | null): string {
+  const friendly = ERROR_MESSAGES[code] ?? code;
+  // 未识别的错误码或生产环境的兜底文案，追加 RPC 真实 message
+  if (debugMessage && (!ERROR_MESSAGES[code] || friendly.startsWith("建立"))) {
+    return `${friendly} · ${debugMessage}`;
+  }
+  return friendly;
 }
 
 function LoginForm({ qqEnabled, wechatEnabled, initialError }: LoginClientProps) {
@@ -58,7 +63,8 @@ function LoginForm({ qqEnabled, wechatEnabled, initialError }: LoginClientProps)
   // mount 后展示初始错误（例如：从 /api/auth/qq?error=xxx 跳转回来）
   useEffect(() => {
     if (initialError) {
-      toast.error(formatError(initialError));
+      const debugMessage = searchParams.get("debug_message");
+      toast.error(formatError(initialError, debugMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

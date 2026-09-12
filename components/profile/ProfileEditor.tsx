@@ -61,6 +61,7 @@ export function ProfileEditor({
   useEffect(() => {
     const bindOk = searchParams.get("bind_qq");
     const bindErr = searchParams.get("bind_qq_error");
+    const bindDebug = searchParams.get("bind_qq_debug");
     if (bindOk === "ok") {
       const newOpenid = searchParams.get("qq_openid");
       if (newOpenid) setBoundQqOpenid(newOpenid);
@@ -72,10 +73,15 @@ export function ProfileEditor({
       router.replace(url.pathname + url.search);
       router.refresh();
     } else if (bindErr) {
-      const msg = BIND_ERROR_MESSAGES[bindErr] ?? `绑定失败：${bindErr}`;
-      toast.error(msg);
+      const friendly = BIND_ERROR_MESSAGES[bindErr] ?? `绑定失败：${bindErr}`;
+      const tail =
+        bindDebug && (!BIND_ERROR_MESSAGES[bindErr] || friendly.startsWith("服务端"))
+          ? ` · ${bindDebug}`
+          : "";
+      toast.error(`${friendly}${tail}`);
       const url = new URL(window.location.href);
       url.searchParams.delete("bind_qq_error");
+      url.searchParams.delete("bind_qq_debug");
       router.replace(url.pathname + url.search);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

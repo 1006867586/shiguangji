@@ -60,15 +60,23 @@ export async function GET(request: NextRequest) {
   const appId = process.env.QQ_APP_ID;
   const appKey = process.env.QQ_APP_KEY;
 
-  const fail = (reason: string, backTo?: string) => {
+  const fail = (
+    code: string,
+    debugMessage?: string,
+    backTo?: string
+  ) => {
+    const params = new URLSearchParams();
+    params.set("error", code);
+    if (debugMessage) params.set("debug_message", debugMessage);
     // 绑定模式失败跳回个人中心带 error；登录模式失败跳回登录页
     if (bind) {
       const base = backTo ?? "/profile";
       const u = new URL(base, origin);
-      u.searchParams.set("bind_qq_error", reason);
+      u.searchParams.set("bind_qq_error", code);
+      if (debugMessage) u.searchParams.set("bind_qq_debug", debugMessage);
       return NextResponse.redirect(u);
     }
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(reason)}`);
+    return NextResponse.redirect(`${origin}/login?${params.toString()}`);
   };
 
   // 基础校验
@@ -206,7 +214,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle();
       if (conflictErr) {
         console.error("[qq/callback] 冲突检查失败:", conflictErr.message);
-        return fail("qq_link_failed");
+        return fail("qq_link_failed", conflictErr.message);
       }
       if (conflict) {
         return fail("qq_already_bound");
@@ -224,7 +232,7 @@ export async function GET(request: NextRequest) {
       );
       if (metaErr) {
         console.error("[qq/callback] 写 user_metadata 失败:", metaErr.message);
-        return fail("qq_link_failed");
+        return fail("qq_link_failed", metaErr.message);
       }
 
       const ok = new URL("/profile", origin);
@@ -241,7 +249,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
     if (lookupErr) {
       console.error("[qq/callback] 查 bound_qq_openid 失败:", lookupErr.message);
-      return fail("qq_link_failed");
+      return fail("qq_link_failed", lookupErr.message);
     }
 
     let userId: string;
@@ -272,7 +280,7 @@ export async function GET(request: NextRequest) {
           "[qq/callback] 合二一会话 generateLink 失败:",
           sessionLinkErr?.message
         );
-        return fail("qq_session_failed");
+        return fail("qq_session_failed", sessionLinkErr?.message);
       }
       userId = boundProfile.id;
       hashedToken = sessionLink.properties.hashed_token;
@@ -290,7 +298,7 @@ export async function GET(request: NextRequest) {
         !linkData.user
       ) {
         console.error("[qq/callback] generateLink 失败:", linkErr?.message);
-        return fail("qq_link_failed");
+        return fail("qq_link_failed", linkErr?.message);
       }
       userId = linkData.user.id;
       hashedToken = linkData.properties.hashed_token;
@@ -333,7 +341,7 @@ export async function GET(request: NextRequest) {
       token_hash: hashedToken,
       type: "magiclink",
     });
-    if (verifyErr) return fail("qq_session_failed");
+    if (verifyErr) return fail("qq_session_failed", verifyErr.message);
 
     // 把 SSR 客户端 setAll 的 cookies 写入重定向响应
     const isProd = process.env.NODE_ENV === "production";
