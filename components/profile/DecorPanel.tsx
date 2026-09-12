@@ -67,7 +67,15 @@ export function DecorPanel({ initialData, profile }: DecorPanelProps) {
       );
       toast.success(`已兑换 ${item.name}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "兑换失败");
+      // ApiCallError 上挂载了服务端业务错误码（如 INSUFFICIENT_POINTS），
+      // 这里把 code 也带到 toast 里方便用户/客服定位。
+      const message =
+        e instanceof Error ? e.message : "兑换失败";
+      const code =
+        e && typeof e === "object" && "code" in e
+          ? (e as { code?: string }).code
+          : undefined;
+      toast.error(code ? `${message} (${code})` : message);
     } finally {
       setPurchasing(null);
     }

@@ -33,12 +33,16 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       const code = (error as { code?: string }).code;
+      // 业务错误码：直接返回 RPC 抛出的字符串（DECOR_NOT_FOUND 等），
+      // 并映射成用户可读文案。生产环境保留 code 不脱敏，
+      // 因为前端用它决定 toast 内容（lib/utils.ts safeErrorMessage 会脱敏 message）。
+      const businessCode =
+        code && code in PURCHASE_ERROR_TEXT ? code : undefined;
+      const message =
+        (businessCode && PURCHASE_ERROR_TEXT[businessCode]) ||
+        safeErrorMessage(error, "购买失败");
       return jsonResponse(
-        {
-          error:
-            PURCHASE_ERROR_TEXT[code ?? ""] ??
-            safeErrorMessage(error, "购买失败"),
-        },
+        { error: message, code: businessCode },
         { status: 400 }
       );
     }
