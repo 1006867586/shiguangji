@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Link2, Loader2, LogOut, Save } from "lucide-react";
+import { CheckCircle2, Link2, Loader2, LogOut, Mail, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,9 @@ const BIND_ERROR_MESSAGES: Record<string, string> = {
   qq_already_bound: "该 QQ 刚被其他账号绑定，请刷新后重试",
   session_expired: "登录已过期，请重新登录后再试",
 };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LEN = 6;
 
 export function ProfileEditor({
   profile,
@@ -59,6 +62,10 @@ export function ProfileEditor({
   const [boundQqOpenid, setBoundQqOpenid] = useState<string | null>(
     profile.bound_qq_openid ?? null
   );
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [bindingEmail, setBindingEmail] = useState(false);
 
   // 处理 /api/auth/qq/callback 绑定回跳的 toast（?bind_qq=ok 或 ?bind_qq_error=xxx）
   useEffect(() => {
@@ -119,6 +126,38 @@ export function ProfileEditor({
   const signOut = async () => {
     if (!confirm("确定退出登录吗？")) return;
     await signOutAuth();
+  };
+
+  const bindEmail = async () => {
+    const email = emailInput.trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) {
+      toast.error("邮箱格式不正确");
+      return;
+    }
+    if (passwordInput.length < MIN_PASSWORD_LEN) {
+      toast.error(`密码至少 ${MIN_PASSWORD_LEN} 位`);
+      return;
+    }
+    setBindingEmail(true);
+    try {
+      await fetchData<{ ok: boolean }>("/api/profile/bind-email", {
+        method: "POST",
+        body: JSON.stringify({ email, password: passwordInput }),
+      });
+      if (userEmail && email === userEmail) {
+        toast.success("密码已更新");
+      } else {
+        toast.success("已发送确认邮件，请到邮箱点击链接完成绑定");
+      }
+      setEmailInput("");
+      setPasswordInput("");
+      setShowEmailForm(false);
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "绑定失败");
+    } finally {
+      setBindingEmail(false);
+    }
   };
 
   return (
@@ -214,6 +253,97 @@ export function ProfileEditor({
           </div>
         </div>
       ) : null}
+
+      {/* 邮箱登录绑定 */}
+      <div className="rounded-lg border border-border/60 bg-card p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium">邮箱登录</span>
+              {userEmail ? (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <CheckCircle2 className="h-2.5 w-2.5" />
+                  已绑定
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  未绑定
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {userEmail
+                ? "可用「邮箱 + 密码」登录本账号"
+                : "绑定「邮箱 + 密码」后，QQ 转移时也能随时登录旧账号找回数据"}
+            </p>
+          </div>
+          {userEmail && !showEmailForm ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEmailInput(userEmail);
+                setPasswordInput("");
+                setShowEmailForm(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-xs font-medium transition-all active:scale-[0.98]"
+            >
+              更换
+            </button>
+          ) : null}
+        </div>
+
+        {!userEmail || showEmailForm ? (
+          <div className="mt-2.5 space-y-2 border-t border-border/60 pt-2.5">
+            <Input
+              type="email"
+              placeholder="邮箱地址"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              autoComplete="email"
+              inputMode="email"
+            />
+            <Input
+              type="password"
+              placeholder={`设置密码（至少 ${MIN_PASSWORD_LEN} 位）`}
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              autoComplete="new-password"
+            />
+            <div className="flex items-center justify-between gap-2">
+              {userEmail ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmailForm(false);
+                    setPasswordInput("");
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  取消
+                </button>
+              ) : (
+                <span />
+              )}
+              <Button
+                onClick={bindEmail}
+                disabled={bindingEmail}
+                size="sm"
+                className="gap-1"
+              >
+                {bindingEmail ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Mail className="h-3.5 w-3.5" />
+                )}
+                {userEmail ? "保存修改" : "绑定邮箱"}
+              </Button>
+            </div>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              提交后需前往邮箱点击确认链接，邮箱才会生效；密码即时生效。
+            </p>
+          </div>
+        ) : null}
+      </div>
 
       <div className="flex items-center justify-between">
         <Button

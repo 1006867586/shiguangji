@@ -11,6 +11,7 @@ import {
   getServerDecor,
 } from "@/lib/server-data";
 import { resolveDecorDisplay } from "@/lib/decor";
+import { getCurrentUser } from "@/lib/supabase/server";
 import type { Group } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,11 @@ export default async function ProfilePage() {
     getServerGamification(),
     getServerDecor(),
   ]);
+
+  const user = await getCurrentUser();
+  // 虚拟邮箱（wx_xxx@wechat.local / qq_xxx@qq.local 等）视为未绑定真实邮箱
+  const email = user?.email ?? null;
+  const userEmail = email && !email.endsWith(".local") ? email : null;
 
   const { frame, wornBadges } = resolveDecorDisplay(
     decor?.items ?? [],
@@ -52,6 +58,7 @@ export default async function ProfilePage() {
           wornBadges={wornBadges}
           frameColor={frame?.color}
           qqEnabled={qqEnabled}
+          userEmail={userEmail}
         />
       ) : null}
 
