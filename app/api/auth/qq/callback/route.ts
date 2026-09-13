@@ -217,7 +217,23 @@ export async function GET(request: NextRequest) {
         return fail("qq_link_failed", conflictErr.message);
       }
       if (conflict) {
-        return fail("qq_already_bound");
+        // QQ 已被另一账号绑定：引导用户到确认页，确认后把绑定转移到当前账号。
+        // 用户已完成 QQ OAuth 授权（openid 在手），确认转移语义等价于「换绑」。
+        const isProd = process.env.NODE_ENV === "production";
+        const confirmUrl = new URL("/profile/bind-qq-confirm", origin);
+        confirmUrl.searchParams.set("openid", openid);
+        confirmUrl.searchParams.set("from", conflict.id);
+        const res = NextResponse.redirect(confirmUrl);
+        // 一次性转移票据：SameSite=Lax 即可（确认页/转移接口都是本站导航），
+        // HttpOnly 防篡改；确认页与转移接口双重校验防 CSRF。
+        res.cookies.set("qq_transfer", `${openid}.${conflict.id}`, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: isProd,
+          path: "/",
+          maxAge: 600,
+        });
+        return clearBindCookies(res);
       }
 
       // 写 user_metadata.qq_openid（trigger 会同步到 profiles.bound_qq_openid）

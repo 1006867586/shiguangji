@@ -25,7 +25,7 @@ const BIND_ERROR_MESSAGES: Record<string, string> = {
   qq_no_openid: "QQ 用户身份缺失",
   qq_link_failed: "服务端写入 QQ openid 失败",
   qq_session_failed: "建立会话失败（绑定模式不应出现此错误）",
-  qq_already_bound: "该 QQ 已被其他账号绑定，请联系客服解绑",
+  qq_already_bound: "该 QQ 刚被其他账号绑定，请刷新后重试",
   session_expired: "登录已过期，请重新登录后再试",
 };
 
