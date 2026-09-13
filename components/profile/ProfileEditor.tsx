@@ -35,6 +35,7 @@ export function ProfileEditor({
   wornBadges = [],
   frameColor = null,
   qqEnabled = false,
+  userEmail = null,
 }: {
   profile: Profile;
   achievements?: Achievement[];
@@ -44,6 +45,8 @@ export function ProfileEditor({
   frameColor?: string | null;
   /** QQ 登录是否启用（服务端判断后透传） */
   qqEnabled?: boolean;
+  /** 当前账号邮箱（虚拟邮箱视为未绑定） */
+  userEmail?: string | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
