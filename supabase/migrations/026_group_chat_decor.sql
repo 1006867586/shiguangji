@@ -208,12 +208,16 @@ begin
     raise exception 'DECOR_NOT_PURCHASABLE';
   end if;
 
-  select points into v_points from public.user_gamification where user_id = auth.uid();
+  -- 注意：points / item_id 与函数 returns table 的 OUT 参数同名，
+  -- 未限定列名会导致 42702 "column reference points is ambiguous"，故全部加别名限定。
+  select g.points into v_points
+  from public.user_gamification g
+  where g.user_id = auth.uid();
   v_points := coalesce(v_points, 0);
 
   select exists(
-    select 1 from public.user_decor_items
-    where user_id = auth.uid() and item_id = p_item_id
+    select 1 from public.user_decor_items ud
+    where ud.user_id = auth.uid() and ud.item_id = p_item_id
   ) into v_owns;
   if v_owns then
     raise exception 'DECOR_ALREADY_OWNED';
@@ -223,7 +227,9 @@ begin
     raise exception 'INSUFFICIENT_POINTS';
   end if;
 
-  update public.user_gamification set points = v_points - v_item.price where user_id = auth.uid();
+  update public.user_gamification g
+  set points = v_points - v_item.price
+  where g.user_id = auth.uid();
   insert into public.user_decor_items (user_id, item_id) values (auth.uid(), p_item_id);
 
   return query select v_points - v_item.price, v_item.id;

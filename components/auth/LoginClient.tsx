@@ -24,10 +24,24 @@ interface LoginClientProps {
 /** 将 API 返回的 error code 映射为用户可读的中文提示 */
 const ERROR_MESSAGES: Record<string, string> = {
   qq_not_configured: "当前未配置 QQ 登录，请使用邮箱登录/注册",
+  qq_service_key_missing: "服务端缺少 SUPABASE_SERVICE_ROLE_KEY，无法建立会话",
+  qq_state_invalid: "登录状态校验失败，请重试（可能是浏览器禁用了第三方 Cookie）",
+  qq_token_failed: "QQ 授权码换取 access_token 失败，请稍后重试",
+  qq_no_access_token: "QQ 授权响应缺少 access_token",
+  qq_me_failed: "QQ 用户身份（openid）获取失败，请稍后重试",
+  qq_no_openid: "QQ 用户身份（openid）缺失",
+  qq_link_failed: "服务端生成登录链接失败，请稍后重试",
+  qq_session_failed: "建立登录会话失败，请稍后重试",
+  qq_callback_error: "QQ 登录过程中出现异常，请稍后重试",
 };
 
-function formatError(code: string): string {
-  return ERROR_MESSAGES[code] ?? code;
+function formatError(code: string, debugMessage?: string | null): string {
+  const friendly = ERROR_MESSAGES[code] ?? code;
+  // 未识别的错误码或生产环境的兜底文案，追加 RPC 真实 message
+  if (debugMessage && (!ERROR_MESSAGES[code] || friendly.startsWith("建立"))) {
+    return `${friendly} · ${debugMessage}`;
+  }
+  return friendly;
 }
 
 function LoginForm({ qqEnabled, wechatEnabled, initialError }: LoginClientProps) {
@@ -49,7 +63,8 @@ function LoginForm({ qqEnabled, wechatEnabled, initialError }: LoginClientProps)
   // mount 后展示初始错误（例如：从 /api/auth/qq?error=xxx 跳转回来）
   useEffect(() => {
     if (initialError) {
-      toast.error(formatError(initialError));
+      const debugMessage = searchParams.get("debug_message");
+      toast.error(formatError(initialError, debugMessage));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

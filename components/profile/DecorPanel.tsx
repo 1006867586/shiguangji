@@ -6,6 +6,7 @@ import { Coins, Loader2, Save, Shield, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BadgeGlow } from "@/components/decor/BadgeIcon";
+import { BadgeSticker, hasBadgeSticker } from "@/components/decor/BadgeSticker";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { WornBadges } from "@/components/profile/WornBadges";
 import { fetchData } from "@/lib/fetcher";
@@ -66,7 +67,30 @@ export function DecorPanel({ initialData, profile }: DecorPanelProps) {
       );
       toast.success(`已兑换 ${item.name}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "兑换失败");
+      const err = e as {
+        message?: string;
+        code?: string;
+        debugMessage?: string;
+        details?: unknown;
+        hint?: string;
+      };
+      const message = err.message ?? "兑换失败";
+      const code = err.code;
+      // toast 优先显示友好 message + 业务码；
+      // 如果 message 是「购买失败」这种兜底（即 code 未识别），
+      // 把 RPC debugMessage 拼在后面，让用户/客服能看到真实错误。
+      const tail =
+        message === "购买失败" && err.debugMessage
+          ? ` · ${err.debugMessage}`
+          : "";
+      toast.error(code ? `${message} (${code})${tail}` : `${message}${tail}`);
+      console.error("[decor/purchase]", {
+        code,
+        message,
+        debugMessage: err.debugMessage,
+        details: err.details,
+        hint: err.hint,
+      });
     } finally {
       setPurchasing(null);
     }
@@ -182,14 +206,25 @@ export function DecorPanel({ initialData, profile }: DecorPanelProps) {
                     : "border-border/70 bg-card"
                 )}
               >
-                <BadgeGlow
-                  badgeKey={item.key}
-                  color={item.color}
-                  icon={item.icon}
-                  name={item.name}
-                  decorative
-                  className="mx-auto h-11 w-11 text-xl"
-                />
+                {hasBadgeSticker(item.key) ? (
+                  <BadgeSticker
+                    badgeKey={item.key}
+                    rarity="common"
+                    color={item.color}
+                    name={item.name}
+                    decorative
+                    className="mx-auto h-11 w-11"
+                  />
+                ) : (
+                  <BadgeGlow
+                    badgeKey={item.key}
+                    color={item.color}
+                    icon={item.icon}
+                    name={item.name}
+                    decorative
+                    className="mx-auto h-11 w-11 text-xl"
+                  />
+                )}
                 <p className="mt-2 truncate text-center text-xs font-semibold">
                   {item.name}
                 </p>

@@ -76,9 +76,26 @@ export async function exchangeOpenIdForSession(
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const virtualEmail = buildWeappVirtualEmail(openid);
+  // 用户绑定邮箱后 auth.email 不再是虚拟邮箱。先按 weapp_openid 匹配既有账号，
+  // 命中则用其当前 email 生成 magic link，避免虚拟邮箱失配导致建新号（数据分裂）。
+  let targetEmail = virtualEmail;
+  try {
+    const { data: boundUsers } = await admin
+      .from("auth.users")
+      .select("id, email")
+      .eq("raw_user_meta_data->>weapp_openid", openid)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (boundUsers?.[0]?.email) {
+      targetEmail = boundUsers[0].email;
+    }
+  } catch (e) {
+    // 匹配查询失败不影响主流程，回落虚拟邮箱（等价旧行为）
+    console.warn("[weapp-session] 按 openid 匹配账号失败，回落虚拟邮箱:", e);
+  }
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: "magiclink",
-    email: virtualEmail,
+    email: targetEmail,
   });
   if (linkErr || !linkData?.properties?.hashed_token || !linkData.user) {
     console.error("[weapp-session] 生成 magic link 失败:", linkErr?.message);
