@@ -43,7 +43,7 @@ export async function getServerProfile() {
   const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, nickname, avatar_url, created_at")
+    .select("id, nickname, avatar_url, created_at, bound_qq_openid")
     .eq("id", user.id)
     .maybeSingle();
   if (error) {
