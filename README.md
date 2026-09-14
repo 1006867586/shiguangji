@@ -13,7 +13,8 @@
 | 评论点赞 | 一级评论 / 楼中楼回复、点赞、表情互动 |
 | 转发 | 带附言转发活动到所属团体 |
 | AA 分账 | 活动费用按人均或自定义比例分摊 |
-| 美食轮盘 | 团体内随机抽取餐厅，解决「吃什么」难题（支持自定义抽取池） |
+| 美食轮盘 | 团体内随机抽取餐厅，解决「吃什么」难题（支持自定义抽取池、按成员忌口过滤） |
+| 忌口偏好 | 成员填写忌口标签，转盘优先避开并在结果页给出「本局需注意」提醒 |
 | AI 文案 | MiniMax 驱动：文案生成、截图识别、账单识别、邀请文案 |
 | 收藏地点 | 收藏常去餐厅，截图批量导入并联网补齐信息（高德 POI 按店名兜底） |
 | 地图打卡 | 发布动态带坐标，收藏夹/打卡照在地图上落点展示 |
@@ -89,6 +90,17 @@ npm run dev
 019_favorite_places_coords.sql     # 收藏地点坐标
 021_places_rich_info.sql           # 收藏地点富信息
 022_places_cover_image.sql         # 收藏地点封面图
+023_notification_preview.sql       # 通知预览字段
+024_diancan_ordering.sql           # 点餐（菜单 / 订单 / 菜谱）
+025_favorite_places_amap.sql       # 收藏地点高德补充字段
+026_group_chat_decor.sql           # 群聊与装扮
+027_chat_unread.sql                # 群聊未读数
+028_chat_extras.sql                # 群聊扩展字段
+029_group_announcement.sql         # 圈子公告
+030_group_polls.sql                # 群投票 / 接龙
+031_qq_bind.sql                    # QQ 互联绑定
+032_fix_decor_purchase_points_ambiguous.sql  # 装饰购买 points 歧义修复
+033_dietary_preferences.sql        # 忌口档案 + 转盘候选适配标签
 ```
 
 ## 可用脚本

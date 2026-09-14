@@ -13,6 +13,7 @@ import { fetchData } from "@/lib/fetcher";
 import type { Achievement, DecorItem, Profile } from "@/types";
 import { NameBadges } from "@/components/profile/NameBadges";
 import { WornBadges } from "@/components/profile/WornBadges";
+import { DietaryEditor } from "@/components/profile/DietaryEditor";
 
 /** /api/auth/qq/callback?bind_qq_error=xxx 错误码 → 中文提示 */
 const BIND_ERROR_MESSAGES: Record<string, string> = {
@@ -214,6 +215,11 @@ export function ProfileEditor({
           spellCheck={false}
         />
       </div>
+
+      <DietaryEditor
+        initialTags={profile.dietary_tags ?? []}
+        initialNote={profile.dietary_note ?? null}
+      />
 
       {/* 第三方账号绑定 */}
       {qqEnabled ? (

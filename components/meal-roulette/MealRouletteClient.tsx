@@ -33,7 +33,14 @@ import {
 } from "@/components/meal-roulette/RouletteWheel";
 import { useMealRoulette, pickRandomIndex } from "@/hooks/useMealRoulette";
 import { useFavoritePlaces } from "@/hooks/useFavoritePlaces";
-import type { Group, MealRouletteItem } from "@/types";
+import { fetchData, fetcher } from "@/lib/fetcher";
+import { DIETARY_TAGS, dietaryLabel } from "@/lib/dietary";
+import type {
+  Group,
+  MealRouletteItem,
+  DrawRouletteResult,
+  GroupDietaryResponse,
+} from "@/types";
 
 interface MealRouletteClientProps {
   groups: Group[];
@@ -62,26 +69,106 @@ export function MealRouletteClient({
   /** 上一次抽中的索引：本次抽取排除它，避免连续抽中同一家 */
   const lastIndexRef = useRef<number | null>(null);
 
+  // ---- 忌口相关状态 ----
+  /** 圈子成员忌口数据（含汇总，抽签过滤用） */
+  const [memberDietary, setMemberDietary] =
+    useState<GroupDietaryResponse | null>(null);
+  /** 不参与本次聚餐的成员 userId（默认空 = 全员参与） */
+  const [offMembers, setOffMembers] = useState<Set<string>>(new Set());
+  /** 是否启用忌口过滤：开启后优先抽能满足所有人忌口的餐厅 */
+  const [strictDietary, setStrictDietary] = useState(true);
+  /** 抽签元信息（实际模式 / 排除数 / 忌口提醒） */
+  const [drawResult, setDrawResult] = useState<DrawRouletteResult | null>(null);
+
+  // 切换圈子时拉取该圈子的成员忌口，并清空上一轮的勾选状态
+  useEffect(() => {
+    if (!groupId) return;
+    let cancelled = false;
+    setMemberDietary(null);
+    setOffMembers(new Set());
+    void fetcher<{ data: GroupDietaryResponse }>(
+      `/api/groups/${groupId}/dietary`
+    )
+      .then((res) => {
+        if (!cancelled) setMemberDietary(res.data ?? null);
+      })
+      .catch(() => {
+        // 忌口是增强能力，拉取失败不应阻塞转盘使用
+        if (!cancelled) setMemberDietary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [groupId]);
+
+  /** 本次参与成员的 userId；全员参与时为空数组（服务端按全员处理） */
+  const participantIds = useMemo(() => {
+    if (!memberDietary) return [];
+    return memberDietary.members
+      .filter((m) => !offMembers.has(m.user_id))
+      .map((m) => m.user_id);
+  }, [memberDietary, offMembers]);
+
   useEffect(() => {
     return () => {
       if (spinTimer.current) clearTimeout(spinTimer.current);
     };
   }, []);
 
-  const handleSpin = () => {
+  /**
+   * 抽签：优先走服务端（按忌口过滤），失败时降级为本地随机。
+   *
+   * 降级不是可有可无的兜底——忌口能力依赖迁移 033，若用户还没执行 SQL，
+   * draw 接口会报错；这时转盘必须照常能用，否则就是新功能把老功能搞坏了。
+   */
+  const handleSpin = async () => {
     if (spinning || items.length < 2) return;
-    const idx = pickRandomIndex(items.length, lastIndexRef.current ?? undefined);
-    if (idx < 0) return;
-    lastIndexRef.current = idx;
+    setSpinning(true);
     setWinnerIndex(null);
     setWinner(null);
-    setSpinning(true);
+    setDrawResult(null);
+
+    let idx = -1;
+    let result: DrawRouletteResult | null = null;
+    try {
+      const res = await fetchData<{ data: DrawRouletteResult }>(
+        `/api/groups/${groupId}/meal-roulette/draw`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            participantIds,
+            mode: strictDietary ? "strict" : "loose",
+          }),
+        }
+      );
+      result = res.data ?? null;
+      // 先取值再比较：闭包内的 result 无法被 TS 收窄，直接用会报 possibly null
+      const pickedId = result?.picked?.id;
+      if (pickedId) {
+        idx = items.findIndex((i) => i.id === pickedId);
+      }
+    } catch {
+      // 服务端不可用 → 交给下面的本地随机补位
+      idx = -1;
+    }
+
+    if (idx < 0) {
+      idx = pickRandomIndex(items.length, lastIndexRef.current ?? undefined);
+      result = null;
+    }
+    if (idx < 0) {
+      setSpinning(false);
+      return;
+    }
+
+    lastIndexRef.current = idx;
     const target = acc.next(idx, items.length);
     setRotation(target);
     spinTimer.current = setTimeout(() => {
       setSpinning(false);
       setWinnerIndex(idx);
       setWinner(items[idx]);
+      setDrawResult(result);
       toast.success(`今天就吃「${items[idx].title}」！`);
     }, SPIN_MS);
   };
@@ -89,6 +176,7 @@ export function MealRouletteClient({
   const handleReset = () => {
     setWinnerIndex(null);
     setWinner(null);
+    setDrawResult(null);
     acc.reset();
     setRotation(0);
   };
@@ -100,6 +188,8 @@ export function MealRouletteClient({
     address: "",
     phone: "",
     dishes: "",
+    cuisine: "",
+    dietaryTags: [] as string[],
   });
   const [adding, setAdding] = useState(false);
 
@@ -137,9 +227,18 @@ export function MealRouletteClient({
           .split(/[,，]/)
           .map((s) => s.trim())
           .filter(Boolean),
+        cuisine: addForm.cuisine.trim() || null,
+        dietaryTags: addForm.dietaryTags,
       });
       toast.success("已添加");
-      setAddForm({ title: "", address: "", phone: "", dishes: "" });
+      setAddForm({
+        title: "",
+        address: "",
+        phone: "",
+        dishes: "",
+        cuisine: "",
+        dietaryTags: [],
+      });
       setAddOpen(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "添加失败");
@@ -216,6 +315,87 @@ export function MealRouletteClient({
         </Badge>
       </div>
 
+      {/* 忌口与参与者 */}
+      {memberDietary && memberDietary.members.length > 0 ? (
+        <details className="rounded-xl border border-border/70 bg-card px-3 py-2.5 shadow-xs">
+          <summary className="cursor-pointer select-none text-sm font-medium">
+            忌口与参与者
+            {memberDietary.summary.length > 0 ? (
+              <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                {memberDietary.summary.length} 类忌口
+              </span>
+            ) : null}
+          </summary>
+          <div className="mt-2.5 space-y-2.5 border-t border-border/60 pt-2.5">
+            <label className="flex items-start gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={strictDietary}
+                onChange={(e) => setStrictDietary(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary"
+              />
+              <span>
+                <span className="font-medium">优先避开忌口</span>
+                <span className="block text-[11px] leading-relaxed text-muted-foreground">
+                  只抽能满足所有参与者忌口的餐厅；若没有合适的会自动放开并给出提醒
+                </span>
+              </span>
+            </label>
+
+            <div>
+              <p className="text-[11px] text-muted-foreground">
+                本餐参与者（取消勾选 = 这次不来）
+              </p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {memberDietary.members.map((m) => {
+                  const on = !offMembers.has(m.user_id);
+                  return (
+                    <button
+                      key={m.user_id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() =>
+                        setOffMembers((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(m.user_id)) next.delete(m.user_id);
+                          else next.add(m.user_id);
+                          return next;
+                        })
+                      }
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                        on
+                          ? "border-primary/30 bg-primary/10 font-medium text-primary"
+                          : "border-border/60 bg-muted/40 text-muted-foreground line-through"
+                      }`}
+                    >
+                      {m.nickname}
+                      {m.dietary_tags.length > 0 ? (
+                        <span className="text-[10px] opacity-70">
+                          {m.dietary_tags.map(dietaryLabel).join("/")}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {memberDietary.summary.length > 0 ? (
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                圈子忌口汇总：
+                {memberDietary.summary
+                  .map((s) => `${dietaryLabel(s.tag)} ${s.member_count} 人`)
+                  .join("、")}
+              </p>
+            ) : (
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                还没有成员填写忌口偏好。到「我的 → 忌口偏好」设置后，转盘会自动避开。
+              </p>
+            )}
+          </div>
+        </details>
+      ) : null}
+
       {/* 转盘 */}
       <div className="flex flex-col items-center gap-4 py-2">
         <RouletteWheel
@@ -291,6 +471,39 @@ export function MealRouletteClient({
                   {d}
                 </span>
               ))}
+            </div>
+          ) : null}
+
+          {/* 忌口提醒：过滤只是锦上添花，这里才是真正有用的部分 */}
+          {drawResult ? (
+            <div className="mt-2.5 rounded-lg border border-border/60 bg-background/60 p-2.5">
+              {drawResult.warnings.length > 0 ? (
+                <>
+                  <p className="text-xs font-medium">本局需注意</p>
+                  <div className="mt-1 space-y-0.5">
+                    {drawResult.warnings.map((w) => (
+                      <p key={w.key} className="text-[11px] leading-relaxed text-muted-foreground">
+                        {w.label}：{w.nicknames.join("、")}
+                      </p>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  参与者没有忌口限制
+                </p>
+              )}
+              {drawResult.mode === "strict" && drawResult.excludedCount > 0 ? (
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  已按忌口排除 {drawResult.excludedCount} 家，本局候选{" "}
+                  {drawResult.poolSize} 家
+                </p>
+              ) : drawResult.mode === "loose" &&
+                drawResult.warnings.length > 0 ? (
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                  没有能完全避开忌口的餐厅，已放开限制，点菜时留意一下
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -440,6 +653,50 @@ export function MealRouletteClient({
                 placeholder="如：番茄锅、毛肚"
                 autoComplete="off"
               />
+            </div>
+            <div>
+              <Label className="text-xs">菜系 / 品类（可选）</Label>
+              <Input
+                value={addForm.cuisine}
+                onChange={(e) =>
+                  setAddForm((f) => ({ ...f, cuisine: e.target.value }))
+                }
+                placeholder="如：川菜、火锅、日料"
+                autoComplete="off"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">能照顾的忌口（可选）</Label>
+              <p className="mb-1.5 text-[11px] text-muted-foreground">
+                勾选后，有相应忌口的成员参与时这家店会被优先抽中
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {DIETARY_TAGS.map((tag) => {
+                  const active = addForm.dietaryTags.includes(tag.key);
+                  return (
+                    <button
+                      key={tag.key}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() =>
+                        setAddForm((f) => ({
+                          ...f,
+                          dietaryTags: active
+                            ? f.dietaryTags.filter((t) => t !== tag.key)
+                            : [...f.dietaryTags, tag.key],
+                        }))
+                      }
+                      className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                        active
+                          ? "border-primary/30 bg-primary/10 font-medium text-primary"
+                          : "border-border/60 bg-muted/40 text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {tag.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
           <DialogFooter>

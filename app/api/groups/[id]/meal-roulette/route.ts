@@ -5,6 +5,7 @@ import {
   UnauthorizedError,
 } from "@/lib/supabase/server";
 import { jsonResponse, isUuid, safeErrorMessage } from "@/lib/utils";
+import { sanitizeDietaryTags } from "@/lib/dietary";
 import type {
   CreateMealRouletteItemBody,
   ImportMealRouletteItemsBody,
@@ -53,7 +54,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const { data, error } = await supabase
       .from("meal_roulette_items")
       .select(
-        `id, group_id, title, address, phone, signature_dishes, added_by, created_at,
+        `id, group_id, title, address, phone, signature_dishes, cuisine, dietary_tags,
+         added_by, created_at,
          adder:profiles!meal_roulette_items_added_by_fkey(id, nickname, avatar_url)`
       )
       .eq("group_id", id)
@@ -111,6 +113,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       address: string | null;
       phone: string | null;
       signatureDishes: string[];
+      cuisine: string | null;
+      dietaryTags: string[];
     }> = [];
 
     if ("items" in body && Array.isArray(body.items)) {
@@ -138,9 +142,11 @@ export async function POST(req: NextRequest, { params }: Params) {
               : null,
           signatureDishes: Array.isArray(it.signatureDishes)
             ? it.signatureDishes
-                .map((d) => (typeof d === "string" ? d.trim() : ""))
+                .map((d: unknown) => (typeof d === "string" ? d.trim() : ""))
                 .filter(Boolean)
             : [],
+          cuisine: extractCuisine(it.cuisine),
+          dietaryTags: sanitizeDietaryTags(it.dietaryTags),
         });
       }
     } else if ("title" in body && typeof body.title === "string") {
@@ -163,6 +169,8 @@ export async function POST(req: NextRequest, { params }: Params) {
               .map((d) => (typeof d === "string" ? d.trim() : ""))
               .filter(Boolean)
           : [],
+        cuisine: extractCuisine(body.cuisine),
+        dietaryTags: sanitizeDietaryTags(body.dietaryTags),
       });
     } else {
       return jsonResponse({ error: "参数错误" }, { status: 400 });
@@ -196,6 +204,8 @@ export async function POST(req: NextRequest, { params }: Params) {
         address: e.address,
         phone: e.phone,
         signature_dishes: e.signatureDishes,
+        cuisine: e.cuisine,
+        dietary_tags: e.dietaryTags,
         added_by: user.id,
       }));
 
@@ -211,7 +221,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       .from("meal_roulette_items")
       .insert(toInsert)
       .select(
-        `id, group_id, title, address, phone, signature_dishes, added_by, created_at,
+        `id, group_id, title, address, phone, signature_dishes, cuisine, dietary_tags,
+         added_by, created_at,
          adder:profiles!meal_roulette_items_added_by_fkey(id, nickname, avatar_url)`
       );
 
@@ -291,6 +302,13 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       { status: 500 }
     );
   }
+}
+
+/** 菜系字符串清洗：非字符串/空白 → null，超长截断 */
+function extractCuisine(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const v = raw.trim();
+  return v ? v.slice(0, 20) : null;
 }
 
 function normalizeKey(title: string, address: string | null): string {

@@ -39,6 +39,10 @@ export interface Profile {
   bound_qq_openid?: string | null;
   /** 已佩戴装扮徽章（可选） */
   wornBadges?: WornDecorBadge[];
+  /** 忌口标签 key 数组（迁移 033，取值见 lib/dietary.ts 的 DIETARY_TAGS） */
+  dietary_tags?: string[];
+  /** 忌口补充说明（迁移 033） */
+  dietary_note?: string | null;
 }
 
 /** 佩戴在昵称旁的装扮徽章（精简字段） */
@@ -620,6 +624,10 @@ export interface MealRouletteItem {
   created_at: string;
   /** 关联添加者资料（列表接口附带） */
   adder?: Pick<Profile, "id" | "nickname" | "avatar_url"> | null;
+  /** 菜系 / 品类，如 川菜 / 火锅（迁移 033） */
+  cuisine?: string | null;
+  /** 该餐厅能满足的忌口标签白名单（迁移 033） */
+  dietary_tags?: string[];
 }
 
 /** 新增候选项请求体 */
@@ -628,6 +636,9 @@ export interface CreateMealRouletteItemBody {
   address?: string | null;
   phone?: string | null;
   signatureDishes?: string[];
+  cuisine?: string | null;
+  /** 该餐厅能满足的忌口标签（白名单） */
+  dietaryTags?: string[];
 }
 
 /** 批量导入候选项请求体（从收藏夹导入） */
@@ -637,7 +648,68 @@ export interface ImportMealRouletteItemsBody {
     address?: string | null;
     phone?: string | null;
     signatureDishes?: string[];
+    cuisine?: string | null;
+    dietaryTags?: string[];
   }>;
+}
+
+// ============================================================
+// 忌口 / 口味档案（迁移 033）
+// ============================================================
+
+/** 圈子忌口汇总条目：某种忌口有多少人有、昵称列表 */
+export interface DietarySummaryEntry {
+  tag: string;
+  member_count: number;
+  nicknames: string[];
+}
+
+/** 圈子成员的忌口明细（转盘按「参与成员」过滤时用） */
+export interface MemberDietary {
+  user_id: UUID;
+  nickname: string;
+  avatar_url: string | null;
+  dietary_tags: string[];
+  dietary_note: string | null;
+}
+
+/** GET /api/groups/[id]/dietary 响应 */
+export interface GroupDietaryResponse {
+  summary: DietarySummaryEntry[];
+  members: MemberDietary[];
+}
+
+/** PATCH /api/profile/dietary 请求体 */
+export interface UpdateDietaryBody {
+  dietaryTags?: string[];
+  dietaryNote?: string | null;
+}
+
+/** POST /api/groups/[id]/meal-roulette/draw 请求体 */
+export interface DrawRouletteBody {
+  /** 参与本次聚餐的成员 userId；空数组表示按圈子全员 */
+  participantIds?: UUID[];
+  /** strict=只抽满足全部忌口的（无结果自动降级）；loose=全池抽但给提醒 */
+  mode?: "strict" | "loose";
+}
+
+/** 单条忌口提醒（结果卡展示） */
+export interface DrawDietaryWarning {
+  key: string;
+  label: string;
+  nicknames: string[];
+}
+
+/** 抽签结果 */
+export interface DrawRouletteResult {
+  picked: MealRouletteItem | null;
+  /** 实际参与抽签的候选数 */
+  poolSize: number;
+  /** 实际生效的模式 */
+  mode: "strict" | "loose";
+  /** 因忌口冲突被排除的候选数 */
+  excludedCount: number;
+  warnings: DrawDietaryWarning[];
 }
 
 // ============================================================
