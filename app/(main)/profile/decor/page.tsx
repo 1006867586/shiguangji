@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/common/EmptyState";
 import { DecorPanel } from "@/components/profile/DecorPanel";
 import {
   getServerDecor,
@@ -14,15 +14,10 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "我的装扮" };
 
 export default async function ProfileDecorPage() {
-  const profile = await getServerProfile();
-  if (!profile) {
-    redirect("/login?redirect=%2Fprofile%2Fdecor");
-  }
-
-  const decor = await getServerDecor();
-  if (!decor) {
-    redirect("/login?redirect=%2Fprofile%2Fdecor");
-  }
+  const [profile, decor] = await Promise.all([
+    getServerProfile(),
+    getServerDecor(),
+  ]);
 
   return (
     <div className="min-h-dvh pb-20">
@@ -39,13 +34,21 @@ export default async function ProfileDecorPage() {
         </div>
       </header>
 
-      <DecorPanel
-        initialData={decor}
-        profile={{
-          nickname: profile.nickname,
-          avatar_url: profile.avatar_url,
-        }}
-      />
+      {profile && decor ? (
+        <DecorPanel
+          initialData={decor}
+          profile={{
+            nickname: profile.nickname,
+            avatar_url: profile.avatar_url,
+          }}
+        />
+      ) : (
+        <EmptyState
+          icon={<AlertCircle className="h-8 w-8" />}
+          title="装扮数据加载失败"
+          description="暂时无法读取你的装扮信息，请稍后刷新重试；若持续出现，请确认个人资料数据是否完整。"
+        />
+      )}
     </div>
   );
 }

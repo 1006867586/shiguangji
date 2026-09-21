@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ChevronLeft, Users, MapPin, Footprints, Sparkles } from "lucide-react";
+import { ChevronLeft, Users, MapPin, Footprints, Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/common/EmptyState";
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
 import { FavoritePlacesSection } from "@/components/profile/FavoritePlacesSection";
 import { AchievementsPanel } from "@/components/profile/AchievementsPanel";
@@ -60,7 +61,13 @@ export default async function ProfilePage() {
           qqEnabled={qqEnabled}
           userEmail={userEmail}
         />
-      ) : null}
+      ) : (
+        <EmptyState
+          icon={<AlertCircle className="h-8 w-8" />}
+          title="资料加载失败"
+          description="暂时无法读取你的个人资料，头像昵称编辑暂不可用，请稍后刷新重试。"
+        />
+      )}
 
       {/* 我的装扮入口 */}
       <div className="mt-2 border-t border-border/60 px-4">
