@@ -3,6 +3,7 @@ import { ChevronLeft, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MealRouletteClient } from "@/components/meal-roulette/MealRouletteClient";
+import { FoodAlmanacCard } from "@/components/meal-roulette/FoodAlmanacCard";
 import { getServerGroups } from "@/lib/server-data";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,10 @@ export default async function MealRoulettePage() {
         </div>
       </header>
 
-      <div className="p-4">
+      <div className="space-y-5 p-4">
+        {/* 美食黄历：独立于圈子，转盘页顶部常驻 */}
+        <FoodAlmanacCard />
+
         {groups.length === 0 ? (
           <EmptyState
             title="请先加入或创建圈子"
